@@ -1,4 +1,4 @@
-const deadline = '2021-1-29';
+const deadline = '2024-9-20';
 const getTimeRemaining = (endtime) => {
   const total = Date.parse(endtime) - Date.parse(new Date());
   const seconds = Math.floor((total / 1000) % 60);
