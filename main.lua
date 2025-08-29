@@ -182,6 +182,8 @@ MainTab:CreateToggle({
                         miniGameRemote:InvokeServer(x, y)
                         task.wait(1.3)
                         finishRemote:FireServer()
+						task.wait(0.5)
+						finishRemote:FireServer()
                     end)
                     task.wait(autoRecastDelay)
                 end
