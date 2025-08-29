@@ -191,7 +191,14 @@ MainTab:CreateToggle({
         end
     end
 })
-
+MainTab:CreateButton({
+    Name = "Unstuck Fishing Position",
+    Callback = function()
+        pcall(function()
+            finishRemote:FireServer()
+        end)
+    end
+})
 MainTab:CreateToggle({
     Name = "✨ Use Perfect Cast",
     CurrentValue = false,
