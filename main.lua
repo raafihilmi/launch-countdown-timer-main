@@ -75,8 +75,8 @@ end
 
 -- Developer Info
 DevTab:CreateParagraph({
-    Title = "HyRexxyy Script",
-    Content = "Thanks for using this script!\n\nDont forget to follow me on my social platform\nDeveloper:\n- Tiktok: tiktok.com/hyrexxyy\n- Instagram: @hyrexxyy\n- GitHub: github.com/hyrexxyy\n\nKeep supporting!"
+    Title = "Fish It Script Edited By Rafscape",
+    Content = "Thanks for using this script!\n\nDont forget to follow the original on social platform\nDeveloper:\n- Tiktok: tiktok.com/hyrexxyy\n- Instagram: @hyrexxyy\n- GitHub: github.com/hyrexxyy\n\nKeep supporting!"
 })
 
 DevTab:CreateButton({ Name = "Tutor Tiktok", Callback = function() setclipboard("https://tiktok.com/hyrexxyy") NotifySuccess("Link Tiktok", "Copied to clipboard!") end })
