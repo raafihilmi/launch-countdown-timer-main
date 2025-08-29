@@ -52,6 +52,7 @@ local rodRemote = net:WaitForChild("RF/ChargeFishingRod")
 local miniGameRemote = net:WaitForChild("RF/RequestFishingMinigameStarted")
 local finishRemote = net:WaitForChild("RE/FishingCompleted")
 local equipRemote = net:WaitForChild("RE/EquipToolFromHotbar")
+local sellItem = net:WaitForChild("RF/SellAllItems")
 
 -- State
 local AutoSell = false
@@ -59,6 +60,8 @@ local autofish = false
 local perfectCast = false
 local ijump = false
 local autoRecastDelay = 0.5
+local autoSellVersion = false
+local autoSellDelay = 1
 local enchantPos = Vector3.new(3231, -1303, 1402)
 
 local featureState = {
@@ -218,6 +221,32 @@ MainTab:CreateSlider({
     CurrentValue = autoRecastDelay,
     Callback = function(val)
         autoRecastDelay = val
+    end
+})
+MainTab:CreateToggle({
+    Name = "Auto Sell Per Delay",
+	CurrentValue = false,
+    Callback = function(val)
+		autoSellVersion = val
+		if val then 
+            task.spawn(function ()
+                while autoSellVersion do
+                    pcall(function ()
+                        sellItem:InvokeServer()
+                    end)
+					task.wait(autoSellDelay)
+                end
+            end)
+        end
+    end
+})
+MainTab:CreateSlider({
+    Name = "⏱️ Auto Sell Delay (seconds)",
+    Range = {1, 100},
+    Increment = 10,
+    CurrentValue = autoSellDelay,
+    Callback = function(val)
+        autoSellDelay = val
     end
 })
 -- Buy Rods
