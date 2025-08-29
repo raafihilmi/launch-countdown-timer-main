@@ -4,34 +4,6 @@ if game.PlaceId == 121864768012064 then
     -- Langkah 1: Memuat Library Fluent
     local Fluent = loadstring(game:HttpGetAsync("https://github.com/ActualMasterOogway/Fluent-Renewed/releases/latest/download/Fluent.luau"))()
 
-
-    task.spawn(function()
-        print("Mencoba memasang hook untuk Game Pass...")
-        
-        local gamePassUtility = game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("GamePassUtility")
-        local userOwnsGamePass = gamePassUtility:WaitForChild("UserOwnsGamePass")
-
-        if userOwnsGamePass:IsA("RemoteFunction") then
-            local mt = getrawmetatable(userOwnsGamePass)
-            local oldNamecall = mt.__namecall -- Simpan fungsi __namecall yang asli
-
-            -- Ganti __namecall dengan fungsi baru buatan kita
-            mt.__namecall = function(self, ...)
-                -- 'self' akan merujuk ke userOwnsGamePass, dan '...' adalah argumennya (args)
-                
-                -- Inilah bagian Anda: jalankan print setiap kali fungsi dipanggil
-                print("oh? (Game sedang mengecek kepemilikan Game Pass!)")
-
-                -- Panggil fungsi __namecall yang asli agar game tetap berjalan normal
-                -- dan kembalikan hasilnya. Ini SANGAT PENTING!
-                return oldNamecall(self, ...)
-            end
-            
-            print("Hook untuk Game Pass berhasil dipasang!")
-        else
-            warn("Gagal memasang hook: UserOwnsGamePass bukan RemoteFunction.")
-        end
-    end)
     -- Langkah 2: Membuat Window Utama
     local Window = Fluent:CreateWindow({
         Title = "Rafscape Fishing",
