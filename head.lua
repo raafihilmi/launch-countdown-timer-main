@@ -11,17 +11,7 @@ if game.PlaceId == 121864768012064 then
         Link = "https://github.com/deeeity/mercury-lib"
     }
 
-    -- Local Var
-    local isFishing = false
-
-    -- Membuat Tab untuk Fungsionalitas Memancing
-    local fishingTab = GUI:Tab {
-        Name = "Fishing",
-        Icon = "rbxassetid://8569322835" -- Anda bisa mengganti ID ikon ini
-    }
-
-    ---
-    -- Toggle untuk Auto Fishing
+    ---Toggle untuk Auto Fishing
 
     -- Variabel untuk menyimpan path ke RemoteFunction dan RemoteEvent agar lebih rapi
     local NetService = game:GetService("ReplicatedStorage").Packages._Index["sleitnick_net@0.2.0"].net
@@ -62,6 +52,8 @@ if game.PlaceId == 121864768012064 then
                     wait(0.5) -- Jeda singkat antar perintah
 
                     -- Perintah Ketiga: Selesaikan memancing
+                    completeFishing:FireServer()
+                    completeFishing:FireServer()
                     completeFishing:FireServer()
                 end)
 
