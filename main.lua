@@ -241,12 +241,12 @@ MainTab:CreateToggle({
     end
 })
 MainTab:CreateSlider({
-    Name = "⏱️ Auto Sell Delay (seconds)",
+    Name = "⏱️ Auto Sell Delay (minutes)",
     Range = {1, 100},
     Increment = 10,
     CurrentValue = autoSellDelay,
     Callback = function(val)
-        autoSellDelay = val
+        autoSellDelay = val * 60
     end
 })
 -- Buy Rods
