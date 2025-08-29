@@ -184,6 +184,10 @@ MainTab:CreateToggle({
                         finishRemote:FireServer()
 						task.wait(0.5)
 						finishRemote:FireServer()
+						task.wait(0.2)
+                        finishRemote:FireServer()
+						task.wait(0.3)
+						finishRemote:FireServer()
                     end)
                     task.wait(autoRecastDelay)
                 end
