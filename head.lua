@@ -2,7 +2,7 @@ if game.PlaceId == 121864768012064 then
     local CurrentVersion = "Script Fish It By Rafscape"
 
     -- Langkah 1: Memuat Library Fluent
-    local Fluent = loadstring(game:HttpGetAsync("https://github.com/ActualMasterOogway/Fluent-Renewed/releases/latest/download/Fluent.luau"))()
+    local Fluent = loadstring(game:HttpGet("https://github.com/ActualMasterOogway/Fluent-Renewed/releases/latest/download/Fluent.luau"))()
 
     -- Langkah 2: Membuat Window Utama
     local Window = Fluent:CreateWindow({
