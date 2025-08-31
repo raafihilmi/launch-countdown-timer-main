@@ -495,6 +495,12 @@ MainTab:CreateToggle({
                         miniGameRemote:InvokeServer(x, y)
                         task.wait(1.3)
                         finishRemote:FireServer()
+						task.wait(0.5)
+						finishRemote:FireServer()
+						task.wait(0.2)
+                        finishRemote:FireServer()
+						task.wait(0.3)
+						finishRemote:FireServer()
                         
                         fishCaught = fishCaught + 1
                         UpdateAnalytics()
