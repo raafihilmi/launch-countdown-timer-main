@@ -164,7 +164,7 @@ for _, boat in ipairs(other_boats) do
 end
 
 
-MainTab:CreateToggle({
+local autoFishToggle = MainTab:CreateToggle({
     Name = "🎣 Enable Auto Fishing",
     CurrentValue = false,
     Callback = function(val)
@@ -207,13 +207,15 @@ MainTab:CreateButton({
         end)
     end
 })
-MainTab:CreateToggle({
+local perfectCastToggle = MainTab:CreateToggle({
     Name = "✨ Use Perfect Cast",
     CurrentValue = false,
     Callback = function(val)
         perfectCast = val
     end
 })
+local mainTabToggles = {autoFishToggle, perfectCastToggle}
+
 
 MainTab:CreateSlider({
     Name = "⏱️ Auto Recast Delay (seconds)",
@@ -633,13 +635,10 @@ AutoFarmTab:CreateButton({
         autofish = true
         perfectCast = true
         -- Set toggle auto fish di MainTab jika ada (agar UI sinkron)
-        for _, child in ipairs(MainTab.Flags) do
-            if child.Name == "🎣 Enable Auto Fishing" then
-                child:Set(true)
-            elseif child.Name == "✨ Use Perfect Cast" then
-                child:Set(true)
-            end
-        end
+        -- Saat perlu set true
+		for _, toggle in ipairs(mainTabToggles) do
+		    toggle:Set(true)
+		end
         NotifySuccess("Auto Farm Batu", "Auto fishing dan perfect cast diaktifkan. Mulai Auto Farming batu di Tropical.")
     end
 })
