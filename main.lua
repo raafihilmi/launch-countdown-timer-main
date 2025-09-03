@@ -614,46 +614,37 @@ end
 -- Toggle Auto Farming state
 local autoFarmActive = false
 
--- Definisikan posisi spot farm batu / paus
-local batuFarmSpots = {
-    ["Spot 1"] = Vector3.new(-2089,6,3659),  -- Tropical Grove contoh spot 1
-    ["Spot 2"] = Vector3.new(-2166,2,3641),  -- Contoh posisi spot 2
-    ["Spot 3"] = Vector3.new(-2160,53,3619)   -- Contoh posisi spot 3
-}
-
--- Fungsi teleport ke spot farm yang dipilih
-local function teleportToBatuFarm(spotPos, spotName)
+-- Fungsi teleport ke pulau Tropical Grove
+local function teleportToTropical()
+    local tropicalPos = islandCoords["03"] and islandCoords["03"].position
     local char = Workspace.Characters:FindFirstChild(LocalPlayer.Name)
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    if spotPos and hrp then
-        hrp.CFrame = CFrame.new(spotPos + Vector3.new(0, 5, 0))
-        NotifySuccess("Teleported", "You have been teleported to " .. tostring(spotName))
+    if tropicalPos and hrp then
+        hrp.CFrame = CFrame.new(tropicalPos + Vector3.new(0, 5, 0))
+        NotifySuccess("Teleported", "You have been teleported to Tropical Grove for Auto Farm")
     else
-        NotifyError("Teleport Failed", "Cannot teleport to " .. tostring(spotName))
+        NotifyError("Teleport Failed", "Cannot teleport to Tropical Grove")
     end
 end
 
--- Dropdown untuk Auto Farm Batu di AutoFarmTab
-AutoFarmTab:CreateDropdown({
-    Name = "Auto Farm Spot Paus & Batu",
-    Options = {"Spot 1", "Spot 2", "Spot 3"},
-    CurrentOption = "Spot 1",
-    Callback = function(selected)
+-- Tombol Auto Farm Batu
+AutoFarmTab:CreateButton({
+    Name = "Auto Farm Batu",
+    Callback = function()
         autoFarmActive = true
-        local position = batuFarmSpots[selected]
-        teleportToBatuFarm(position, selected)
-        task.wait(5)
+        teleportToTropical()
+        -- Aktifkan auto fishing dan perfect cast
+		task.wait(5)
         autofish = true
         perfectCast = true
-        -- Sinkron dengan toggle auto fish dan perfect cast di MainTab
-        for _, toggle in ipairs(mainTabToggles) do
-            toggle:Set(true)
-        end
-		print(selected, type(selected))
-        NotifySuccess("Auto Farm", "Auto fishing dan perfect cast diaktifkan. Mulai Auto Farming di ".. tostring(selected) ..".")
+        -- Set toggle auto fish di MainTab jika ada (agar UI sinkron)
+        -- Saat perlu set true
+		for _, toggle in ipairs(mainTabToggles) do
+		    toggle:Set(true)
+		end
+        NotifySuccess("Auto Farm Batu", "Auto fishing dan perfect cast diaktifkan. Mulai Auto Farming batu di Tropical.")
     end
 })
-
 -- NPC Tab
 local npcFolder = ReplicatedStorage:WaitForChild("NPC")
 for _, npc in ipairs(npcFolder:GetChildren()) do
