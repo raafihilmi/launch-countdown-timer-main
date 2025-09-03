@@ -659,7 +659,122 @@ SettingsTab:CreateButton({ Name = "Unload Script", Callback = function()
 end })
 
 -- 🔄 Ambil semua anak dari workspace.Props dan filter hanya yang berupa Model atau BasePart
+local function createEventButtons()
+    EventTab.Flags = {} -- Bersihkan flags lama agar tidak dobel
+    local props = Workspace:FindFirstChild("Props")
+    if props then
+        for _, child in pairs(props:GetChildren()) do
+            if child:IsA("Model") or child:IsA("BasePart") then
+                local eventName = child.Name
 
+                EventTab:CreateButton({
+                    Name = "Teleport to: " .. eventName,
+                    Callback = function()
+                        local character = Workspace.Characters:FindFirstChild(LocalPlayer.Name)
+                        local hrp = character and character:FindFirstChild("HumanoidRootPart")
+                        local pos = nil
+
+                        if child:IsA("Model") then
+                            if child.PrimaryPart then
+                                pos = child.PrimaryPart.Position
+                            else
+                                local part = child:FindFirstChildWhichIsA("BasePart")
+                                if part then
+                                    pos = part.Position
+                                end
+                            end
+                        elseif child:IsA("BasePart") then
+                            pos = child.Position
+                        end
+
+                        if pos and hrp then
+                            hrp.CFrame = CFrame.new(pos + Vector3.new(0, 5, 0)) -- Naik dikit biar gak stuck
+                            Rayfield:Notify({
+                                Title = "✅ Teleported",
+                                Content = "You have been teleported to: " .. eventName,
+                                Duration = 4
+                            })
+                        else
+                            Rayfield:Notify({
+                                Title = "❌ Teleport Failed",
+                                Content = "Failed to locate valid part for: " .. eventName,
+                                Duration = 4
+                            })
+                        end
+                    end
+                })
+            end
+        end
+    end
+end
+
+-- Tombol untuk refresh list event
+EventTab:CreateButton({
+    Name = "🔄 Refresh Event List",
+    Callback = function()
+        createEventButtons()
+        Rayfield:Notify({
+            Title = "✅ Refreshed",
+            Content = "Event list has been refreshed.",
+            Duration = 3
+        })
+    end
+})
+
+-- Panggil pertama kali saat tab dibuka
+createEventButtons()
+
+local props = Workspace:FindFirstChild("Props")
+if props then
+    for _, child in pairs(props:GetChildren()) do
+        if child:IsA("Model") or child:IsA("BasePart") then
+            local eventName = child.Name
+
+            EventTab:CreateButton({
+                Name = "Teleport to: " .. eventName,
+                Callback = function()
+                    local character = Workspace.Characters:FindFirstChild(LocalPlayer.Name)
+                    local hrp = character and character:FindFirstChild("HumanoidRootPart")
+                    local pos = nil
+
+                    if child:IsA("Model") then
+                        if child.PrimaryPart then
+                            pos = child.PrimaryPart.Position
+                        else
+                            local part = child:FindFirstChildWhichIsA("BasePart")
+                            if part then
+                                pos = part.Position
+                            end
+                        end
+                    elseif child:IsA("BasePart") then
+                        pos = child.Position
+                    end
+
+                    if pos and hrp then
+                        hrp.CFrame = CFrame.new(pos + Vector3.new(0, 5, 0)) -- Naik dikit biar gak stuck
+                        Rayfield:Notify({
+                            Title = "✅ Teleported",
+                            Content = "You have been teleported to: " .. eventName,
+                            Duration = 4
+                        })
+                    else
+                        Rayfield:Notify({
+                            Title = "❌ Teleport Failed",
+                            Content = "Failed to locate valid part for: " .. eventName,
+                            Duration = 4
+                        })
+                    end
+                end
+            })
+        end
+    end
+else
+    Rayfield:Notify({
+        Title = "Reloading Props Event",
+        Content = "workspace.Props tidak ditemukan!",
+        Duration = 1
+    })
+end
 
 -- Mengubah semua modifier fishing rod menjadi 99999
 local Modifiers = require(game:GetService("ReplicatedStorage").Shared.FishingRodModifiers)
