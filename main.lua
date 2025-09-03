@@ -53,6 +53,7 @@ local rodRemote = net:WaitForChild("RF/ChargeFishingRod")
 local miniGameRemote = net:WaitForChild("RF/RequestFishingMinigameStarted")
 local finishRemote = net:WaitForChild("RE/FishingCompleted")
 local equipRemote = net:WaitForChild("RE/EquipToolFromHotbar")
+local unEquipRemote = net:WaitForChild("RE/UnequipToolFromHotbar")
 local sellItem = net:WaitForChild("RF/SellAllItems")
 
 -- State
@@ -173,6 +174,8 @@ local autoFishToggle = MainTab:CreateToggle({
             task.spawn(function()
                 while autofish do
                     pcall(function()
+                        unEquipRemote:FireServer()
+                        task.wait(0.1)
                         equipRemote:FireServer(1)
                         task.wait(0.1)
 
@@ -611,10 +614,10 @@ end
 
 -- 1. Definisikan semua spot farming
 local farmingSpots = {
-    ["Spot Batu 1 (Tropical)"] = Vector3.new(-2083,6,3658), -- GANTI DENGAN KOORDINAT ASLI
-    ["Spot Batu 2 (Tropical)"] = Vector3.new(-2166,2,3640), -- GANTI DENGAN KOORDINAT ASLI
-    ["Spot Kayu (Forest)"] = Vector3.new(-2145,53,3621),    -- CONTOH SPOT LAIN
-    ["Spot Mineral Langka"] = Vector3.new(-2178,25,3584)   -- CONTOH SPOT LAIN
+    ["Bawah Air Ter)un"] = Vector3.new(-2083,6,3658), 
+    ["Dalam Goa"] = Vector3.new(-2166,2,3640), 
+    ["Atas Air Terjun"] = Vector3.new(-2145,53,3621),    
+    ["Tebing Laut"] = Vector3.new(-2178,25,3584)  
 }
 
 -- Ambil semua nama spot untuk dimasukkan ke dropdown
@@ -640,7 +643,7 @@ end
 
 -- 3. Buat UI Dropdown yang langsung menjalankan auto farm
 AutoFarmTab:CreateDropdown({
-    Name = "Pilih & Mulai Farm",
+    Name = "Farm Spot Paus & Batu",
     Options = spotNames,
     Default = spotNames[1],
     Callback = function(selectedInfo)
@@ -748,6 +751,149 @@ SettingsTab:CreateButton({ Name = "Unload Script", Callback = function()
     wait(3)
     game:GetService("CoreGui").Rayfield:Destroy()
 end })
+
+-- =========================================================
+-- DIUBAH: Setup untuk Dropdown Pancingan
+-- =========================================================
+task.spawn(function()
+    print("Memuat daftar pancingan milik pengguna...")
+
+    -- Variabel-variabel ini sekarang ada di dalam task.spawn
+    local rodNamesForDropdown = {} 
+    local rodNameToUUIDMap = {}
+    local selectedRodUUID = nil -- Variabel ini akan kita kelola dengan hati-hati
+
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    local ItemUtility = require(ReplicatedStorage.Shared.ItemUtility)
+    local Replion = require(ReplicatedStorage.Packages.Replion).Client
+    local playerData = Replion:WaitReplion("Data")
+
+    if not playerData then
+        print("GAGAL: Tidak dapat memuat playerData saat pre-loading pancingan.")
+        return
+    end
+
+    task.wait(1)
+    
+    local allInventoryData = playerData:Get("Inventory")
+    local rodsInventory = allInventoryData and allInventoryData["Fishing Rods"]
+
+    if rodsInventory then
+        for _, rodData in pairs(rodsInventory) do
+            if rodData and rodData.Id then
+                local rodBlueprint = ItemUtility:GetItemData(tonumber(rodData.Id))
+                if rodBlueprint and rodBlueprint.Data and rodBlueprint.Data.Type == "Fishing Rods" then
+                    local rodName = rodBlueprint.Data.Name
+                    if not rodNameToUUIDMap[rodName] then
+                        table.insert(rodNamesForDropdown, rodName)
+                        rodNameToUUIDMap[rodName] = rodData.UUID
+                    end
+                end
+            end
+        end
+        print("Daftar pancingan berhasil dimuat.")
+    else
+        print("Gagal memuat daftar pancingan dari inventory.")
+    end
+        
+    -- =========================================================
+    -- UI untuk Memilih Pancingan di Settings Tab
+    -- =========================================================
+    SettingsTab:CreateParagraph({
+        Title = "Auto Enchant Settings",
+        Content = "Pilih pancingan yang ingin di-enchant, lalu tekan tombol untuk memulai."
+    })
+    
+    -- DIUBAH: Logika Callback Dropdown
+    SettingsTab:CreateDropdown({
+        Name = "Pilih Pancingan",
+        Options = rodNamesForDropdown,
+        Callback = function(selectedInfo)
+            -- Kita tahu dari pengalaman sebelumnya bahwa Rayfield mengirim tabel.
+            -- Kita ambil nama string dari indeks pertama.
+            local rodName = selectedInfo[1]
+
+            if rodName then
+                -- Perbarui variabel selectedRodUUID dengan aman.
+                selectedRodUUID = rodNameToUUIDMap[rodName]
+                print("Pancingan dipilih:", rodName, "| UUID yang disimpan:", selectedRodUUID)
+                NotifySuccess("Pancingan Dipilih", "Siap untuk enchant " .. rodName)
+            end
+        end
+    })
+
+    -- =========================================================
+    -- Tombol Auto Enchant yang Sudah Ditingkatkan
+    -- =========================================================
+    SettingsTab:CreateButton({
+        Name = "🔮 Mulai Auto Enchant Pancingan Terpilih",
+        Callback = function()
+            if not selectedRodUUID then
+                NotifyError("Gagal", "Silakan pilih pancingan dari dropdown terlebih dahulu!")
+                return
+            end
+    
+            local enchantAltarPosition = Vector3.new(3174,-1303,1425)
+    
+            task.spawn(function()
+                NotifySuccess("Auto Enchant", "Memulai proses...")
+                
+                -- LANGKAH 0: Equip Pancingan yang Dipilih
+                -- Kita gunakan variabel selectedRodUUID yang sudah diperbarui oleh dropdown
+                local equipItemRemote = net:WaitForChild("RE/EquipItem")
+                print("Langkah 0: Meng-equip pancingan dengan UUID:", selectedRodUUID)
+                equipItemRemote:FireServer(selectedRodUUID, "Fishing Rods")
+                task.wait(2)
+
+                -- ... sisa kode enchant berjalan seperti biasa ...
+                local currentInventory = playerData:Get("Inventory")
+                local itemsInventory = currentInventory and currentInventory.Items
+                
+                if not itemsInventory then
+                    NotifyError("Gagal", "Tidak bisa menemukan data 'Items' di inventory.")
+                    return
+                end
+                
+                local foundStone = false
+                for _, liveItemData in pairs(itemsInventory) do
+                    local itemID = liveItemData.Id
+                    if itemID then
+                        local itemBlueprint = ItemUtility:GetItemData(itemID)
+                        if itemBlueprint and itemBlueprint.Data and itemBlueprint.Data.Name == "Enchant Stone" then
+                            foundStone = true
+                            
+                            local itemUUID = liveItemData.UUID
+                            print(">>> Enchant Stone ditemukan! <<<")
+                            equipItemRemote:FireServer(itemUUID, "EnchantStones")
+                            
+                            local equipFromHotbarRemote = net:WaitForChild("RE/EquipToolFromHotbar")
+                            equipFromHotbarRemote:FireServer(2)
+                            
+                            print("Langkah 1 & 2: Equip & Pegang item berhasil.")
+                            task.wait(2)
+                            
+                            print("Langkah 3: Teleport ke Altar...")
+                            local playerChar = Players.LocalPlayer.Character
+                            playerChar.HumanoidRootPart.CFrame = CFrame.new(enchantAltarPosition)
+                            task.wait(1)
+                            
+                            print("Langkah 4: Mengaktifkan Altar...")
+                            local activateAltarRemote = net:WaitForChild("RE/ActivateEnchantingAltar")
+                            activateAltarRemote:FireServer()
+                            NotifySuccess("Berhasil!", "Proses enchant telah diaktifkan.")
+                            
+                            break
+                        end
+                    end
+                end
+                
+                if not foundStone then
+                    NotifyError("Gagal", "Enchant Stone tidak ditemukan di inventory.")
+                end
+            end)
+        end
+    })
+end)
 
 -- 🔄 Ambil semua anak dari workspace.Props dan filter hanya yang berupa Model atau BasePart
 local function createEventButtons()
