@@ -35,6 +35,7 @@ local Window = Rayfield:CreateWindow({
 
 local DevTab = Window:CreateTab("Developer", "airplay")
 local MainTab = Window:CreateTab("Auto Fish", "fish")
+local AutoFarmTab = Window:CreateTab("Auto Farm", "fish")
 local PlayerTab = Window:CreateTab("Player", "users-round")
 local IslandsTab = Window:CreateTab("Islands", "map")
 local SettingsTab = Window:CreateTab("Settings", "cog")
@@ -249,6 +250,46 @@ MainTab:CreateSlider({
         autoSellDelay = val * 60
     end
 })
+
+-- Auto Farm
+
+-- Toggle Auto Farming state
+local autoFarmActive = false
+
+-- Fungsi teleport ke pulau Tropical Grove
+local function teleportToTropical()
+    local tropicalPos = islandCoords["03"] and islandCoords["03"].position
+    local char = Workspace.Characters:FindFirstChild(LocalPlayer.Name)
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if tropicalPos and hrp then
+        hrp.CFrame = CFrame.new(tropicalPos + Vector3.new(-2038, 3, 3650))
+        NotifySuccess("Teleported", "You have been teleported to Tropical Grove for Auto Farm")
+    else
+        NotifyError("Teleport Failed", "Cannot teleport to Tropical Grove")
+    end
+end
+
+-- Tombol Auto Farm Batu
+AutoFarmTab:CreateButton({
+    Name = "Auto Farm Batu",
+    Callback = function()
+        autoFarmActive = true
+        teleportToTropical()
+        -- Aktifkan auto fishing dan perfect cast
+        autofish = true
+        perfectCast = true
+        -- Set toggle auto fish di MainTab jika ada (agar UI sinkron)
+        for _, child in ipairs(MainTab.Flags) do
+            if child.Name == "🎣 Enable Auto Fishing" then
+                child:Set(true)
+            elseif child.Name == "✨ Use Perfect Cast" then
+                child:Set(true)
+            end
+        end
+        NotifySuccess("Auto Farm Batu", "Auto fishing dan perfect cast diaktifkan. Mulai Auto Farming batu di Tropical.")
+    end
+})
+
 -- Buy Rods
 Buy_Rod:CreateParagraph({
     Title = "🎣 Purchase Rods",
