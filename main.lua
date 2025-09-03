@@ -627,9 +627,9 @@ local function teleportToBatuFarm(spotPos, spotName)
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
     if spotPos and hrp then
         hrp.CFrame = CFrame.new(spotPos + Vector3.new(0, 5, 0))
-        NotifySuccess("Teleported", "You have been teleported to " .. spotName)
+        NotifySuccess("Teleported", "You have been teleported to " .. tostring(spotName))
     else
-        NotifyError("Teleport Failed", "Cannot teleport to " .. spotName)
+        NotifyError("Teleport Failed", "Cannot teleport to " .. tostring(spotName))
     end
 end
 
