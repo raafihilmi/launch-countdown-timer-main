@@ -625,11 +625,9 @@ end
 
 -- 2. Fungsi teleport umum ke posisi tertentu
 local function teleportToPosition(position, spotName)
-    local player = game.Players.LocalPlayer
-    local char = player.Character or player.CharacterAdded:Wait()
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-
-    if hrp and position then
+    local char = Workspace.Characters:FindFirstChild(LocalPlayer.Name)
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if hrp then
         hrp.CFrame = CFrame.new(position + Vector3.new(0, 5, 0))
         NotifySuccess("Teleport Berhasil", "Kamu telah teleport ke: " .. spotName)
         return true
