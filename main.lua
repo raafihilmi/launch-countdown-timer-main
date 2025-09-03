@@ -616,8 +616,8 @@ local function teleportToTropical()
     local char = Workspace.Characters:FindFirstChild(LocalPlayer.Name)
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
     if tropicalPos and hrp then
-        hrp.CFrame = CFrame.new(tropicalPos + Vector3.new(-2038, 3, 3650))
-        NotifySuccess("Teleported", "You have been teleported to Tropical Grove for Auto Farm" .. tropicalPos)
+        hrp.CFrame = CFrame.new(tropicalPos + Vector3.new(0, 5, 0))
+        NotifySuccess("Teleported", "You have been teleported to Tropical Grove for Auto Farm")
     else
         NotifyError("Teleport Failed", "Cannot teleport to Tropical Grove")
     end
