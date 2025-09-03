@@ -608,7 +608,7 @@ for _, data in pairs(islandCoords) do
     })
 end 
 
--- Definisi spots dengan gaya islandCoords
+-- Spot Tropical
 local autoFarmSpots = {
     ["Spot 1"] = {name = "Tropical Grove Spot", position = Vector3.new(3157, -1303, 1439)},
     ["Spot 2"] = {name = "Rocky Cliff Spot", position = Vector3.new(3200, -1300, 1400)},
@@ -626,7 +626,6 @@ AutoFarmTab:CreateDropdown({
     Flag = "AutoFarmSpotDropdown",
     Callback = function(option)
         selectedAutoFarmSpot = option
-        NotifySuccess("Spot Auto Farm Dipilih", "Spot: " .. option)
     end,
 })
 
