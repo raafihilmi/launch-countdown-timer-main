@@ -617,7 +617,7 @@ local function teleportToTropical()
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
     if tropicalPos and hrp then
         hrp.CFrame = CFrame.new(tropicalPos + Vector3.new(-2038, 3, 3650))
-        NotifySuccess("Teleported", "You have been teleported to Tropical Grove for Auto Farm")
+        NotifySuccess("Teleported", "You have been teleported to Tropical Grove for Auto Farm" .. tropicalPos)
     else
         NotifyError("Teleport Failed", "Cannot teleport to Tropical Grove")
     end
