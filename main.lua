@@ -609,40 +609,63 @@ for _, data in pairs(islandCoords) do
 end 
 
 
--- Auto Farm
+-- 1. Definisikan semua spot farming
+local farmingSpots = {
+    ["Spot Batu 1 (Tropical)"] = Vector3.new(-2083,6,3658), -- GANTI DENGAN KOORDINAT ASLI
+    ["Spot Batu 2 (Tropical)"] = Vector3.new(-2166,2,3640), -- GANTI DENGAN KOORDINAT ASLI
+    ["Spot Kayu (Forest)"] = Vector3.new(-2145,53,3621),    -- CONTOH SPOT LAIN
+    ["Spot Mineral Langka"] = Vector3.new(-2178,25,3584)   -- CONTOH SPOT LAIN
+}
 
--- Toggle Auto Farming state
-local autoFarmActive = false
+-- Ambil semua nama spot untuk dimasukkan ke dropdown
+local spotNames = {}
+for name, _ in pairs(farmingSpots) do
+    table.insert(spotNames, name)
+end
 
--- Fungsi teleport ke pulau Tropical Grove
-local function teleportToTropical()
-    local tropicalPos = islandCoords["03"] and islandCoords["03"].position
-    local char = Workspace.Characters:FindFirstChild(LocalPlayer.Name)
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    if tropicalPos and hrp then
-        hrp.CFrame = CFrame.new(tropicalPos + Vector3.new(0, 5, 0))
-        NotifySuccess("Teleported", "You have been teleported to Tropical Grove for Auto Farm")
+-- 2. Fungsi teleport umum ke posisi tertentu
+local function teleportToPosition(position, spotName)
+    local player = game.Players.LocalPlayer
+    local char = player.Character or player.CharacterAdded:Wait()
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+
+    if hrp and position then
+        hrp.CFrame = CFrame.new(position + Vector3.new(0, 5, 0))
+        NotifySuccess("Teleport Berhasil", "Kamu telah teleport ke: " .. spotName)
+        return true
     else
-        NotifyError("Teleport Failed", "Cannot teleport to Tropical Grove")
+        NotifyError("Teleport Gagal", "Karakter tidak ditemukan.")
+        return false
     end
 end
 
--- Tombol Auto Farm Batu
-AutoFarmTab:CreateButton({
-    Name = "Auto Farm Batu",
-    Callback = function()
-        autoFarmActive = true
-        teleportToTropical()
-        -- Aktifkan auto fishing dan perfect cast
-		task.wait(5)
-        autofish = true
-        perfectCast = true
-        -- Set toggle auto fish di MainTab jika ada (agar UI sinkron)
-        -- Saat perlu set true
-		for _, toggle in ipairs(mainTabToggles) do
-		    toggle:Set(true)
-		end
-        NotifySuccess("Auto Farm Batu", "Auto fishing dan perfect cast diaktifkan. Mulai Auto Farming batu di Tropical.")
+-- 3. Buat UI Dropdown yang langsung menjalankan auto farm
+AutoFarmTab:CreateDropdown({
+    Name = "Pilih & Mulai Farm",
+    Options = spotNames,
+    Callback = function(selectedSpot) -- Fungsi ini berjalan setiap kali pemain memilih opsi
+        -- Cari koordinat berdasarkan nama spot yang dipilih
+        local targetPosition = farmingSpots[selectedSpot]
+
+        -- Teleport ke lokasi yang dipilih
+        local success = teleportToPosition(targetPosition, selectedSpot)
+
+        -- Hanya lanjutkan jika teleport berhasil
+        if success then
+            autoFarmActive = true
+            task.wait(2) -- Beri sedikit jeda setelah teleport
+
+            -- Aktifkan auto fishing dan perfect cast
+            autofish = true
+            perfectCast = true
+
+            -- Sinkronkan UI toggle (jika ada)
+            for _, toggle in ipairs(mainTabToggles) do
+                toggle:Set(true)
+            end
+
+            NotifySuccess("Auto Farm Dimulai", "Auto fishing diaktifkan di " .. selectedSpot)
+        end
     end
 })
 -- NPC Tab
