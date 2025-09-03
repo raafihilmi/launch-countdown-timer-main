@@ -628,6 +628,7 @@ local function teleportToPosition(position, spotName)
     local char = Workspace.Characters:FindFirstChild(LocalPlayer.Name)
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
     if hrp then
+        print(hrp)
         hrp.CFrame = CFrame.new(position + Vector3.new(0, 5, 0))
         NotifySuccess("Teleport Berhasil", "Kamu telah teleport ke: " .. spotName)
         return true
@@ -644,6 +645,7 @@ AutoFarmTab:CreateDropdown({
     Callback = function(selectedSpot) -- Fungsi ini berjalan setiap kali pemain memilih opsi
         -- Cari koordinat berdasarkan nama spot yang dipilih
         local targetPosition = farmingSpots[selectedSpot]
+        print(targetPosition)
 
         -- Teleport ke lokasi yang dipilih
         local success = teleportToPosition(targetPosition, selectedSpot)
