@@ -608,70 +608,43 @@ for _, data in pairs(islandCoords) do
     })
 end 
 
--- Spot Tropical
-local autoFarmSpots = {
-    ["Spot 1"] = {name = "Tropical Grove Spot", position = Vector3.new(3157, -1303, 1439)},
-    ["Spot 2"] = {name = "Rocky Cliff Spot", position = Vector3.new(3200, -1300, 1400)},
-    ["Spot 3"] = {name = "Cave Entrance Spot", position = Vector3.new(3100, -1300, 1450)},
-}
 
--- Variabel penyimpan spot terpilih default
-local selectedAutoFarmSpot = "Spot 1"
+-- Auto Farm
 
--- Membuat dropdown select spot Auto Farm Batu
-AutoFarmTab:CreateDropdown({
-    Name = "Pilih Spot Auto Farm Batu",
-    Options = {"Spot 1", "Spot 2", "Spot 3"},
-    CurrentOption = selectedAutoFarmSpot,
-    Flag = "AutoFarmSpotDropdown",
-    Callback = function(option)
-        selectedAutoFarmSpot = option
-    end,
-})
+-- Toggle Auto Farming state
+local autoFarmActive = false
 
--- Toggle untuk aktifkan Auto Farm Batu
-local autoFarmToggle = AutoFarmTab:CreateToggle({
-    Name = "Aktifkan Auto Farm Batu",
-    CurrentValue = false,
-    Flag = "AutoFarmToggle",
-    Callback = function(value)
-        autoFarmActive = value
-        if autoFarmActive then
-            local spotData = autoFarmSpots[selectedAutoFarmSpot]
-            if spotData and spotData.position then
-                local char = Workspace.Characters:FindFirstChild(LocalPlayer.Name)
-                local hrp = char and char:FindFirstChild("HumanoidRootPart")
-                if hrp then
-                    hrp.CFrame = CFrame.new(spotData.position + Vector3.new(0,5,0))
-                    NotifySuccess("Auto Farm Batu", "Teleported ke " .. spotData.name)
-                else
-                    NotifyError("Auto Farm Batu", "Karakter atau HumanoidRootPart tidak ditemukan.")
-                    autoFarmToggle:Set(false)
-                    return
-                end
-            else
-                NotifyError("Auto Farm Batu", "Posisi spot tidak ditemukan.")
-                autoFarmToggle:Set(false)
-                return
-            end
+-- Fungsi teleport ke pulau Tropical Grove
+local function teleportToTropical()
+    local tropicalPos = islandCoords["03"] and islandCoords["03"].position
+    local char = Workspace.Characters:FindFirstChild(LocalPlayer.Name)
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if tropicalPos and hrp then
+        hrp.CFrame = CFrame.new(tropicalPos + Vector3.new(0, 5, 0))
+        NotifySuccess("Teleported", "You have been teleported to Tropical Grove for Auto Farm")
+    else
+        NotifyError("Teleport Failed", "Cannot teleport to Tropical Grove")
+    end
+end
 
-            -- Aktifkan autofish dan perfect cast
-            autofish = true
-            perfectCast = true
-            for _, toggle in ipairs(mainTabToggles) do
-                toggle:Set(true)
-            end
-        else
-            -- Matikan auto farm dan autofish
-            autofish = false
-            for _, toggle in ipairs(mainTabToggles) do
-                toggle:Set(false)
-            end
-            NotifySuccess("Auto Farm Batu", "Auto farm dimatikan")
-        end
+-- Tombol Auto Farm Batu
+AutoFarmTab:CreateButton({
+    Name = "Auto Farm Batu",
+    Callback = function()
+        autoFarmActive = true
+        teleportToTropical()
+        -- Aktifkan auto fishing dan perfect cast
+		task.wait(5)
+        autofish = true
+        perfectCast = true
+        -- Set toggle auto fish di MainTab jika ada (agar UI sinkron)
+        -- Saat perlu set true
+		for _, toggle in ipairs(mainTabToggles) do
+		    toggle:Set(true)
+		end
+        NotifySuccess("Auto Farm Batu", "Auto fishing dan perfect cast diaktifkan. Mulai Auto Farming batu di Tropical.")
     end
 })
-
 -- NPC Tab
 local npcFolder = ReplicatedStorage:WaitForChild("NPC")
 for _, npc in ipairs(npcFolder:GetChildren()) do
