@@ -642,29 +642,52 @@ end
 AutoFarmTab:CreateDropdown({
     Name = "Pilih & Mulai Farm",
     Options = spotNames,
-    Callback = function(selectedSpot) -- Fungsi ini berjalan setiap kali pemain memilih opsi
-        -- Cari koordinat berdasarkan nama spot yang dipilih
-        local targetPosition = farmingSpots[selectedSpot]
-        print(targetPosition)
+    Default = spotNames[1],
+    Callback = function(selectedInfo)
+        
+        -- PERCOBAAN KEDUA: Kita coba ambil nilai dari indeks pertama tabel
+        local spotName = selectedInfo[1]
 
-        -- Teleport ke lokasi yang dipilih
-        local success = teleportToPosition(targetPosition, selectedSpot)
+        -- DEBUGGING: Kode ini akan mencetak semua isi dari tabel yang diberikan Rayfield
+        print("--- DEBUG DROPDOWN ---")
+        for key, value in pairs(selectedInfo) do
+            print("Kunci:", key, "| Nilai:", value, "| Tipe:", type(value))
+        end
+        print("----------------------")
 
-        -- Hanya lanjutkan jika teleport berhasil
+
+        -- Cek apakah spotName adalah string yang valid
+        if not spotName or type(spotName) ~= "string" then
+            NotifyError("Dropdown Error", "Gagal mendapatkan nama spot dari callback. Cek konsol (F9) untuk info debug.")
+            return
+        end
+        
+        print("Nama spot berhasil didapatkan:", spotName) -- Konfirmasi di konsol
+
+        local targetPosition = farmingSpots[spotName]
+        
+        if not targetPosition then
+            NotifyError("Error", "Koordinat untuk '" .. spotName .. "' tidak ditemukan!")
+            return
+        end
+
+        -- ... sisa kode teleport dan auto farm tetap sama ...
+        local success = teleportToPosition(targetPosition, spotName)
+
         if success then
             autoFarmActive = true
-            task.wait(2) -- Beri sedikit jeda setelah teleport
+            task.wait(2) 
 
-            -- Aktifkan auto fishing dan perfect cast
             autofish = true
             perfectCast = true
 
-            -- Sinkronkan UI toggle (jika ada)
-            for _, toggle in ipairs(mainTabToggles) do
-                toggle:Set(true)
+            if mainTabToggles then 
+                for _, toggle in ipairs(mainTabToggles) do
+                    toggle:Set(true)
+                end
             end
 
-            NotifySuccess("Auto Farm Dimulai", "Auto fishing diaktifkan di " .. selectedSpot)
+            NotifySuccess("Auto Farm Dimulai", "Auto fishing diaktifkan di " .. spotName)
         end
     end
 })
