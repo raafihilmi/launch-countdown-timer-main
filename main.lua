@@ -632,6 +632,7 @@ AutoFarmTab:CreateButton({
         autoFarmActive = true
         teleportToTropical()
         -- Aktifkan auto fishing dan perfect cast
+		task.wait(5)
         autofish = true
         perfectCast = true
         -- Set toggle auto fish di MainTab jika ada (agar UI sinkron)
