@@ -184,14 +184,16 @@ local autoFishToggle = MainTab:CreateToggle({
                         local y = perfectCast and 0.969 or (math.random(0, 1000) / 1000)
 
                         miniGameRemote:InvokeServer(x, y)
-                        task.wait(1.3)
-                        finishRemote:FireServer()
-						task.wait(0.5)
-						finishRemote:FireServer()
-						task.wait(0.2)
-                        finishRemote:FireServer()
-						task.wait(0.3)
-						finishRemote:FireServer()
+						local function finishFishingMultipleTimes(times, delay)
+						    for i = 1, times do
+						        finishRemote:FireServer()
+						        if i < times then
+						            task.wait(delay)
+						        end
+							end
+						end
+						task.wait(1.3)
+						finishFishingMultipleTimes(10, 0.2)
                     end)
                     task.wait(autoRecastDelay)
                 end
