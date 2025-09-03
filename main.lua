@@ -649,7 +649,7 @@ AutoFarmTab:CreateDropdown({
         for _, toggle in ipairs(mainTabToggles) do
             toggle:Set(true)
         end
-        NotifySuccess("Auto Farm", "Auto fishing dan perfect cast diaktifkan. Mulai Auto Farming di "..selected..".")
+        NotifySuccess("Auto Farm", "Auto fishing dan perfect cast diaktifkan. Mulai Auto Farming di ".. tostring(selected) ..".")
     end
 })
 
