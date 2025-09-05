@@ -474,7 +474,10 @@ local function SetupIslandsTab()
     local islandCoords = {
         { name = "Weather Machine", pos = Vector3.new(-1471, -3, 1929) }, { name = "Esoteric Depths", pos = Vector3.new(3157, -1303, 1439) },
         { name = "Tropical Grove", pos = Vector3.new(-2038, 3, 3650) }, { name = "Stingray Shores", pos = Vector3.new(-32, 4, 2773) },
-        { name = "Kohana Volcano", pos = Vector3.new(-519, 24, 189) }, { name = "Coral Reefs", pos = Vector3.new(-3095, 1, 2177) }
+        { name = "Kohana Volcano", pos = Vector3.new(-519, 24, 189) }, { name = "Coral Reefs", pos = Vector3.new(-3095, 1, 2177) },
+        { name = "Lost Isle [Treasure Room]", position = Vector3.new(-3652, -283.5, -1651.5)}, { name = "Lost Isle [Treasure Hall]", position = Vector3.new(-3652, -298.25, -1469)},
+        { name = "Lost Isle [Sisyphus]", position = Vector3.new(-3719.850830078125, -113.00000762939453, -958.6303100585938)}, { name = "Lost Isle [Lost Shore]", position = Vector3.new(-3697, 97, -932)},
+        { name = "Isoteric Island", position = Vector3.new(1987, 4, 1400) }, { name = "Crater Island", position = Vector3.new(968, 1, 4854) },
     }
     for _, data in ipairs(islandCoords) do
         Tabs.Islands:CreateButton({ Name = data.name, Callback = function() Teleport(data.pos, data.name) end })
@@ -824,5 +827,6 @@ SetupEventTab()
 SetupSettingsTab()
 SetupWalkOnWater()
 ApplyHacks()
+
 
 Notify("Script Loaded", "Fish It by Rafscape berhasil dimuat!")
