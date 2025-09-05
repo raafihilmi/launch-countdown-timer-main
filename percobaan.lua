@@ -73,7 +73,7 @@ local Tabs = {
     BuyWeather = Window:CreateTab("Buy Weather", "cog"),
     BuyBait = Window:CreateTab("Buy Bait", "cog")
 }
-
+local mainTabToggles = {}
 -- =========================================================
 -- 3. HELPER FUNCTIONS
 -- =========================================================
@@ -86,11 +86,23 @@ local function Notify(title, message, isError)
     })
 end
 
-local function Teleport(position, objectName)
+-- [[ GANTI FUNGSI LAMA DENGAN INI ]] --
+
+-- Fungsi Teleport yang sudah bisa mengatur arah pandang
+local function Teleport(position, objectName, lookAtPosition)
     local char = LocalPlayer.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
     if hrp then
-        hrp.CFrame = CFrame.new(position + Vector3.new(0, 5, 0))
+        local targetPos = position + Vector3.new(0, 5, 0)
+        
+        if lookAtPosition then
+            -- Jika ada target untuk dilihat, CFrame akan diatur menghadap ke sana
+            hrp.CFrame = CFrame.new(targetPos, lookAtPosition)
+        else
+            -- Jika tidak ada, perilaku tetap seperti semula (hanya pindah posisi)
+            hrp.CFrame = CFrame.new(targetPos)
+        end
+        
         Notify("Teleport Berhasil", "Berpindah ke: " .. objectName)
     else
         Notify("Teleport Gagal", "Karakter tidak ditemukan.", true)
@@ -167,6 +179,39 @@ local function GetItemUUIDsFromName(itemName, quantity)
     return uuids
 end
 
+-- [[ FUNGSI HELPER BARU ]] --
+-- Fungsi ini bisa dipakai ulang untuk membuat dropdown teleportasi autofarm
+local function CreateLocationDropdown(parentTab, dropdownName, locations)
+    -- Pastikan ada data lokasi sebelum membuat dropdown
+    if not locations or next(locations) == nil then return end
+
+    -- 1. Ekstrak semua nama lokasi dari tabel data
+    local spotNames = {}
+    for name in pairs(locations) do
+        table.insert(spotNames, name)
+    end
+    table.sort(spotNames)
+
+    -- 2. Buat dropdown menggunakan data yang sudah disiapkan
+    parentTab:CreateDropdown({
+        Name = dropdownName,
+        Options = spotNames,
+        Default = spotNames[1],
+        Callback = function(selectedInfo)
+            local spotName = selectedInfo[1]
+            local spotData = locations[spotName]
+            if not spotData then return end
+
+            -- 3. Panggil fungsi Teleport dengan posisi dan arah pandang
+            Teleport(spotData.Pos, spotName, spotData.LookAt)
+            
+            -- (Opsional) Jika Anda ingin auto-fish aktif setelah teleport
+            task.wait(1)
+            for _, toggle in ipairs(mainTabToggles) do toggle:Set(true) end
+            Notify("Auto Farm Dimulai", "Auto fishing diaktifkan di " .. spotName)
+        end
+    })
+end
 -- =========================================================
 -- 4. FEATURES
 -- =========================================================
@@ -183,7 +228,6 @@ local function SetupDeveloperTab()
 end
 
 -- 4.2 Fitur: Auto Fish
-local mainTabToggles = {}
 local function SetupAutoFishTab()
     local autofish, perfectCast, autoSellVersion = false, false, false
     local autoRecastDelay, autoSellDelay = 0.5, 1
@@ -244,28 +288,40 @@ end
 
 -- 4.3 Fitur: Auto Farm
 local function SetupAutoFarmTab()
-    local farmingSpots = {
-        ["Bawah Air Terjun"] = Vector3.new(-2083, 6, 3658),
-        ["Dalam Goa"] = Vector3.new(-2166, 2, 3640),
-        ["Atas Air Terjun"] = Vector3.new(-2145, 53, 3621),
-        ["Tebing Laut"] = Vector3.new(-2178, 25, 3584)
+    -- Data Set 1: Lokasi Paus & Batu
+    local whaleAndRockSpots = {
+        ["Bawah Air Terjun"] = {Pos = Vector3.new(-2083, 6, 3658), LookAt = Vector3.new(-2098,-2,3672)},
+        ["Dalam Goa"] = {Pos = Vector3.new(-2166, 2, 3640), LookAt = Vector3.new(-2150,-2,3650)},
+        ["Atas Air Terjun"] = {Pos = Vector3.new(-2145, 53, 3621), LookAt = Vector3.new(-2144,44,3650)},
+        ["Tebing Laut"] = {Pos = Vector3.new(-2184,25,3591), LookAt = Vector3.new(-2182,-2,3559)}
     }
-    local spotNames = {}
-    for name in pairs(farmingSpots) do table.insert(spotNames, name) end
 
-    Tabs.AutoFarm:CreateDropdown({
-        Name = "Farm Spot Paus & Batu",
-        Options = spotNames,
-        Default = spotNames[1],
-        Callback = function(selectedInfo)
-            local spotName = selectedInfo[1]
-            if not (spotName and farmingSpots[spotName]) then return end
-            Teleport(farmingSpots[spotName], spotName)
-            task.wait(1)
-            for _, toggle in ipairs(mainTabToggles) do toggle:Set(true) end
-            Notify("Auto Farm Dimulai", "Auto fishing diaktifkan di " .. spotName)
-        end
-    })
+    -- Data Set 2: Lokasi Ikan Langka (Contoh)
+    local craterFishSpots = {
+        ["Tengah"] = {Pos = Vector3.new(1009,18,5063), LookAt = Vector3.new(1016,-2,5036)},
+        ["Tepi"] = {Pos = Vector3.new(1069,2,5046), LookAt = Vector3.new(1045,-2,5057)},
+    }
+    
+    local krakenFishSpots = {
+        ["Depan Board"] = {Pos = Vector3.new(-3738,-135,-1010), LookAt = Vector3.new(-3732,-140,-986)},
+        ["Belakang Patung"] = {Pos = Vector3.new(-3694,-135,-888), LookAt = Vector3.new(-3732,-140,-986)},
+    }
+    
+    local orcaFishSpots = {
+        ["Bawah Jembatan"] = {Pos = Vector3.new(-64,3,2781), LookAt = Vector3.new(-79,-2,2784)},
+        ["Atas Jembatan"] = {Pos = Vector3.new(-86,18,2814), LookAt = Vector3.new(-79,-2,2784)},
+        ["Pulau Kecil"] = {Pos = Vector3.new(-211,2,2946), LookAt = Vector3.new(-225,2,2946)},
+   }
+
+    -- Membuat dropdown pertama menggunakan fungsi reusable
+    CreateLocationDropdown(Tabs.AutoFarm, "Farm Spot Paus & Batu", whaleAndRockSpots)
+
+    -- Membuat dropdown kedua menggunakan fungsi reusable yang sama
+    CreateLocationDropdown(Tabs.AutoFarm, "Farm Frosborn Crater", craterFishSpots)
+
+    CreateLocationDropdown(Tabs.AutoFarm, "Farm Kraken", krakenFishSpots)
+    CreateLocationDropdown(Tabs.AutoFarm, "Farm Orca", orcaFishSpots)
+
 end
 
 -- [[ BARU ]] Fitur: Auto Trade
@@ -453,14 +509,36 @@ local function SetupPlayerTab()
         end
     })
 
+    local blockUpdateOxygen = false
     -- Toggle Unlimited Oxygen
     Tabs.Player:CreateToggle({
         Name = "Unlimited Oxygen",
         CurrentValue = false,
-        Callback = function(val) 
+        Flag = "BlockUpdateOxygen",
+        Callback = function(value) 
             -- Logika untuk unlimited oxygen bisa ditambahkan di sini jika ada
+            blockUpdateOxygen = value
+            Rayfield:Notify({
+                Title = "Update Oxygen Block",
+                Content = value and "Remote blocked!" or "Remote allowed!",
+                Duration = 3,
+            })
         end
     })
+
+    -- Hook FireServer
+    local oldNamecall
+    oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
+        local method = getnamecallmethod()
+        local args = {...}
+    
+        if method == "FireServer" and tostring(self) == "URE/UpdateOxygen" and blockUpdateOxygen then
+            warn("Tahan Napas Bang")
+            return nil -- prevent call
+        end
+    
+        return oldNamecall(self, unpack(args))
+    end))
 
     UserInputService.JumpRequest:Connect(function()
         if infiniteJumpEnabled and LocalPlayer.Character and LocalPlayer.Character.Humanoid then
@@ -475,9 +553,9 @@ local function SetupIslandsTab()
         { name = "Weather Machine", pos = Vector3.new(-1471, -3, 1929) }, { name = "Esoteric Depths", pos = Vector3.new(3157, -1303, 1439) },
         { name = "Tropical Grove", pos = Vector3.new(-2038, 3, 3650) }, { name = "Stingray Shores", pos = Vector3.new(-32, 4, 2773) },
         { name = "Kohana Volcano", pos = Vector3.new(-519, 24, 189) }, { name = "Coral Reefs", pos = Vector3.new(-3095, 1, 2177) },
-        { name = "Lost Isle [Treasure Room]", position = Vector3.new(-3652, -283.5, -1651.5)}, { name = "Lost Isle [Treasure Hall]", position = Vector3.new(-3652, -298.25, -1469)},
-        { name = "Lost Isle [Sisyphus]", position = Vector3.new(-3719.850830078125, -113.00000762939453, -958.6303100585938)}, { name = "Lost Isle [Lost Shore]", position = Vector3.new(-3697, 97, -932)},
-        { name = "Isoteric Island", position = Vector3.new(1987, 4, 1400) }, { name = "Crater Island", position = Vector3.new(968, 1, 4854) },
+        { name = "Lost Isle [Treasure Room]", pos = Vector3.new(-3601,-282,-1630)}, { name = "Lost Isle [Treasure Hall]", pos = Vector3.new(-3757,-135,-1005)},
+        { name = "Lost Isle [Sisyphus]", pos = Vector3.new(-3738,-136,-1010)}, { name = "Lost Isle [Lost Shore]", pos = Vector3.new(-3697, 97, -932)},
+        { name = "Isoteric Island", pos = Vector3.new(1987, 4, 1400) }, { name = "Crater Island", pos = Vector3.new(1025,20,5075) },
     }
     for _, data in ipairs(islandCoords) do
         Tabs.Islands:CreateButton({ Name = data.name, Callback = function() Teleport(data.pos, data.name) end })
