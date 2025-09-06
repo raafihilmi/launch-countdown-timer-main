@@ -86,7 +86,57 @@ local function Notify(title, message, isError)
     })
 end
 
--- [[ GANTI FUNGSI LAMA DENGAN INI ]] --
+local webhookSettings = {
+    enabled = false,
+    url = "https://discord.com/api/webhooks/1413704949145276426/41S0PVbVknNPuNak55O6960fzMA37BsbnjLd2zPmvvdPSsj6U7iGqyFM9A7uTb8gxHob",
+    minTier = 6
+}
+-- [[ FUNGSI WEBHOOK DITAMBAHKAN DI SINI ]]
+local function SendToDiscord(itemInfo)
+    if not webhookSettings.enabled or webhookSettings.url:len() < 20 then return end
+
+    local data = itemInfo.Data
+    
+    if data.Tier < webhookSettings.minTier then return end
+
+    local fishName = data.Name or "Ikan Tidak Dikenal"
+    local fishIconId = data.Icon and data.Icon:match("%d+") or ""
+
+    local fields = {}
+    for key, value in pairs(data) do
+        if value and tostring(value) ~= "" then
+            table.insert(fields, { name = tostring(key), value = "```" .. tostring(value) .. "```", inline = true })
+        end
+    end
+
+    local payload = {
+        username = "Fish It Bot",
+        avatar_url = "https://i.imgur.com/K3v8aG3.png",
+        embeds = {{
+            title = "🎣 Ikan Langka Tertangkap!",
+            description = "**" .. LocalPlayer.Name .. "** berhasil menangkap **" .. fishName .. "**!",
+            color = 15105570,
+            fields = fields,
+            thumbnail = { url = "https://www.roblox.com/asset-thumbnail/image?assetId=" .. fishIconId .. "&width=128&height=128&format=png" },
+            footer = { text = "Fish It Script by Rafscape & Gemini" },
+            timestamp = os.date("!%Y-%m-%dT%H:%M:%S.000Z")
+        }}
+    }
+
+    pcall(function()
+        local requestFunction = (syn and syn.request) or request or http_request
+        if requestFunction then
+            requestFunction({
+                Url = webhookSettings.url,
+                Method = "POST",
+                Headers = { ["Content-Type"] = "application/json" },
+                Body = HttpService:JSONEncode(payload)
+            })
+        else
+            warn("Executor tidak mendukung fungsi request HTTP.")
+        end
+    end)
+end
 
 -- Fungsi Teleport yang sudah bisa mengatur arah pandang
 local function Teleport(position, objectName, lookAtPosition)
@@ -220,11 +270,41 @@ end
 local function SetupDeveloperTab()
     Tabs.Developer:CreateParagraph({
         Title = "Fish It Script Edited By Rafscape",
-        Content = "Thanks for using this script!\n\nDeveloper:\n- Tiktok: tiktok.com/hyrexxyy\n- Instagram: @hyrexxyy\n- GitHub: github.com/hyrexxyy"
+        Content = "YNWA"
     })
-    Tabs.Developer:CreateButton({ Name = "Tiktok", Callback = function() setclipboard("https://tiktok.com/hyrexxyy") Notify("Link Copied", "Link Tiktok disalin!") end })
-    Tabs.Developer:CreateButton({ Name = "Instagram", Callback = function() setclipboard("https://instagram.com/hyrexxyy") Notify("Link Copied", "Link Instagram disalin!") end })
-    Tabs.Developer:CreateButton({ Name = "GitHub", Callback = function() setclipboard("https://github.com/hyrexxyy") Notify("Link Copied", "Link GitHub disalin!") end })
+    -- Pengaturan Webhook
+    Tabs.Developer:CreateSection("Webhook Settings")
+    Tabs.Developer:CreateToggle({
+        Name = "📢 Aktifkan Webhook Ikan Langka",
+        CurrentValue = webhookSettings.enabled,
+        Callback = function(value)
+            webhookSettings.enabled = value
+            Notify("Webhook", "Notifikasi Discord " .. (value and "diaktifkan." or "dimatikan."))
+        end
+    })
+    Tabs.Developer:CreateParagraph({
+        Title = "Discord Webhook",
+        Content= "Masukkan URL webhook Discord Anda..."
+    })
+    -- Tabs.Developer:CreateInput({
+    --    Name = "Webhook URL",
+    --   PlaceholderText = "discord webhook url",
+    --    Text = webhookSettings.url,
+    --  Callback = function(value)
+    --       webhookSettings.url = value
+    --   end
+    -- })
+    Tabs.Developer:CreateSlider({
+        Name = "Minimal Tier",
+        Range = {1, 7},
+        Increment = 1,
+        CurrentValue = webhookSettings.minTier,
+        Suffix = "Tier",
+        Callback = function(value)
+            webhookSettings.minTier = value
+            Notify("Webhook", "Minimal tier diatur ke " .. value)
+        end
+    })
 end
 
 -- 4.2 Fitur: Auto Fish
@@ -906,5 +986,26 @@ SetupSettingsTab()
 SetupWalkOnWater()
 ApplyHacks()
 
+local function StartFishMonitor()
+    if not playerData then return end
+
+    -- Memantau perubahan pada tabel data "Inventory.Items"
+    playerData:OnChange("Inventory.Items", function(newItems, oldItems)
+        -- Cek jika ada item baru yang ditambahkan
+        if #newItems > #oldItems then
+            local newItemData = newItems[#newItems]
+            if newItemData and newItemData.Id then
+                local success, itemInfo = pcall(modules.ItemUtility.GetItemData, modules.ItemUtility, newItemData.Id)
+                if success and itemInfo and itemInfo.Data.Type == "Fishes" then
+                    SendToDiscord(itemInfo)
+                end
+            end
+        end
+    end)
+    
+    print("Webhook fish monitor has been initialized.")
+end
+
+StartFishMonitor()
 
 Notify("Script Loaded", "Fish It by Rafscape berhasil dimuat!")
