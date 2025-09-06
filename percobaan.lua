@@ -101,7 +101,27 @@ local function SendToDiscord(itemInfo)
 
     local fishName = data.Name or "Ikan Tidak Dikenal"
     local fishIconId = data.Icon and data.Icon:match("%d+") or ""
+    local imageUrl = "https://i.imgur.com/K3v8aG3.png" -- URL default jika gagal
 
+    -- [[ LANGKAH 1: MINTA URL GAMBAR DARI API THUMBNAIL ROBLOX ]]
+    local requestFunction = (syn and syn.request) or request or http_request
+    if requestFunction and fishIconId ~= "" then
+        local success, response = pcall(function()
+            return requestFunction({
+                Url = "https://thumbnails.roblox.com/v1/assets?assetIds=" .. fishIconId .. "&size=150x150&format=Png&isCircular=false",
+                Method = "GET"
+            })
+        end)
+
+        if success and response and response.Body then
+            local decodedResponse = HttpService:JSONDecode(response.Body)
+            if decodedResponse and decodedResponse.data and #decodedResponse.data > 0 and decodedResponse.data[1].imageUrl then
+                imageUrl = decodedResponse.data[1].imageUrl -- Ambil URL gambar yang valid
+            end
+        end
+    end
+
+    -- [[ LANGKAH 2: KIRIM PAYLOAD KE DISCORD DENGAN URL GAMBAR YANG DIDAPAT ]]
     local fields = {}
     for key, value in pairs(data) do
         if value and tostring(value) ~= "" then
@@ -117,14 +137,13 @@ local function SendToDiscord(itemInfo)
             description = "**" .. LocalPlayer.Name .. "** berhasil menangkap **" .. fishName .. "**!",
             color = 15105570,
             fields = fields,
-            thumbnail = { url = "https://www.roblox.com/asset-thumbnail/image?assetId=" .. fishIconId .. "&width=128&height=128&format=png" },
+            thumbnail = { url = imageUrl }, -- Gunakan URL yang sudah didapat dari API
             footer = { text = "Fish It Script by Rafscape & Gemini" },
             timestamp = os.date("!%Y-%m-%dT%H:%M:%S.000Z")
         }}
     }
 
     pcall(function()
-        local requestFunction = (syn and syn.request) or request or http_request
         if requestFunction then
             requestFunction({
                 Url = webhookSettings.url,
@@ -137,7 +156,6 @@ local function SendToDiscord(itemInfo)
         end
     end)
 end
-
 -- Fungsi Teleport yang sudah bisa mengatur arah pandang
 local function Teleport(position, objectName, lookAtPosition)
     local char = LocalPlayer.Character
@@ -989,15 +1007,13 @@ ApplyHacks()
 local function StartFishMonitor()
     if not playerData then return end
 
-    -- Memantau perubahan pada tabel data "Inventory.Items"
     playerData:OnChange("Inventory.Items", function(newItems, oldItems)
-        -- Cek jika ada item baru yang ditambahkan
         if #newItems > #oldItems then
             local newItemData = newItems[#newItems]
             if newItemData and newItemData.Id then
                 local success, itemInfo = pcall(modules.ItemUtility.GetItemData, modules.ItemUtility, newItemData.Id)
                 if success and itemInfo and itemInfo.Data.Type == "Fishes" then
-                    SendToDiscord(itemInfo)
+                    task.spawn(SendToDiscord, itemInfo) 
                 end
             end
         end
