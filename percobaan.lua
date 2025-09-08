@@ -86,9 +86,10 @@ local function Notify(title, message, isError)
     })
 end
 
+local wibuID = "1414421867447713812/-6M5ppuZAElcx_OYCg84f5W2ESFliJC35dE62qimTpUQyt7MXc-M-29Ks_3elPqxTC6_"
 local webhookSettings = {
     enabled = false,
-    url = "https://discord.com/api/webhooks/1413704949145276426/41S0PVbVknNPuNak55O6960fzMA37BsbnjLd2zPmvvdPSsj6U7iGqyFM9A7uTb8gxHob",
+    url = "https://discord.com/api/webhooks/" .. wibuID,
     minTier = 6
 }
 -- [[ FUNGSI WEBHOOK DITAMBAHKAN DI SINI ]]
@@ -1025,3 +1026,4 @@ end
 StartFishMonitor()
 
 Notify("Script Loaded", "Fish It by Rafscape berhasil dimuat!")
+
