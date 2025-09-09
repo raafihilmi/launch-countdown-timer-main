@@ -565,6 +565,116 @@ local function SetupAutoTradeTab()
         task.wait(1.1)
         Tabs.AutoTrade:CreateButton({ Name = "📤 Kirim Trade", Callback = SendAutoTrade })
     end)
+    -- [[ TOMBOL BARU UNTUK TRADE SEMUA IKAN TIER 6 ]] --
+    task.spawn(function()
+        task.wait(1.3) -- Sedikit delay agar UI lain sudah termuat
+        Tabs.AutoTrade:CreateButton({ 
+            Name = "📤 Kirim SEMUA Ikan Tier 6", 
+            Callback = function()
+                if not selectedTargetPlayer then return Notify("Gagal", "Pilih pemain tujuan terlebih dahulu!", true) end
+    
+                local tier6Fish = GetFishUUIDsByTier(6) -- Memanggil fungsi helper kita
+                if #tier6Fish == 0 then
+                    return Notify("Gagal", "Tidak ada ikan Tier 6 di dalam inventory.", true)
+                end
+    
+                Notify("Auto Trade Tier 6", "Memulai pengiriman " .. #tier6Fish .. " ikan ke " .. selectedTargetPlayer.Name)
+    
+                -- Memulai proses pengiriman secara berurutan
+                task.spawn(function()
+                    local totalFish = #tier6Fish
+                    local suksesCount, gagalCount = 0, 0
+                    
+                    -- Update label status
+                    statusProgressLabel:Set(string.format("Progress: 0/%d", totalFish))
+                    statusSuksesLabel:Set("Berhasil: 0")
+                    statusGagalLabel:Set("Gagal: 0")
+                    statusInfoLabel:Set("Status: Memulai pengiriman ikan Tier 6...")
+    
+                    for i, fish in ipairs(tier6Fish) do
+                        statusProgressLabel:Set(string.format("Progress: %d/%d", i, totalFish))
+                        statusInfoLabel:Set(string.format("Mengirim %s...", fish.Name))
+    
+                        -- Proses equip dan trade
+                        modules.Net:WaitForChild("RE/EquipItem"):FireServer(fish.UUID, fish.Type)
+                        task.wait(1.5)
+    
+                        local success, result = pcall(function()
+                            return modules.Net:WaitForChild("RF/InitiateTrade"):InvokeServer(selectedTargetPlayer.UserId, fish.UUID)
+                        end)
+    
+                        if success and result then
+                            suksesCount = suksesCount + 1
+                            statusSuksesLabel:Set("Berhasil: " .. suksesCount)
+                        else
+                            gagalCount = gagalCount + 1
+                            statusGagalLabel:Set("Gagal: " .. gagalCount)
+                            warn(string.format("Gagal mengirim %s. Alasan: %s", fish.Name, tostring(result)))
+                        end
+                        
+                        if i < totalFish then task.wait(5) end -- Jeda 5 detik antar trade
+                    end
+    
+                    statusInfoLabel:Set("Status: Selesai! " .. suksesCount .. " ikan terkirim, " .. gagalCount .. " gagal.")
+                end)
+            end 
+        })
+    end)
+    -- [[ TOMBOL BARU UNTUK TRADE SEMUA IKAN TIER 7 ]] --
+    task.spawn(function()
+        task.wait(1.3) -- Sedikit delay agar UI lain sudah termuat
+        Tabs.AutoTrade:CreateButton({ 
+            Name = "📤 Kirim SEMUA Ikan Tier 6", 
+            Callback = function()
+                if not selectedTargetPlayer then return Notify("Gagal", "Pilih pemain tujuan terlebih dahulu!", true) end
+    
+                local tier6Fish = GetFishUUIDsByTier(7) -- Memanggil fungsi helper kita
+                if #tier6Fish == 0 then
+                    return Notify("Gagal", "Tidak ada ikan Tier 7 di dalam inventory.", true)
+                end
+    
+                Notify("Auto Trade Tier 6", "Memulai pengiriman " .. #tier6Fish .. " ikan ke " .. selectedTargetPlayer.Name)
+    
+                -- Memulai proses pengiriman secara berurutan
+                task.spawn(function()
+                    local totalFish = #tier6Fish
+                    local suksesCount, gagalCount = 0, 0
+                    
+                    -- Update label status
+                    statusProgressLabel:Set(string.format("Progress: 0/%d", totalFish))
+                    statusSuksesLabel:Set("Berhasil: 0")
+                    statusGagalLabel:Set("Gagal: 0")
+                    statusInfoLabel:Set("Status: Memulai pengiriman ikan Tier 6...")
+    
+                    for i, fish in ipairs(tier6Fish) do
+                        statusProgressLabel:Set(string.format("Progress: %d/%d", i, totalFish))
+                        statusInfoLabel:Set(string.format("Mengirim %s...", fish.Name))
+    
+                        -- Proses equip dan trade
+                        modules.Net:WaitForChild("RE/EquipItem"):FireServer(fish.UUID, fish.Type)
+                        task.wait(1.5)
+    
+                        local success, result = pcall(function()
+                            return modules.Net:WaitForChild("RF/InitiateTrade"):InvokeServer(selectedTargetPlayer.UserId, fish.UUID)
+                        end)
+    
+                        if success and result then
+                            suksesCount = suksesCount + 1
+                            statusSuksesLabel:Set("Berhasil: " .. suksesCount)
+                        else
+                            gagalCount = gagalCount + 1
+                            statusGagalLabel:Set("Gagal: " .. gagalCount)
+                            warn(string.format("Gagal mengirim %s. Alasan: %s", fish.Name, tostring(result)))
+                        end
+                        
+                        if i < totalFish then task.wait(5) end -- Jeda 5 detik antar trade
+                    end
+    
+                    statusInfoLabel:Set("Status: Selesai! " .. suksesCount .. " ikan terkirim, " .. gagalCount .. " gagal.")
+                end)
+            end 
+        })
+    end)
 end
 
 -- 4.4 Fitur: Player (Sudah Disederhanakan)
@@ -1026,4 +1136,5 @@ end
 StartFishMonitor()
 
 Notify("Script Loaded", "Fish It by Rafscape berhasil dimuat!")
+
 
