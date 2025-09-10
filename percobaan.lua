@@ -327,7 +327,9 @@ local function SetupDeveloperTab()
 end
 
 -- 4.2 Fitur: Auto Fish
+-- [[ BAGIAN INI TELAH DIPERBARUI ]] --
 local function SetupAutoFishTab()
+    -- Variabel ini dikontrol oleh elemen UI Rayfield
     local autofish, perfectCast, autoSellVersion = false, false, false
     local autoRecastDelay, autoSellDelay = 0.5, 1
 
@@ -339,7 +341,22 @@ local function SetupAutoFishTab()
         Callback = function(val)
             autofish = val
             if not val then return end
+            
             task.spawn(function()
+                -- Definisi animasi dan remotes di luar loop untuk efisiensi
+                local animations = {
+                    Cast = Instance.new("Animation"),
+                    Catch = Instance.new("Animation"),
+                    Waiting = Instance.new("Animation"),
+                    ReelIn = Instance.new("Animation"),
+                    HoldIdle = Instance.new("Animation")
+                }
+                animations.Cast.AnimationId = "rbxassetid://92624107165273"
+                animations.Catch.AnimationId = "rbxassetid://117319000848286"
+                animations.Waiting.AnimationId = "rbxassetid://134965425664034"
+                animations.ReelIn.AnimationId = "rbxassetid://114959536562596"
+                animations.HoldIdle.AnimationId = "rbxassetid://96586569072385"
+
                 local remotes = {
                     unequip = modules.Net:WaitForChild("RE/UnequipToolFromHotbar"),
                     equip = modules.Net:WaitForChild("RE/EquipToolFromHotbar"),
@@ -347,19 +364,57 @@ local function SetupAutoFishTab()
                     minigame = modules.Net:WaitForChild("RF/RequestFishingMinigameStarted"),
                     finish = modules.Net:WaitForChild("RE/FishingCompleted")
                 }
+
                 while autofish do
+                    -- Variabel karakter diambil di dalam loop agar tahan respawn
+                    local player = Players.LocalPlayer
+                    local character = player.Character or player.CharacterAdded:Wait()
+                    local humanoid = character:WaitForChild("Humanoid")
+                    local animator = humanoid:WaitForChild("Animator")
+
+                    local loadedAnimations = {}
+                    for name, anim in pairs(animations) do
+                        loadedAnimations[name] = animator:LoadAnimation(anim)
+                    end
+
                     pcall(function()
-                        remotes.unequip:FireServer()
-                        task.wait(0.1)
+                        -- 1. Equip pancingan
                         remotes.equip:FireServer(1)
-                        task.wait(0.1)
+                        task.wait(0.5)
+
+                        -- 2. Mainkan animasi idle memegang pancingan
+                        loadedAnimations.HoldIdle:Play()
+                        task.wait(0.5)
+
+                        -- 3. Lempar kail (charge) dan mainkan animasi melempar
+                        loadedAnimations.HoldIdle:Stop()
                         remotes.charge:InvokeServer(perfectCast and 9e9 or tick())
-                        task.wait(0.1)
+                        loadedAnimations.Cast:Play()
+                        loadedAnimations.Cast.Stopped:Wait()
+                        
+                        -- 4. Mulai minigame dan tunggu
+                        loadedAnimations.Waiting:Play()
                         remotes.minigame:InvokeServer(perfectCast and -1.238 or math.random(), perfectCast and 0.969 or math.random())
                         task.wait(1.3)
-                        for i = 1, 10 do remotes.finish:FireServer() task.wait(0.2) end
+                        loadedAnimations.Waiting:Stop()
+
+                        -- 6. Mainkan animasi menangkap ikan & selesaikan
+                        loadedAnimations.ReelIn:Play()
+                        task.wait(0.2)
+                        loadedAnimations.ReelIn:Stop()
+
+                        loadedAnimations.Catch:Play()
+                        for i = 1, 5 do 
+                            remotes.finish:FireServer() 
+                            task.wait(0.1)
+                        end
+                        loadedAnimations.Catch.Stopped:Wait()
                     end)
-                    task.wait(autoRecastDelay)
+                    
+                    if autofish then
+                        print("Siklus selesai, menunggu untuk melempar kembali...")
+                        task.wait(autoRecastDelay)
+                    end
                 end
             end)
         end
@@ -1136,5 +1191,3 @@ end
 StartFishMonitor()
 
 Notify("Script Loaded", "Fish It by Rafscape berhasil dimuat!")
-
-
