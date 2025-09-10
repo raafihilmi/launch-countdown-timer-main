@@ -433,16 +433,13 @@ local function SetupAutoFishTab()
                     pcall(function()
                         -- 1. Equip pancingan
                         remotes.equip:FireServer(1)
-                        task.wait(0.5)
-
                         -- 2. Mainkan animasi idle memegang pancingan
                         loadedAnimations.HoldIdle:Play()
-                        task.wait(0.5)
-
                         -- 3. Lempar kail (charge) dan mainkan animasi melempar
                         loadedAnimations.HoldIdle:Stop()
-                        remotes.charge:InvokeServer(perfectCast and 9e9 or tick())
                         loadedAnimations.Cast:Play()
+                        remotes.charge:InvokeServer(perfectCast and 9e9 or tick())
+
                         loadedAnimations.Cast.Stopped:Wait()
                         
                         -- 4. Mulai minigame dan tunggu
@@ -520,15 +517,20 @@ local function SetupAutoFarmTab()
         ["Pulau Kecil"] = {Pos = Vector3.new(-211,2,2946), LookAt = Vector3.new(-225,2,2946)},
    }
 
-    -- Membuat dropdown pertama menggunakan fungsi reusable
+   local wormFishSpots = {
+        ["Goa Es"] = {Pos = Vector3.new(2017.79, 6.55, 3361.61), LookAt = Vector3.new(2064.04, -2.48, 3368.29)},
+        ["Es Kecil"] = {Pos = Vector3.new(2155.81, 6.55, 3293.74), LookAt = Vector3.new(2154.29, -2.55, 3273.82)},
+   }
+   local volcanoFishSpots = {
+        ["NOOB"] = {Pos = Vector3.new(-570.46, 8.13, 154.66), LookAt = Vector3.new(-585.96, 13.55, 171.01)},
+   }
+
+    CreateLocationDropdown(Tabs.AutoFarm, "Farm Cacing", volcanoFishSpots)
     CreateLocationDropdown(Tabs.AutoFarm, "Farm Spot Paus & Batu", whaleAndRockSpots)
-
-    -- Membuat dropdown kedua menggunakan fungsi reusable yang sama
     CreateLocationDropdown(Tabs.AutoFarm, "Farm Frosborn Crater", craterFishSpots)
-
     CreateLocationDropdown(Tabs.AutoFarm, "Farm Kraken", krakenFishSpots)
     CreateLocationDropdown(Tabs.AutoFarm, "Farm Orca", orcaFishSpots)
-
+    CreateLocationDropdown(Tabs.AutoFarm, "Farm Cacing", wormFishSpots)
 end
 
 -- [[ BARU ]] Fitur: Auto Trade
@@ -923,7 +925,8 @@ local function SetupBuyRodTab()
         { Name = "Grass Rod", Price = "1.50k Coins", ID = 85 }, { Name = "Demascus Rod", Price = "3k Coins", ID = 77 },
         { Name = "Ice Rod", Price = "5k Coins", ID = 78 }, { Name = "Lucky Rod", Price = "15k Coins", ID = 4 },
         { Name = "Midnight Rod", Price = "50k Coins", ID = 80 }, { Name = "Steampunk Rod", Price = "215k Coins", ID = 6 },
-        { Name = "Chrome Rod", Price = "437k Coins", ID = 7 }, { Name = "Astral Rod", Price = "1M Coins", ID = 5 }
+        { Name = "Chrome Rod", Price = "437k Coins", ID = 7 }, { Name = "Astral Rod", Price = "1M Coins", ID = 5 },
+        { Name = "Ares Rod", Price = "3M Coins", ID = 126 }, { Name = "Angler", Price = "8M Coins", ID = 168 },
     }
     for _, rod in ipairs(rods) do
         Tabs.BuyRod:CreateButton({ Name = rod.Name .. " (" .. rod.Price .. ")", Callback = function()
@@ -1015,7 +1018,8 @@ local function SetupBuyBaitTab()
     local baits = {
         { Name = "Topwater Bait", Price = "100 Coins", ID = 10 }, { Name = "Luck Bait", Price = "1k Coins", ID = 2 },
         { Name = "Midnight Bait", Price = "3k Coins", ID = 3 }, { Name = "Chroma Bait", Price = "290k Coins", ID = 6 },
-        { Name = "Dark Mater Bait", Price = "630k Coins", ID = 8 }, { Name = "Corrupt Bait", Price = "1.15M Coins", ID = 15 }
+        { Name = "Dark Mater Bait", Price = "630k Coins", ID = 8 }, { Name = "Corrupt Bait", Price = "1.15M Coins", ID = 15 },
+        { Name = "Aether Bait", Price = "3.8M Coins", ID = 16 }
     }
     for _, bait in ipairs(baits) do
         Tabs.BuyBait:CreateButton({ Name = bait.Name .. " (" .. bait.Price .. ")", Callback = function()
