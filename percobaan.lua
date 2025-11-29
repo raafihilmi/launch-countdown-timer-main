@@ -81,7 +81,7 @@ MainTab:CreateToggle({
                     end)
                     
                     -- Jeda agar UI sempat update dan tidak error
-                    task.wait(1.5) 
+                    task.wait(0.5) 
                 end
             end)
         else
@@ -144,4 +144,5 @@ MainTab:CreateButton({
        Rayfield:Notify({Title = "Selesai", Content = "Semua kode telah diproses.", Duration = 3})
    end,
 })
+
 
