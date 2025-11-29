@@ -75,11 +75,9 @@ MainTab:CreateToggle({
                         break
                     end
                     
-                    -- Eksekusi Reroll
-                    local args = { [1] = "Reroll" }
                     
                     pcall(function()
-                        game:GetService("ReplicatedStorage").Shared.Packages.Knit.Services.RaceService.RF.Reroll:InvokeServer(unpack(args))
+                        game:GetService("ReplicatedStorage").Shared.Packages.Knit.Services.RaceService.RF.Reroll:InvokeServer()
                     end)
                     
                     -- Jeda agar UI sempat update dan tidak error
@@ -146,3 +144,4 @@ MainTab:CreateButton({
        Rayfield:Notify({Title = "Selesai", Content = "Semua kode telah diproses.", Duration = 3})
    end,
 })
+
