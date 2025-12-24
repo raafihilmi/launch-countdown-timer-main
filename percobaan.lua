@@ -7,7 +7,7 @@ local Window = Rayfield:CreateWindow({
    ConfigurationSaving = {
       Enabled = true,
       FolderName = nil, 
-      FileName = "CatchAndTame_Auto"
+      FileName = "CatchAndTame_Autov2"
    },
    Discord = {
       Enabled = false,
@@ -44,7 +44,9 @@ local function RunCatchProtocol(targetPet)
     -- 2. Request Minigame (PENTING)
     -- Log 2: args = {[1] = PetInstance, [2] = CFrame}
     -- Kita gunakan CFrame pemain saat ini
+    task.wait(0.5)
     Remotes.minigameRequest:InvokeServer(targetPet, root.CFrame)
+    Remotes.retrieveData:InvokeServer()
     
     -- 3. Visual Equip (Log 4)
     Remotes.equipLassoVisual:InvokeServer(true)
@@ -215,3 +217,4 @@ Tab:CreateToggle({
 })
 
 Rayfield:LoadConfiguration()
+
