@@ -10,7 +10,7 @@ local Window = Rayfield:CreateWindow({
    ConfigurationSaving = {
       Enabled = true,
       FolderName = nil, 
-      FileName = "CatchAndTame_Autov3"
+      FileName = "CatchAndTame_Autov4"
    },
    Discord = {
       Enabled = false,
@@ -115,6 +115,55 @@ local function RunCatchProtocol(targetPet)
     end)
 end
 
+-- FUNGSI BARU: Auto Farm Khusus Event Candy
+local function StartCandyFarm()
+    -- Menggunakan spawn agar loop berjalan di background tidak membuat game freeze
+    task.spawn(function()
+        while getgenv().AutoFarmCandy do
+            local folder = workspace:FindFirstChild("RoamingPets") and workspace.RoamingPets:FindFirstChild("Pets")
+            local foundTarget = false
+            
+            if folder then
+                for _, pet in pairs(folder:GetChildren()) do
+                    -- Cek status toggle setiap saat agar bisa dimatikan kapan saja
+                    if not getgenv().AutoFarmCandy then break end
+                    
+                    -- Deteksi Pet berdasarkan Attribute "CandyMax" (Sesuai Screenshot)
+                    -- Kita cek apakah attribute itu ada (nil atau tidak)
+                    local isCandyPet = pet:GetAttribute("CandyMax")
+                    
+                    if isCandyPet and (pet:IsA("Model") or pet:IsA("BasePart")) then
+                        foundTarget = true
+                        
+                        -- Proses Teleport & Catch
+                        local p = game.Players.LocalPlayer
+                        if p and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                            -- Teleport ke lokasi Pet
+                            p.Character.HumanoidRootPart.CFrame = pet:GetPivot()
+                            task.wait(0.5) -- Delay agar server memuat posisi kita
+                            
+                            -- Panggil fungsi catch yang sudah dibuat sebelumnya
+                            -- Pastikan fungsi RunCatchProtocol sudah ada di script Anda
+                            RunCatchProtocol(pet)
+                            
+                            -- Tunggu proses tangkap selesai sebelum cari yang lain
+                            -- Sesuaikan waktu ini (4 detik biasanya cukup untuk animasi + server)
+                            task.wait(4)
+                        end
+                    end
+                end
+            end
+            
+            -- Jika tidak ada pet candy tersisa, tunggu sebentar sebelum scan ulang
+            if not foundTarget and getgenv().AutoFarmCandy then
+                Rayfield:Notify({Title = "Menunggu Spawn", Content = "Mencari Pet Candy...", Duration = 1})
+                task.wait(3)
+            end
+            
+            task.wait(0.5) -- Delay aman loop
+        end
+    end)
+end
 -- UI Setup
 local Section = Tab:CreateSection("Target")
 
@@ -138,6 +187,20 @@ Tab:CreateToggle({
    Callback = function(Val) getgenv().AutoCatchEnabled = Val end,
 })
 
+Tab:CreateToggle({
+   Name = "Auto Farm Event Candy (Loop)",
+   CurrentValue = false,
+   Flag = "CandyFarmToggle", 
+   Callback = function(Value)
+      getgenv().AutoFarmCandy = Value
+      if Value then
+          Rayfield:Notify({Title = "Auto Farm Aktif", Content = "Mulai berburu Pet Candy...", Duration = 2})
+          StartCandyFarm()
+      else
+          Rayfield:Notify({Title = "Auto Farm Stop", Content = "Berhenti setelah target saat ini.", Duration = 2})
+      end
+   end,
+})
 Tab:CreateButton({
    Name = "Cari & Tangkap (Safe Mode)",
    Callback = function()
@@ -190,4 +253,5 @@ Tab:CreateButton({
 })
 
 Rayfield:LoadConfiguration()
+
 
