@@ -38,7 +38,7 @@ getgenv().SellConfig = {
     ["Mythical"] = false
 }
 getgenv().AutoBuyFood = false
-getgenv().SelectedFood = "Apple" -- Default
+getgenv().SelectedFoodList = {}-- Default
 getgenv().BuyAmount = 1
 
 local rarityList = {"Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythical"}
@@ -341,40 +341,39 @@ local function StartAutoSell()
         end
     end)
 end
+
 local function StartAutoBuy()
     task.spawn(function()
         while getgenv().AutoBuyFood do
-            -- Mencoba mencari Remote Knit secara manual
-            -- Biasanya strukturnya: ReplicatedStorage > packages/knit > Services > ServiceName > RE/RF
-            -- Atau langsung di folder Remotes jika dev-nya custom.
-            
-            -- Opsi 1: Jalur Standar Knit (Sering dipakai)
             local success, err = pcall(function()
+                -- Mencari Remote (Logic knit path)
                 local FoodService = game:GetService("ReplicatedStorage"):WaitForChild("Packages"):WaitForChild("Knit"):WaitForChild("Services"):WaitForChild("FoodService")
-                local BuyRemote = FoodService:WaitForChild("RF"):WaitForChild("BuyFood") -- Coba RF (Function) dulu
-                if not BuyRemote then BuyRemote = FoodService:WaitForChild("RE"):WaitForChild("BuyFood") end -- Coba RE (Event)
+                local BuyRemote = FoodService:WaitForChild("RF"):FindFirstChild("BuyFood") or FoodService:WaitForChild("RE"):FindFirstChild("BuyFood")
                 
                 if BuyRemote then
-                    -- Argumen: (NamaMakanan, Jumlah)
-                    if BuyRemote:IsA("RemoteEvent") then
-                        BuyRemote:FireServer(getgenv().SelectedFood, getgenv().BuyAmount)
-                    elseif BuyRemote:IsA("RemoteFunction") then
-                        BuyRemote:InvokeServer(getgenv().SelectedFood, getgenv().BuyAmount)
+                    -- LOOPING: Membeli setiap makanan yang dipilih di daftar
+                    for _, foodName in pairs(getgenv().SelectedFoodList) do
+                        
+                        -- Cek lagi jika toggle dimatikan di tengah jalan
+                        if not getgenv().AutoBuyFood then break end
+
+                        if BuyRemote:IsA("RemoteEvent") then
+                            BuyRemote:FireServer(foodName, getgenv().BuyAmount)
+                        elseif BuyRemote:IsA("RemoteFunction") then
+                            BuyRemote:InvokeServer(foodName, getgenv().BuyAmount)
+                        end
+                        
+                        -- Delay kecil antar item agar tidak error/spam berlebih
+                        task.wait(0.2) 
                     end
-                    
-                    if getgenv().DebugMode then print("Membeli " .. getgenv().BuyAmount .. "x " .. getgenv().SelectedFood) end
                 end
             end)
 
-            -- Opsi 2: Jika Opsi 1 gagal, coba cari di folder 'Remotes' biasa (berdasarkan script sebelumnya)
-            if not success then
-               pcall(function()
-                   -- Kadang Knit wrapper ditaruh di ReplicatedStorage.Remotes.BuyFood atau sejenisnya
-                   -- Cek ini jika Opsi 1 tidak jalan
-               end)
+            if not success and getgenv().DebugMode then
+                warn("Gagal akses remote buy: " .. tostring(err))
             end
 
-            -- Delay agar tidak menghabiskan uang terlalu cepat / lag
+            -- Delay setelah satu putaran selesai (membeli semua list)
             task.wait(1) 
         end
     end)
@@ -533,25 +532,26 @@ SellTab:CreateToggle({
    end,
 })
 
--- AUTO BUY FOOD
+-- AUTO BUY FOOD TAB
 local SectionBuy = BuyTab:CreateSection("Konfigurasi Pembelian")
 
 BuyTab:CreateDropdown({
-   Name = "Pilih Makanan",
+   Name = "Pilih Makanan (Bisa Lebih dari 1)",
    Options = foodList,
-   CurrentOption = "Apple",
-   MultipleOptions = false,
-   Flag = "FoodDropdown", 
+   CurrentOption = {"Apple"}, -- Default pilihan
+   MultipleOptions = true, -- AKTIFKAN INI agar bisa pilih banyak
+   Flag = "FoodDropdownMulti", 
    Callback = function(Option)
-      getgenv().SelectedFood = Option[1]
+      -- Rayfield mengembalikan Table string, contoh: {"Apple", "Banana"}
+      getgenv().SelectedFoodList = Option
    end,
 })
 
 BuyTab:CreateSlider({
-   Name = "Jumlah Per Pembelian",
+   Name = "Jumlah Per Item",
    Range = {1, 100},
    Increment = 1,
-   Suffix = "Items",
+   Suffix = "Pcs",
    CurrentValue = 1,
    Flag = "BuyAmountSlider", 
    Callback = function(Value)
@@ -568,14 +568,15 @@ BuyTab:CreateToggle({
    Callback = function(Value)
       getgenv().AutoBuyFood = Value
       if Value then
-          Rayfield:Notify({Title = "Auto Buy ON", Content = "Membeli " .. getgenv().SelectedFood .. "...", Duration = 2})
+          Rayfield:Notify({Title = "Auto Buy ON", Content = "Membeli daftar makanan...", Duration = 2})
           StartAutoBuy()
       else
-          Rayfield:Notify({Title = "Auto Buy OFF", Content = "Berhenti membeli.", Duration = 2})
+          Rayfield:Notify({Title = "Auto Buy OFF", Content = "Berhenti.", Duration = 2})
       end
    end,
 })
 Rayfield:LoadConfiguration()
+
 
 
 
