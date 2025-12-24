@@ -8,7 +8,7 @@ local Window = Rayfield:CreateWindow({
    ConfigurationSaving = {
       Enabled = true,
       FolderName = nil, 
-      FileName = "CatchAndTame_Autov6"
+      FileName = "CatchAndTame_Autov7"
    },
    Discord = {
       Enabled = false,
@@ -20,12 +20,22 @@ local Window = Rayfield:CreateWindow({
 
 local Tab = Window:CreateTab("Main", 4483362458)
 local CollectTab = Window:CreateTab("Auto Collect", 4483362458)
+local SellTab = Window:CreateTab("Auto Sell", 4483362458)
 
 getgenv().SelectRarity = "Legendary"
 getgenv().MutationOnly = false
 getgenv().AutoCatchEnabled = true
 getgenv().DebugMode = true
 getgenv().AutoCollectCash = false
+getgenv().AutoSell = false
+getgenv().SellConfig = {
+    ["Common"] = false,
+    ["Uncommon"] = false,
+    ["Rare"] = false,
+    ["Epic"] = false,
+    ["Legendary"] = false,
+    ["Mythical"] = false
+}
 
 local rarityList = {"Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythical"}
 local Remotes = game:GetService("ReplicatedStorage"):WaitForChild("Remotes")
@@ -273,6 +283,56 @@ local function StartAutoCollect()
         end
     end)
 end
+
+-- Logic Auto Sell
+local function StartAutoSell()
+    task.spawn(function()
+        while getgenv().AutoSell do
+            local RS = game:GetService("ReplicatedStorage")
+            
+            -- 1. Ambil Data Inventory Terbaru
+            local success, inventory = pcall(function()
+                return RS.Remotes.getPetInventory:InvokeServer()
+            end)
+
+            if success and inventory then
+                local soldCount = 0
+                
+                for uuid, data in pairs(inventory) do
+                    -- Cek status toggle utama
+                    if not getgenv().AutoSell then break end
+
+                    -- 2. Filter Berdasarkan Rarity Pilihan
+                    if data.rarity and getgenv().SellConfig[data.rarity] then
+                        
+                        -- Cek Keamanan: Jangan jual pet yang sedang dipakai (Equipped)
+                        -- Di banyak game, data inventory punya flag 'equipped' atau 'isEquipped'
+                        if not data.equipped and not data.isEquipped then
+                            
+                            -- 3. Eksekusi Jual (Sesuai Decompile: UUID, false)
+                            pcall(function()
+                                RS.Remotes.sellPet:InvokeServer(uuid, false)
+                            end)
+                            
+                            soldCount = soldCount + 1
+                            task.wait(0.1) -- Jeda per pet agar tidak disconnect
+                        end
+                    end
+                end
+                
+                if soldCount > 0 then
+                   -- Optional: Print ke console (F9) untuk memantau
+                   if getgenv().DebugMode then print("Terjual: " .. soldCount .. " pets.") end
+                end
+            else
+                if getgenv().DebugMode then warn("Gagal mengambil inventory") end
+            end
+            
+            -- Delay sebelum scan ulang inventory (3 detik)
+            task.wait(3) 
+        end
+    end)
+end
 -- UI Setup
 local Section = Tab:CreateSection("Target")
 
@@ -392,7 +452,43 @@ CollectTab:CreateToggle({
       end
    end,
 })
+
+-- AUTO SELL TAB
+local SectionConfig = SellTab:CreateSection("Pilih Rarity untuk Dijual")
+
+-- Loop untuk membuat Toggle setiap Rarity secara otomatis
+local rarities = {"Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythical"}
+
+for _, rarity in ipairs(rarities) do
+    SellTab:CreateToggle({
+       Name = "Jual " .. rarity,
+       CurrentValue = false,
+       Flag = "Sell" .. rarity, -- ID Unik untuk Config
+       Callback = function(Value)
+          getgenv().SellConfig[rarity] = Value
+       end,
+    })
+end
+
+local SectionAction = SellTab:CreateSection("Eksekusi")
+
+SellTab:CreateToggle({
+   Name = "Aktifkan Auto Sell (Loop)",
+   CurrentValue = false,
+   Flag = "AutoSellMain", 
+   Callback = function(Value)
+      getgenv().AutoSell = Value
+      if Value then
+          Rayfield:Notify({Title = "Auto Sell ON", Content = "Mulai menjual pet terpilih...", Duration = 2})
+          StartAutoSell()
+      else
+          Rayfield:Notify({Title = "Auto Sell OFF", Content = "Berhenti menjual.", Duration = 2})
+      end
+   end,
+})
+
 Rayfield:LoadConfiguration()
+
 
 
 
