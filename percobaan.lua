@@ -8,7 +8,7 @@ local Window = Rayfield:CreateWindow({
    ConfigurationSaving = {
       Enabled = true,
       FolderName = nil, 
-      FileName = "CatchAndTame_Autov8"
+      FileName = "CatchAndTame_Autov9"
    },
    Discord = {
       Enabled = false,
@@ -576,6 +576,7 @@ BuyTab:CreateToggle({
    end,
 })
 Rayfield:LoadConfiguration()
+
 
 
 
