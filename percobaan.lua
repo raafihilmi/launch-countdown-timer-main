@@ -1,13 +1,13 @@
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
-   Name = "Catch and Tame Helper",
+   Name = "Catch and Tame Helper (Manual)",
    LoadingTitle = "Memuat Script...",
    LoadingSubtitle = "by Gemini",
    ConfigurationSaving = {
       Enabled = true,
       FolderName = nil, 
-      FileName = "CatchAndTameConfig"
+      FileName = "CatchAndTameConfig_Manual"
    },
    Discord = {
       Enabled = false,
@@ -17,20 +17,18 @@ local Window = Rayfield:CreateWindow({
    KeySystem = false, 
 })
 
-local Tab = Window:CreateTab("Main Features", 4483362458) -- Ikon Home
+local Tab = Window:CreateTab("Main Features", 4483362458)
 
 -- Variabel Global
-getgenv().AutoTeleport = false
 getgenv().SelectRarity = "Legendary" -- Default
 getgenv().MutationOnly = false
 getgenv().ESPEnabled = false
 
--- Daftar Rarity (Sesuaikan nama ini jika di game berbeda, misal huruf besar/kecil)
 local rarityList = {"Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythical"}
 
 local Section = Tab:CreateSection("Konfigurasi Target")
 
--- Dropdown untuk memilih Rarity
+-- Dropdown Rarity
 Tab:CreateDropdown({
    Name = "Pilih Rarity Target",
    Options = rarityList,
@@ -42,7 +40,7 @@ Tab:CreateDropdown({
    end,
 })
 
--- Toggle: Hanya cari yang ada Mutasi (Mutation ~= "None")
+-- Toggle Mutasi
 Tab:CreateToggle({
    Name = "Hanya Cari Mutasi (Mutation Only)",
    CurrentValue = false,
@@ -52,71 +50,74 @@ Tab:CreateToggle({
    end,
 })
 
-local Section2 = Tab:CreateSection("Aksi")
+local Section2 = Tab:CreateSection("Eksekusi")
 
--- Fungsi Teleport
-local function TeleportToPet()
-    spawn(function()
-        while getgenv().AutoTeleport do
-            task.wait(0.5) -- Delay agar tidak crash
-            local p = game.Players.LocalPlayer
-            local folder = workspace:FindFirstChild("RoamingPets") and workspace.RoamingPets:FindFirstChild("Pets")
+-- Fungsi Teleport Sekali Jalan
+local function TeleportOnce()
+    local p = game.Players.LocalPlayer
+    local folder = workspace:FindFirstChild("RoamingPets") and workspace.RoamingPets:FindFirstChild("Pets")
+    local foundTarget = false -- Penanda apakah target ketemu
+    
+    if folder and p and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+        for _, pet in pairs(folder:GetChildren()) do
+            -- Baca Attributes
+            local petRarity = pet:GetAttribute("Rarity")
+            local petMutation = pet:GetAttribute("Mutation")
             
-            if folder and p and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                for _, pet in pairs(folder:GetChildren()) do
-                    -- Membaca Attribute sesuai screenshot Anda (ikon gerigi)
-                    local petRarity = pet:GetAttribute("Rarity")
-                    local petMutation = pet:GetAttribute("Mutation")
+            local isTarget = false
+            
+            -- Cek Kriteria
+            if getgenv().MutationOnly then
+                if petMutation and petMutation ~= "None" then
+                    isTarget = true
+                end
+            else
+                if petRarity == getgenv().SelectRarity then
+                    isTarget = true
+                end
+            end
+            
+            -- Eksekusi Teleport
+            if isTarget then
+                if pet:IsA("Model") or pet:IsA("BasePart") then
+                    -- Pindah posisi
+                    p.Character.HumanoidRootPart.CFrame = pet:GetPivot()
                     
-                    -- Logika Pengecekan
-                    local isTarget = false
+                    -- Notifikasi Berhasil
+                    Rayfield:Notify({
+                        Title = "Target Ditemukan!",
+                        Content = "Teleport ke: " .. (pet:GetAttribute("Name") or "Unknown") .. " | " .. (petRarity or "?"),
+                        Duration = 3,
+                        Image = 4483362458,
+                    })
                     
-                    if getgenv().MutationOnly then
-                        -- Jika cari mutasi, pastikan Mutation tidak "None"
-                        if petMutation and petMutation ~= "None" then
-                            isTarget = true
-                        end
-                    else
-                        -- Jika tidak harus mutasi, cek Rarity
-                        if petRarity == getgenv().SelectRarity then
-                            isTarget = true
-                        end
-                    end
-                    
-                    -- Eksekusi Teleport
-                    if isTarget then
-                        -- Menggunakan Pivot karena di screenshot ada 'WorldPivot'
-                        if pet:IsA("Model") or pet:IsA("BasePart") then
-                            p.Character.HumanoidRootPart.CFrame = pet:GetPivot()
-                            Rayfield:Notify({
-                                Title = "Pet Ditemukan!",
-                                Content = "Menemukan: " .. (pet:GetAttribute("Name") or "Unknown") .. " | " .. (petRarity or "?"),
-                                Duration = 3,
-                                Image = 4483362458,
-                            })
-                            task.wait(2) -- Beri waktu untuk menangkap sebelum pindah lagi
-                        end
-                    end
+                    foundTarget = true
+                    break -- BERHENTI LOOPING SETELAH KETEMU SATU
                 end
             end
         end
-    end)
+    end
+    
+    -- Notifikasi jika tidak ada yang cocok sama sekali
+    if not foundTarget then
+        Rayfield:Notify({
+            Title = "Tidak Ditemukan",
+            Content = "Tidak ada Pet dengan kriteria tersebut di server ini.",
+            Duration = 3,
+            Image = 4483362458,
+        })
+    end
 end
 
--- Toggle Teleport
-Tab:CreateToggle({
-   Name = "Auto Teleport ke Target",
-   CurrentValue = false,
-   Flag = "TeleportToggle", 
-   Callback = function(Value)
-      getgenv().AutoTeleport = Value
-      if Value then
-         TeleportToPet()
-      end
+-- Tombol (Button) untuk Teleport
+Tab:CreateButton({
+   Name = "Teleport ke 1 Target (Sekali)",
+   Callback = function()
+      TeleportOnce()
    end,
 })
 
--- Fitur Tambahan: ESP (Highlight)
+-- Fitur ESP (Tetap ada untuk bantuan visual)
 local function UpdateESP()
     local folder = workspace:FindFirstChild("RoamingPets") and workspace.RoamingPets:FindFirstChild("Pets")
     if not folder then return end
@@ -125,11 +126,9 @@ local function UpdateESP()
         if pet:IsA("Model") or pet:IsA("BasePart") then
             local highlight = pet:FindFirstChild("GeminiESP")
             
-            -- Hapus ESP jika fitur dimatikan
             if not getgenv().ESPEnabled then
                 if highlight then highlight:Destroy() end
             else
-                -- Buat ESP jika belum ada
                 if not highlight then
                     highlight = Instance.new("Highlight")
                     highlight.Name = "GeminiESP"
@@ -138,7 +137,6 @@ local function UpdateESP()
                     highlight.Parent = pet
                 end
                 
-                -- Tampilkan Info di atas kepala (BillboardGui)
                 local bg = pet:FindFirstChild("InfoGui")
                 if not bg then
                     bg = Instance.new("BillboardGui")
@@ -155,12 +153,10 @@ local function UpdateESP()
                     txt.TextStrokeTransparency = 0
                 end
                 
-                -- Update Teks berdasarkan Attribute
                 local r = pet:GetAttribute("Rarity") or "Nil"
                 local m = pet:GetAttribute("Mutation") or "None"
-                local s = pet:GetAttribute("Strength") or 0
                 bg.Adornee = pet
-                bg.InfoGui.TextLabel.Text = r .. "\n" .. m .. " | STR: " .. s
+                bg.InfoGui.TextLabel.Text = r .. "\n" .. m
             end
         end
     end
@@ -173,7 +169,6 @@ Tab:CreateToggle({
    Callback = function(Value)
       getgenv().ESPEnabled = Value
       if Value then
-          -- Loop ringan untuk update ESP
           task.spawn(function()
               while getgenv().ESPEnabled do
                   UpdateESP()
