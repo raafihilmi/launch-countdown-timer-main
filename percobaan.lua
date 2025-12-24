@@ -3,12 +3,12 @@ local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 local Window = Rayfield:CreateWindow({
    Name = "Catch and Tame: AUTO FARM",
    LoadingTitle = "Memuat Script...",
-   LoadingSubtitle = "JumantaraHub",
+   LoadingSubtitle = "JumantaraHub v10",
    Theme= "Ocean",
    ConfigurationSaving = {
       Enabled = true,
       FolderName = nil, 
-      FileName = "CatchAndTame_Autov9"
+      FileName = "CatchAndTame_Autov10"
    },
    Discord = {
       Enabled = false,
@@ -345,35 +345,42 @@ end
 local function StartAutoBuy()
     task.spawn(function()
         while getgenv().AutoBuyFood do
+            -- Menggunakan pcall agar script tidak berhenti total jika ada error kecil
             local success, err = pcall(function()
-                -- Mencari Remote (Logic knit path)
-                local FoodService = game:GetService("ReplicatedStorage"):WaitForChild("Packages"):WaitForChild("Knit"):WaitForChild("Services"):WaitForChild("FoodService")
-                local BuyRemote = FoodService:WaitForChild("RF"):FindFirstChild("BuyFood") or FoodService:WaitForChild("RE"):FindFirstChild("BuyFood")
                 
+                -- PATH REMOTE TERBARU (Sesuai temuan Anda)
+                -- Menggunakan WaitForChild di awal untuk memastikan game sudah loading
+                local RS = game:GetService("ReplicatedStorage")
+                local Packages = RS:WaitForChild("Packages")
+                local Index = Packages:WaitForChild("_Index")
+                
+                -- Mencari folder knit yang spesifik "sleitnick_knit@1.7.0"
+                -- Kita gunakan bracket ["nama"] karena ada karakter @ dan .
+                local KnitPkg = Index:WaitForChild("sleitnick_knit@1.7.0") 
+                local Services = KnitPkg:WaitForChild("knit"):WaitForChild("Services")
+                local BuyRemote = Services:WaitForChild("FoodService"):WaitForChild("RE"):WaitForChild("BuyFood")
+
                 if BuyRemote then
-                    -- LOOPING: Membeli setiap makanan yang dipilih di daftar
+                    -- LOOPING: Membeli setiap makanan yang dipilih
                     for _, foodName in pairs(getgenv().SelectedFoodList) do
                         
-                        -- Cek lagi jika toggle dimatikan di tengah jalan
+                        -- Cek lagi jika toggle dimatikan saat loop berjalan
                         if not getgenv().AutoBuyFood then break end
 
-                        if BuyRemote:IsA("RemoteEvent") then
-                            BuyRemote:FireServer(foodName, getgenv().BuyAmount)
-                        elseif BuyRemote:IsA("RemoteFunction") then
-                            BuyRemote:InvokeServer(foodName, getgenv().BuyAmount)
-                        end
+                        -- Fire Remote dengan argumen: (NamaMakanan, Jumlah)
+                        BuyRemote:FireServer(foodName, getgenv().BuyAmount)
                         
-                        -- Delay kecil antar item agar tidak error/spam berlebih
+                        -- Delay kecil antar item (0.2 detik)
                         task.wait(0.2) 
                     end
                 end
             end)
 
             if not success and getgenv().DebugMode then
-                warn("Gagal akses remote buy: " .. tostring(err))
+                warn("Error Auto Buy: " .. tostring(err))
             end
 
-            -- Delay setelah satu putaran selesai (membeli semua list)
+            -- Delay setelah satu putaran selesai
             task.wait(1) 
         end
     end)
@@ -538,11 +545,10 @@ local SectionBuy = BuyTab:CreateSection("Konfigurasi Pembelian")
 BuyTab:CreateDropdown({
    Name = "Pilih Makanan (Bisa Lebih dari 1)",
    Options = foodList,
-   CurrentOption = {"Apple"}, -- Default pilihan
-   MultipleOptions = true, -- AKTIFKAN INI agar bisa pilih banyak
+   CurrentOption = {"Apple"}, 
+   MultipleOptions = true, -- Multi Select aktif
    Flag = "FoodDropdownMulti", 
    Callback = function(Option)
-      -- Rayfield mengembalikan Table string, contoh: {"Apple", "Banana"}
       getgenv().SelectedFoodList = Option
    end,
 })
@@ -568,7 +574,7 @@ BuyTab:CreateToggle({
    Callback = function(Value)
       getgenv().AutoBuyFood = Value
       if Value then
-          Rayfield:Notify({Title = "Auto Buy ON", Content = "Membeli daftar makanan...", Duration = 2})
+          Rayfield:Notify({Title = "Auto Buy ON", Content = "Membeli makanan...", Duration = 2})
           StartAutoBuy()
       else
           Rayfield:Notify({Title = "Auto Buy OFF", Content = "Berhenti.", Duration = 2})
@@ -576,6 +582,7 @@ BuyTab:CreateToggle({
    end,
 })
 Rayfield:LoadConfiguration()
+
 
 
 
