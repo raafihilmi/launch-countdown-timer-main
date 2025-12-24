@@ -3,12 +3,12 @@ local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 local Window = Rayfield:CreateWindow({
    Name = "Catch and Tame: AUTO FARM",
    LoadingTitle = "Memuat Script...",
-   LoadingSubtitle = "JumantaraHub v10",
+   LoadingSubtitle = "JumantaraHub v11",
    Theme= "Ocean",
    ConfigurationSaving = {
       Enabled = true,
       FolderName = nil, 
-      FileName = "CatchAndTame_Autov10"
+      FileName = "CatchAndTame_Autov11"
    },
    Discord = {
       Enabled = false,
@@ -46,8 +46,8 @@ local Remotes = game:GetService("ReplicatedStorage"):WaitForChild("Remotes")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local foodList = {
-    "Apple", "Banana", "Orange", "Watermelon", "Pizza", 
-    "Burger", "Sushi", "Ice Cream", "Cake", "Steak" 
+    "Farmers Feed", 
+    "Enriched Feed", "Prime Feed", "Hay", "Bone", "Steak" 
     -- Tambahkan nama lain di sini jika ada
 }
 -- Fungsi untuk Memegang Lasso/Alat
@@ -582,6 +582,7 @@ BuyTab:CreateToggle({
    end,
 })
 Rayfield:LoadConfiguration()
+
 
 
 
