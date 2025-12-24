@@ -1,14 +1,14 @@
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
-   Name = "Catch and Tame: Auto Catch",
+   Name = "Catch and Tame: AUTO FARM",
    LoadingTitle = "Memuat Script...",
-   LoadingSubtitle = "by Gemini",
-   Theme= "Bloom",
+   LoadingSubtitle = "JumantaraHub",
+   Theme= "Ocean",
    ConfigurationSaving = {
       Enabled = true,
       FolderName = nil, 
-      FileName = "CatchAndTame_Autov7"
+      FileName = "CatchAndTame_Autov8"
    },
    Discord = {
       Enabled = false,
@@ -21,6 +21,7 @@ local Window = Rayfield:CreateWindow({
 local Tab = Window:CreateTab("Main", 4483362458)
 local CollectTab = Window:CreateTab("Auto Collect", 4483362458)
 local SellTab = Window:CreateTab("Auto Sell", 4483362458)
+local BuyTab = Window:CreateTab("Auto Buy Food", 4483362458)
 
 getgenv().SelectRarity = "Legendary"
 getgenv().MutationOnly = false
@@ -36,12 +37,19 @@ getgenv().SellConfig = {
     ["Legendary"] = false,
     ["Mythical"] = false
 }
+getgenv().AutoBuyFood = false
+getgenv().SelectedFood = "Apple" -- Default
+getgenv().BuyAmount = 1
 
 local rarityList = {"Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythical"}
 local Remotes = game:GetService("ReplicatedStorage"):WaitForChild("Remotes")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
-
+local foodList = {
+    "Apple", "Banana", "Orange", "Watermelon", "Pizza", 
+    "Burger", "Sushi", "Ice Cream", "Cake", "Steak" 
+    -- Tambahkan nama lain di sini jika ada
+}
 -- Fungsi untuk Memegang Lasso/Alat
 local function EquipLasso()
     local backpack = LocalPlayer:FindFirstChild("Backpack")
@@ -333,6 +341,44 @@ local function StartAutoSell()
         end
     end)
 end
+local function StartAutoBuy()
+    task.spawn(function()
+        while getgenv().AutoBuyFood do
+            -- Mencoba mencari Remote Knit secara manual
+            -- Biasanya strukturnya: ReplicatedStorage > packages/knit > Services > ServiceName > RE/RF
+            -- Atau langsung di folder Remotes jika dev-nya custom.
+            
+            -- Opsi 1: Jalur Standar Knit (Sering dipakai)
+            local success, err = pcall(function()
+                local FoodService = game:GetService("ReplicatedStorage"):WaitForChild("Packages"):WaitForChild("Knit"):WaitForChild("Services"):WaitForChild("FoodService")
+                local BuyRemote = FoodService:WaitForChild("RF"):WaitForChild("BuyFood") -- Coba RF (Function) dulu
+                if not BuyRemote then BuyRemote = FoodService:WaitForChild("RE"):WaitForChild("BuyFood") end -- Coba RE (Event)
+                
+                if BuyRemote then
+                    -- Argumen: (NamaMakanan, Jumlah)
+                    if BuyRemote:IsA("RemoteEvent") then
+                        BuyRemote:FireServer(getgenv().SelectedFood, getgenv().BuyAmount)
+                    elseif BuyRemote:IsA("RemoteFunction") then
+                        BuyRemote:InvokeServer(getgenv().SelectedFood, getgenv().BuyAmount)
+                    end
+                    
+                    if getgenv().DebugMode then print("Membeli " .. getgenv().BuyAmount .. "x " .. getgenv().SelectedFood) end
+                end
+            end)
+
+            -- Opsi 2: Jika Opsi 1 gagal, coba cari di folder 'Remotes' biasa (berdasarkan script sebelumnya)
+            if not success then
+               pcall(function()
+                   -- Kadang Knit wrapper ditaruh di ReplicatedStorage.Remotes.BuyFood atau sejenisnya
+                   -- Cek ini jika Opsi 1 tidak jalan
+               end)
+            end
+
+            -- Delay agar tidak menghabiskan uang terlalu cepat / lag
+            task.wait(1) 
+        end
+    end)
+end
 -- UI Setup
 local Section = Tab:CreateSection("Target")
 
@@ -487,7 +533,50 @@ SellTab:CreateToggle({
    end,
 })
 
+-- AUTO BUY FOOD
+local SectionBuy = BuyTab:CreateSection("Konfigurasi Pembelian")
+
+BuyTab:CreateDropdown({
+   Name = "Pilih Makanan",
+   Options = foodList,
+   CurrentOption = "Apple",
+   MultipleOptions = false,
+   Flag = "FoodDropdown", 
+   Callback = function(Option)
+      getgenv().SelectedFood = Option[1]
+   end,
+})
+
+BuyTab:CreateSlider({
+   Name = "Jumlah Per Pembelian",
+   Range = {1, 100},
+   Increment = 1,
+   Suffix = "Items",
+   CurrentValue = 1,
+   Flag = "BuyAmountSlider", 
+   Callback = function(Value)
+      getgenv().BuyAmount = Value
+   end,
+})
+
+local SectionExec = BuyTab:CreateSection("Eksekusi")
+
+BuyTab:CreateToggle({
+   Name = "Auto Buy Food (Loop)",
+   CurrentValue = false,
+   Flag = "AutoBuyToggle", 
+   Callback = function(Value)
+      getgenv().AutoBuyFood = Value
+      if Value then
+          Rayfield:Notify({Title = "Auto Buy ON", Content = "Membeli " .. getgenv().SelectedFood .. "...", Duration = 2})
+          StartAutoBuy()
+      else
+          Rayfield:Notify({Title = "Auto Buy OFF", Content = "Berhenti membeli.", Duration = 2})
+      end
+   end,
+})
 Rayfield:LoadConfiguration()
+
 
 
 
