@@ -7,7 +7,7 @@ local Window = Rayfield:CreateWindow({
    ConfigurationSaving = {
       Enabled = true,
       FolderName = nil, 
-      FileName = "CatchAndTameConfig_Manual"
+      FileName = "CatchAndTameConfig_v1"
    },
    Discord = {
       Enabled = false,
@@ -180,3 +180,4 @@ Tab:CreateToggle({
 })
 
 Rayfield:LoadConfiguration()
+
