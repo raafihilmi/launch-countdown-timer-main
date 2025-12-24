@@ -10,7 +10,7 @@ local Window = Rayfield:CreateWindow({
    ConfigurationSaving = {
       Enabled = true,
       FolderName = nil, 
-      FileName = "CatchAndTame_Autov4"
+      FileName = "CatchAndTame_Autov5"
    },
    Discord = {
       Enabled = false,
@@ -164,6 +164,62 @@ local function StartCandyFarm()
         end
     end)
 end
+
+-- FUNGSI BARU: Auto Farm Berdasarkan Rarity/Mutation (Looping)
+local function StartRarityFarm()
+    task.spawn(function()
+        while getgenv().AutoFarmRarity do
+            local folder = workspace:FindFirstChild("RoamingPets") and workspace.RoamingPets:FindFirstChild("Pets")
+            local foundTarget = false
+            
+            if folder then
+                for _, pet in pairs(folder:GetChildren()) do
+                    if not getgenv().AutoFarmRarity then break end -- Cek jika dimatikan tiba-tiba
+                    
+                    -- Filter Logic (Sama seperti sebelumnya)
+                    local r = pet:GetAttribute("Rarity")
+                    local m = pet:GetAttribute("Mutation")
+                    local isTarget = false
+
+                    if getgenv().MutationOnly then
+                        if m and m ~= "None" then isTarget = true end
+                    elseif r == getgenv().SelectRarity then
+                        isTarget = true
+                    end
+                    
+                    if isTarget and (pet:IsA("Model") or pet:IsA("BasePart")) then
+                        foundTarget = true
+                        
+                        -- Proses Eksekusi
+                        local p = game.Players.LocalPlayer
+                        if p and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                            -- Teleport
+                            p.Character.HumanoidRootPart.CFrame = pet:GetPivot() * CFrame.new(0, 2, 0)
+                            
+                            -- Tunggu sebentar (Server Sync)
+                            task.wait(0.5)
+                            
+                            -- Panggil fungsi catch protocol (Safe Mode)
+                            RunCatchProtocol(pet)
+                            
+                            -- Delay sebelum lanjut ke pet berikutnya
+                            -- Beri waktu 4-5 detik agar animasi selesai & inventory update
+                            task.wait(4.5)
+                        end
+                    end
+                end
+            end
+            
+            -- Jika tidak ada target, tunggu sebentar sebelum scan ulang
+            if not foundTarget and getgenv().AutoFarmRarity then
+                Rayfield:Notify({Title = "Mencari...", Content = "Menunggu spawn " .. getgenv().SelectRarity, Duration = 1})
+                task.wait(3)
+            end
+            
+            task.wait(1) -- Delay loop utama
+        end
+    end)
+end
 -- UI Setup
 local Section = Tab:CreateSection("Target")
 
@@ -201,9 +257,14 @@ Tab:CreateToggle({
       end
    end,
 })
+local SectionExecution = Tab:CreateSection("Eksekusi")
+
+-- 1. TOMBOL SINGLE CATCH (Hanya 1 Kali)
 Tab:CreateButton({
-   Name = "Cari & Tangkap (Safe Mode)",
+   Name = "Tangkap 1 Target (Safe Mode)",
    Callback = function()
+      Rayfield:Notify({Title = "Mode Manual", Content = "Mencari 1 target...", Duration = 2})
+      
       local folder = workspace:FindFirstChild("RoamingPets") and workspace.RoamingPets:FindFirstChild("Pets")
       if not folder then return end
       
@@ -213,6 +274,7 @@ Tab:CreateButton({
           local m = pet:GetAttribute("Mutation")
           local isTarget = false
 
+          -- Filter
           if getgenv().MutationOnly then
               if m and m ~= "None" then isTarget = true end
           elseif r == getgenv().SelectRarity then
@@ -222,36 +284,45 @@ Tab:CreateButton({
           if isTarget and (pet:IsA("Model") or pet:IsA("BasePart")) then
               found = true
               
-              -- TELEPORT LOGIC
-              local p = LocalPlayer
+              -- Teleport & Catch Sekali Saja
+              local p = game.Players.LocalPlayer
               if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                  -- Teleport sedikit di atas/samping pet agar tidak nyangkut
-                  local targetCFrame = pet:GetPivot() * CFrame.new(0, 5, 5) 
-                  p.Character.HumanoidRootPart.CFrame = targetCFrame
-                  
-                  Rayfield:Notify({Title = "Target!", Content = "Menemukan: " .. (pet:GetAttribute("Name") or "Unknown"), Duration = 2})
-                  
-                  -- DELAY PENTING UNTUK SERVER SYNC
-                  task.wait(1.5) 
-                  
-                  -- Koreksi posisi (turun ke tanah/mendekat)
-                  p.Character.HumanoidRootPart.CFrame = pet:GetPivot() * CFrame.new(0, 0, 4)
+                  p.Character.HumanoidRootPart.CFrame = pet:GetPivot() * CFrame.new(0, 5, 5)
                   task.wait(0.5)
-
-                  if getgenv().AutoCatchEnabled then
-                      RunCatchProtocol(pet)
-                  end
+                  p.Character.HumanoidRootPart.CFrame = pet:GetPivot() -- Koreksi posisi
+                  task.wait(1) -- Waktu untuk sync
+                  
+                  RunCatchProtocol(pet) -- Eksekusi
+                  
+                  Rayfield:Notify({Title = "Selesai", Content = "Target diproses.", Duration = 2})
               end
-              break -- Stop loop setelah ketemu 1
+              break -- PENTING: Perintah ini menghentikan loop setelah ketemu 1
           end
       end
       
       if not found then
-          Rayfield:Notify({Title = "Kosong", Content = "Tidak ada target sesuai kriteria.", Duration = 2})
+          Rayfield:Notify({Title = "Kosong", Content = "Tidak ada target " .. getgenv().SelectRarity, Duration = 2})
+      end
+   end,
+})
+
+-- 2. TOGGLE AUTO FARM (Looping Terus-menerus)
+Tab:CreateToggle({
+   Name = "Auto Farm Rarity Terpilih (Loop)",
+   CurrentValue = false,
+   Flag = "RarityFarmToggle", 
+   Callback = function(Value)
+      getgenv().AutoFarmRarity = Value
+      if Value then
+          Rayfield:Notify({Title = "Auto Farm ON", Content = "Mencari semua " .. getgenv().SelectRarity, Duration = 2})
+          StartRarityFarm()
+      else
+          Rayfield:Notify({Title = "Auto Farm OFF", Content = "Berhenti setelah target ini.", Duration = 2})
       end
    end,
 })
 
 Rayfield:LoadConfiguration()
+
 
 
