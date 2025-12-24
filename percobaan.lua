@@ -7,10 +7,11 @@ local Window = Rayfield:CreateWindow({
    Name = "Catch and Tame: Auto Catch",
    LoadingTitle = "Memuat Script...",
    LoadingSubtitle = "by Gemini",
+   Theme= "Bloom",
    ConfigurationSaving = {
       Enabled = true,
       FolderName = nil, 
-      FileName = "CatchAndTame_Autov5"
+      FileName = "CatchAndTame_Autov6"
    },
    Discord = {
       Enabled = false,
@@ -21,11 +22,13 @@ local Window = Rayfield:CreateWindow({
 })
 
 local Tab = Window:CreateTab("Main", 4483362458)
+local CollectTab = Window:CreateTab("Auto Collect", 4483362458)
 
 getgenv().SelectRarity = "Legendary"
 getgenv().MutationOnly = false
 getgenv().AutoCatchEnabled = true
-getgenv().DebugMode = true -- Aktifkan untuk melihat error di F9 Console
+getgenv().DebugMode = true
+getgenv().AutoCollectCash = false
 
 local rarityList = {"Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythical"}
 local Remotes = game:GetService("ReplicatedStorage"):WaitForChild("Remotes")
@@ -220,6 +223,59 @@ local function StartRarityFarm()
         end
     end)
 end
+
+local function StartAutoCollect()
+    task.spawn(function()
+        while getgenv().AutoCollectCash do
+            local p = game.Players.LocalPlayer
+            local pensFolder = workspace:FindFirstChild("PlayerPens")
+            local myPen = nil
+
+            -- 1. Cari Pen Milik Player (Berdasarkan Attribute "Owner")
+            if pensFolder then
+                for _, pen in pairs(pensFolder:GetChildren()) do
+                    -- Cek attribute Owner
+                    local ownerName = pen:GetAttribute("Owner")
+                    if ownerName == p.Name then
+                        myPen = pen
+                        break
+                    end
+                end
+            end
+
+            -- 2. Eksekusi Collect jika Pen ditemukan
+            if myPen then
+                local petsFolder = myPen:FindFirstChild("Pets")
+                if petsFolder then
+                    for _, pet in pairs(petsFolder:GetChildren()) do
+                        -- Cek status toggle biar bisa berhenti seketika
+                        if not getgenv().AutoCollectCash then break end
+                        
+                        -- Remote Argument: UUID Pet (Biasanya Nama Folder Pet = UUID)
+                        -- Menggunakan pcall agar script tidak stop jika ada error kecil
+                        pcall(function()
+                            local args = {
+                                [1] = pet.Name -- Mengambil UUID dari nama folder pet
+                            }
+                            game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("collectPetCash"):FireServer(unpack(args))
+                        end)
+                        
+                        -- Delay sangat kecil antar pet agar remote masuk (0.05 - 0.1 detik)
+                        task.wait(0.05) 
+                    end
+                end
+            else
+                -- Jika Pen belum ketemu (mungkin belum loading)
+                if getgenv().DebugMode then
+                    warn("Pen player tidak ditemukan. Pastikan sudah claim tycoon/pen.")
+                end
+            end
+
+            -- Delay sebelum scan ulang (2 detik cukup cepat)
+            task.wait(2)
+        end
+    end)
+end
 -- UI Setup
 local Section = Tab:CreateSection("Target")
 
@@ -322,7 +378,25 @@ Tab:CreateToggle({
    end,
 })
 
+-- AUTO COLLECT TAB
+local SectionCollect = CollectTab:CreateSection("Fitur Farming")
+
+CollectTab:CreateToggle({
+   Name = "Auto Collect Cash (My Pen)",
+   CurrentValue = false,
+   Flag = "AutoCollectToggle", 
+   Callback = function(Value)
+      getgenv().AutoCollectCash = Value
+      if Value then
+          Rayfield:Notify({Title = "Auto Collect ON", Content = "Mengambil cash dari Pen Anda...", Duration = 2})
+          StartAutoCollect()
+      else
+          Rayfield:Notify({Title = "Auto Collect OFF", Content = "Berhenti mengambil cash.", Duration = 2})
+      end
+   end,
+})
 Rayfield:LoadConfiguration()
+
 
 
 
