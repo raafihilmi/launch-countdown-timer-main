@@ -1,5 +1,8 @@
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
+
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
 local Window = Rayfield:CreateWindow({
    Name = "Catch and Tame: Auto Catch",
    LoadingTitle = "Memuat Script...",
@@ -7,7 +10,7 @@ local Window = Rayfield:CreateWindow({
    ConfigurationSaving = {
       Enabled = true,
       FolderName = nil, 
-      FileName = "CatchAndTame_Autov2"
+      FileName = "CatchAndTame_Autov3"
    },
    Discord = {
       Enabled = false,
@@ -17,201 +20,171 @@ local Window = Rayfield:CreateWindow({
    KeySystem = false, 
 })
 
-local Tab = Window:CreateTab("Main Features", 4483362458)
+local Tab = Window:CreateTab("Main", 4483362458)
 
--- Variabel Global
 getgenv().SelectRarity = "Legendary"
 getgenv().MutationOnly = false
-getgenv().ESPEnabled = false
-getgenv().AutoCatchEnabled = true -- Default Nyala
+getgenv().AutoCatchEnabled = true
+getgenv().DebugMode = true -- Aktifkan untuk melihat error di F9 Console
 
 local rarityList = {"Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythical"}
 local Remotes = game:GetService("ReplicatedStorage"):WaitForChild("Remotes")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
 
--- Fungsi Catch Protocol (Berdasarkan Log Remote Anda)
+-- Fungsi untuk Memegang Lasso/Alat
+local function EquipLasso()
+    local backpack = LocalPlayer:FindFirstChild("Backpack")
+    local char = LocalPlayer.Character
+    
+    if backpack and char then
+        -- Cari alat yang berhubungan dengan Lasso/Net
+        -- Sesuaikan nama alat jika di game berbeda (misal "Basic Lasso")
+        local tool = backpack:FindFirstChild("Lasso") or backpack:FindFirstChildWhichIsA("Tool")
+        
+        if tool and not char:FindFirstChild(tool.Name) then
+            char.Humanoid:EquipTool(tool)
+            task.wait(0.3) -- Tunggu animasi equip
+        end
+    end
+end
+
+-- Fungsi Catch Protocol yang Diperbaiki
 local function RunCatchProtocol(targetPet)
-    local p = game.Players.LocalPlayer
     if not targetPet or not targetPet.Parent then return end
     
-    -- Jarak aman dan arah
-    local root = p.Character.HumanoidRootPart
-    local direction = (targetPet:GetPivot().Position - root.Position).Unit
+    local char = LocalPlayer.Character
+    if not char then return end
+    local root = char:FindFirstChild("HumanoidRootPart")
     
-    -- 1. Visual Lasso (Optional tapi bagus untuk bypass anticheat visual)
-    -- Log 1: args = {[1] = 0.9, [2] = Vector3}
-    Remotes.ThrowLasso:FireServer(0.9, direction)
+    -- 1. Pastikan Pegang Alat
+    EquipLasso()
+
+    -- 2. Hitung Arah & Jarak
+    local petPivot = targetPet:GetPivot()
+    local direction = (petPivot.Position - root.Position).Unit
+    local distance = (petPivot.Position - root.Position).Magnitude
+
+    if getgenv().DebugMode then
+        print("[DEBUG] Jarak ke Pet: " .. tostring(distance))
+    end
+
+    -- Jika masih kejauhan (karena lag), jangan eksekusi
+    if distance > 20 then 
+        Rayfield:Notify({Title = "Gagal", Content = "Jarak server terlalu jauh, coba lagi.", Duration = 2})
+        return 
+    end
     
-    -- 2. Request Minigame (PENTING)
-    -- Log 2: args = {[1] = PetInstance, [2] = CFrame}
-    -- Kita gunakan CFrame pemain saat ini
-    task.wait(0.5)
-    Remotes.minigameRequest:InvokeServer(targetPet, root.CFrame)
-    Remotes.retrieveData:InvokeServer()
+    -- 3. Throw Lasso (Visual + Server Check)
+    -- Argumen [1] = 0.9 (Power/Charge), [2] = Direction Vector
+    pcall(function()
+        Remotes.ThrowLasso:FireServer(0.9, direction)
+    end)
     
-    -- 3. Visual Equip (Log 4)
-    Remotes.equipLassoVisual:InvokeServer(true)
+    task.wait(0.5) -- PENTING: Tunggu animasi lempar sedikit
+
+    -- 4. Request Minigame
+    -- Argumen: [1] = Pet Instance, [2] = CFrame Pemain
+    local success, err = pcall(function()
+        Remotes.minigameRequest:InvokeServer(targetPet, root.CFrame)
+    end)
+
+    if not success then
+        warn("[ERROR] Minigame Request Gagal: " .. tostring(err))
+        return
+    end
+
+    task.wait(0.2) -- Delay sebelum visual equip
+
+    -- 5. Visual Equip (Lasso menempel)
+    pcall(function()
+        Remotes.equipLassoVisual:InvokeServer(true)
+    end)
     
-    -- 4. Bypass Progress Bar (Log 5-9)
-    -- Mengirim paket progress secara cepat
-    local progressSteps = {0, 30, 40, 95, 100}
+    -- 6. Bypass Progress (Auto Win)
+    local progressSteps = {0, 30, 60, 90, 100} -- Dibuat lebih halus stepnya
     
     for _, prog in ipairs(progressSteps) do
         Remotes.UpdateProgress:FireServer(prog)
-        task.wait(0.1) -- Delay kecil agar terlihat "natural" tapi cepat
+        task.wait(0.15) -- Delay diperlambat sedikit agar tidak terdeteksi spam
     end
     
-    -- 5. Finalize Data (Log 10)
-    Remotes.retrieveData:InvokeServer()
-    
-    -- Catatan: Log 11 & 12 (RequestWalkPet) tidak saya masukkan otomatis
-    -- agar inventory Anda tidak berantakan dengan auto-equip setiap kali menangkap.
+    -- 7. Selesai
+    pcall(function()
+        Remotes.retrieveData:InvokeServer()
+    end)
 end
 
-local Section = Tab:CreateSection("Konfigurasi Target")
+-- UI Setup
+local Section = Tab:CreateSection("Target")
 
 Tab:CreateDropdown({
-   Name = "Pilih Rarity Target",
+   Name = "Pilih Rarity",
    Options = rarityList,
    CurrentOption = "Legendary",
-   MultipleOptions = false,
-   Flag = "RarityDropdown", 
-   Callback = function(Option)
-      getgenv().SelectRarity = Option[1]
-   end,
+   Flag = "RarityDrop", 
+   Callback = function(Opt) getgenv().SelectRarity = Opt[1] end,
 })
 
 Tab:CreateToggle({
-   Name = "Hanya Cari Mutasi (Mutation Only)",
+   Name = "Hanya Mutasi",
    CurrentValue = false,
-   Flag = "MutationToggle", 
-   Callback = function(Value)
-      getgenv().MutationOnly = Value
-   end,
+   Callback = function(Val) getgenv().MutationOnly = Val end,
 })
-
-local Section2 = Tab:CreateSection("Eksekusi & Catch")
 
 Tab:CreateToggle({
-   Name = "Auto Catch setelah Teleport",
+   Name = "Auto Catch (Setelah Teleport)",
    CurrentValue = true,
-   Flag = "AutoCatchToggle", 
-   Callback = function(Value)
-      getgenv().AutoCatchEnabled = Value
-   end,
+   Callback = function(Val) getgenv().AutoCatchEnabled = Val end,
 })
-
--- Fungsi Teleport + Trigger Catch
-local function TeleportAndCatch()
-    local p = game.Players.LocalPlayer
-    local folder = workspace:FindFirstChild("RoamingPets") and workspace.RoamingPets:FindFirstChild("Pets")
-    local foundTarget = false 
-    
-    if folder and p and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-        for _, pet in pairs(folder:GetChildren()) do
-            local petRarity = pet:GetAttribute("Rarity")
-            local petMutation = pet:GetAttribute("Mutation")
-            local isTarget = false
-            
-            if getgenv().MutationOnly then
-                if petMutation and petMutation ~= "None" then isTarget = true end
-            else
-                if petRarity == getgenv().SelectRarity then isTarget = true end
-            end
-            
-            if isTarget then
-                if pet:IsA("Model") or pet:IsA("BasePart") then
-                    -- 1. Teleport
-                    p.Character.HumanoidRootPart.CFrame = pet:GetPivot()
-                    
-                    Rayfield:Notify({
-                        Title = "Target Ditemukan!",
-                        Content = "Mencoba menangkap: " .. (pet:GetAttribute("Name") or "Unknown"),
-                        Duration = 3,
-                        Image = 4483362458,
-                    })
-                    
-                    -- Tunggu sebentar agar server sadar kita dekat pet
-                    task.wait(0.5)
-                    
-                    -- 2. Jalankan Auto Catch jika diaktifkan
-                    if getgenv().AutoCatchEnabled then
-                        RunCatchProtocol(pet)
-                        Rayfield:Notify({
-                            Title = "Selesai!",
-                            Content = "Proses penangkapan selesai.",
-                            Duration = 3,
-                            Image = 4483362458,
-                        })
-                    end
-                    
-                    foundTarget = true
-                    break 
-                end
-            end
-        end
-    end
-    
-    if not foundTarget then
-        Rayfield:Notify({
-            Title = "Tidak Ditemukan",
-            Content = "Tidak ada Pet sesuai kriteria.",
-            Duration = 3,
-            Image = 4483362458,
-        })
-    end
-end
 
 Tab:CreateButton({
-   Name = "Cari & Tangkap (Sekali)",
+   Name = "Cari & Tangkap (Safe Mode)",
    Callback = function()
-      TeleportAndCatch()
-   end,
-})
+      local folder = workspace:FindFirstChild("RoamingPets") and workspace.RoamingPets:FindFirstChild("Pets")
+      if not folder then return end
+      
+      local found = false
+      for _, pet in pairs(folder:GetChildren()) do
+          local r = pet:GetAttribute("Rarity")
+          local m = pet:GetAttribute("Mutation")
+          local isTarget = false
 
--- ESP Section (Tetap sama)
-local function UpdateESP()
-    local folder = workspace:FindFirstChild("RoamingPets") and workspace.RoamingPets:FindFirstChild("Pets")
-    if not folder then return end
-    for _, pet in pairs(folder:GetChildren()) do
-        if pet:IsA("Model") or pet:IsA("BasePart") then
-            local highlight = pet:FindFirstChild("GeminiESP")
-            if not getgenv().ESPEnabled then
-                if highlight then highlight:Destroy() end
-            else
-                if not highlight then
-                    highlight = Instance.new("Highlight")
-                    highlight.Name = "GeminiESP"
-                    highlight.FillColor = Color3.fromRGB(0, 255, 0)
-                    highlight.Parent = pet
-                end
-                local bg = pet:FindFirstChild("InfoGui") or Instance.new("BillboardGui", pet)
-                bg.Name = "InfoGui"
-                bg.Size = UDim2.new(0, 100, 0, 50)
-                bg.AlwaysOnTop = true
-                bg.Adornee = pet
-                local txt = bg:FindFirstChild("TextLabel") or Instance.new("TextLabel", bg)
-                txt.Size = UDim2.new(1,0,1,0)
-                txt.BackgroundTransparency = 1
-                txt.TextColor3 = Color3.new(1,1,1)
-                txt.Text = (pet:GetAttribute("Rarity") or "?") .. "\n" .. (pet:GetAttribute("Mutation") or "None")
-            end
-        end
-    end
-end
+          if getgenv().MutationOnly then
+              if m and m ~= "None" then isTarget = true end
+          elseif r == getgenv().SelectRarity then
+              isTarget = true
+          end
 
-Tab:CreateToggle({
-   Name = "Aktifkan ESP",
-   CurrentValue = false,
-   Flag = "ESPToggle", 
-   Callback = function(Value)
-      getgenv().ESPEnabled = Value
-      if Value then
-          task.spawn(function()
-              while getgenv().ESPEnabled do
-                  UpdateESP()
-                  task.wait(1)
+          if isTarget and (pet:IsA("Model") or pet:IsA("BasePart")) then
+              found = true
+              
+              -- TELEPORT LOGIC
+              local p = LocalPlayer
+              if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                  -- Teleport sedikit di atas/samping pet agar tidak nyangkut
+                  local targetCFrame = pet:GetPivot() * CFrame.new(0, 5, 5) 
+                  p.Character.HumanoidRootPart.CFrame = targetCFrame
+                  
+                  Rayfield:Notify({Title = "Target!", Content = "Menemukan: " .. (pet:GetAttribute("Name") or "Unknown"), Duration = 2})
+                  
+                  -- DELAY PENTING UNTUK SERVER SYNC
+                  task.wait(1.5) 
+                  
+                  -- Koreksi posisi (turun ke tanah/mendekat)
+                  p.Character.HumanoidRootPart.CFrame = pet:GetPivot() * CFrame.new(0, 0, 4)
+                  task.wait(0.5)
+
+                  if getgenv().AutoCatchEnabled then
+                      RunCatchProtocol(pet)
+                  end
               end
-          end)
+              break -- Stop loop setelah ketemu 1
+          end
+      end
+      
+      if not found then
+          Rayfield:Notify({Title = "Kosong", Content = "Tidak ada target sesuai kriteria.", Duration = 2})
       end
    end,
 })
