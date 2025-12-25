@@ -183,7 +183,17 @@ local Window =
         Icon = "door-open",
         Author = "JumantaraHub v17",
         Theme = "Peach Glow Dominant",
-        Folder = "CatchandTame_v17"
+        Folder = "CatchandTame_v17",
+        KeySystem = {                                                   
+        Note = "Key System. With platoboost.",              
+        API = {                                                     
+            { -- PlatoBoost
+                Type = "platoboost",                                
+                ServiceId = 16361, -- service id
+                Secret = "4485a80f-25df-4788-b082-5d3f19a932ac", -- platoboost secret
+            },                                                      
+        },                                                          
+    },   
     }
 )
 
@@ -1102,4 +1112,5 @@ local ThemeDropdown =
         end
     }
 )
+
 
