@@ -1,16 +1,5 @@
-local Version = "1.6.62"
-local Success, Result = pcall(function()
-    return loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/download/" .. Version .. "/main.lua"))()
-end)
-
-if not Success or not Result then
-    warn("Gagal memuat WindUI! Cek koneksi atau link.")
-    -- Opsional: Pakai link backup/latest jika versi spesifik gagal
-    Result = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
-end
-
-local WindUI = Result -- Gunakan variabel ini untuk koding selanjutnya
-print("WindUI Siap Digunakan")
+local Version = "1.6.41"
+local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/download/" .. Version .. "/main.lua"))()
 
 local Window = WindUI:CreateWindow({
    Title = "Catch and Tame: AUTO FARM",
@@ -622,6 +611,7 @@ BuyTab:Toggle({
       end
    end,
 })
+
 
 
 
