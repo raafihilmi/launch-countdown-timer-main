@@ -1,5 +1,5 @@
 local Version = "1.6.62"
-local Rayfield = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/download/" .. Version .. "/main.lua"))()
+local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/download/" .. Version .. "/main.lua"))()
 
 local Window = WindUI:CreateWindow({
    Title = "Catch and Tame: AUTO FARM",
@@ -106,7 +106,7 @@ local function RunCatchProtocol(targetPet)
 
     -- Jika masih kejauhan (karena lag), jangan eksekusi
     if distance > 20 then 
-        Rayfield:Notify({Title = "Gagal", Content = "Jarak server terlalu jauh, coba lagi.", Duration = 2})
+        WindUI:Notify({Title = "Gagal", Content = "Jarak server terlalu jauh, coba lagi.", Duration = 2})
         return 
     end
     
@@ -191,7 +191,7 @@ local function StartCandyFarm()
             
             -- Jika tidak ada pet candy tersisa, tunggu sebentar sebelum scan ulang
             if not foundTarget and getgenv().AutoFarmCandy then
-                Rayfield:Notify({Title = "Menunggu Spawn", Content = "Mencari Pet Candy...", Duration = 1})
+                WindUI:Notify({Title = "Menunggu Spawn", Content = "Mencari Pet Candy...", Duration = 1})
                 task.wait(3)
             end
             
@@ -247,7 +247,7 @@ local function StartRarityFarm()
             
             -- Jika tidak ada target, tunggu sebentar sebelum scan ulang
             if not foundTarget and getgenv().AutoFarmRarity then
-                Rayfield:Notify({Title = "Mencari...", Content = "Menunggu spawn " .. getgenv().SelectRarity, Duration = 1})
+                WindUI:Notify({Title = "Mencari...", Content = "Menunggu spawn " .. getgenv().SelectRarity, Duration = 1})
                 task.wait(3)
             end
             
@@ -433,10 +433,10 @@ Tab:CreateToggle({
    Callback = function(Value)
       getgenv().AutoFarmCandy = Value
       if Value then
-          Rayfield:Notify({Title = "Auto Farm Aktif", Content = "Mulai berburu Pet Candy...", Duration = 2})
+          WindUI:Notify({Title = "Auto Farm Aktif", Content = "Mulai berburu Pet Candy...", Duration = 2})
           StartCandyFarm()
       else
-          Rayfield:Notify({Title = "Auto Farm Stop", Content = "Berhenti setelah target saat ini.", Duration = 2})
+          WindUI:Notify({Title = "Auto Farm Stop", Content = "Berhenti setelah target saat ini.", Duration = 2})
       end
    end,
 })
@@ -448,7 +448,7 @@ local SectionExecution = Tab:Section({
 Tab:Button({
    Title = "Tangkap 1 Target (Safe Mode)",
    Callback = function()
-      Rayfield:Notify({Title = "Mode Manual", Content = "Mencari 1 target...", Duration = 2})
+      WindUI:Notify({Title = "Mode Manual", Content = "Mencari 1 target...", Duration = 2})
       
       local folder = workspace:FindFirstChild("RoamingPets") and workspace.RoamingPets:FindFirstChild("Pets")
       if not folder then return end
@@ -479,14 +479,14 @@ Tab:Button({
                   
                   RunCatchProtocol(pet) -- Eksekusi
                   
-                  Rayfield:Notify({Title = "Selesai", Content = "Target diproses.", Duration = 2})
+                  WindUI:Notify({Title = "Selesai", Content = "Target diproses.", Duration = 2})
               end
               break -- PENTING: Perintah ini menghentikan loop setelah ketemu 1
           end
       end
       
       if not found then
-          Rayfield:Notify({Title = "Kosong", Content = "Tidak ada target " .. getgenv().SelectRarity, Duration = 2})
+          WindUI:Notify({Title = "Kosong", Content = "Tidak ada target " .. getgenv().SelectRarity, Duration = 2})
       end
    end,
 })
@@ -499,10 +499,10 @@ Tab:Toggle({
    Callback = function(Value)
       getgenv().AutoFarmRarity = Value
       if Value then
-          Rayfield:Notify({Title = "Auto Farm ON", Content = "Mencari semua " .. getgenv().SelectRarity, Duration = 2})
+          WindUI:Notify({Title = "Auto Farm ON", Content = "Mencari semua " .. getgenv().SelectRarity, Duration = 2})
           StartRarityFarm()
       else
-          Rayfield:Notify({Title = "Auto Farm OFF", Content = "Berhenti setelah target ini.", Duration = 2})
+          WindUI:Notify({Title = "Auto Farm OFF", Content = "Berhenti setelah target ini.", Duration = 2})
       end
    end,
 })
@@ -519,10 +519,10 @@ CollectTab:Toggle({
    Callback = function(Value)
       getgenv().AutoCollectCash = Value
       if Value then
-          Rayfield:Notify({Title = "Auto Collect ON", Content = "Mengambil cash dari Pen Anda...", Duration = 2})
+          WindUI:Notify({Title = "Auto Collect ON", Content = "Mengambil cash dari Pen Anda...", Duration = 2})
           StartAutoCollect()
       else
-          Rayfield:Notify({Title = "Auto Collect OFF", Content = "Berhenti mengambil cash.", Duration = 2})
+          WindUI:Notify({Title = "Auto Collect OFF", Content = "Berhenti mengambil cash.", Duration = 2})
       end
    end,
 })
@@ -557,10 +557,10 @@ SellTab:Toggle({
    Callback = function(Value)
       getgenv().AutoSell = Value
       if Value then
-          Rayfield:Notify({Title = "Auto Sell ON", Content = "Mulai menjual pet terpilih...", Duration = 2})
+          WindUI:Notify({Title = "Auto Sell ON", Content = "Mulai menjual pet terpilih...", Duration = 2})
           StartAutoSell()
       else
-          Rayfield:Notify({Title = "Auto Sell OFF", Content = "Berhenti menjual.", Duration = 2})
+          WindUI:Notify({Title = "Auto Sell OFF", Content = "Berhenti menjual.", Duration = 2})
       end
    end,
 })
@@ -604,13 +604,14 @@ BuyTab:Toggle({
    Callback = function(Value)
       getgenv().AutoBuyFood = Value
       if Value then
-          Rayfield:Notify({Title = "Auto Buy ON", Content = "Membeli makanan...", Duration = 2})
+          WindUI:Notify({Title = "Auto Buy ON", Content = "Membeli makanan...", Duration = 2})
           StartAutoBuy()
       else
-          Rayfield:Notify({Title = "Auto Buy OFF", Content = "Berhenti.", Duration = 2})
+          WindUI:Notify({Title = "Auto Buy OFF", Content = "Berhenti.", Duration = 2})
       end
    end,
 })
+
 
 
 
