@@ -7,17 +7,6 @@ local Window = WindUI:CreateWindow({
    Author = "JumantaraHub v11",
    Theme= "Dark",
    Folder= "CatchandTame_v1"
-
-   KeySystem = {                                                   
-        Note = "Key System. With platoboost.",              
-        API = {                                                     
-            { -- PlatoBoost
-                Type = "platoboost",                                
-                ServiceId = 16361, -- service id
-                Secret = "4485a80f-25df-4788-b082-5d3f19a932ac", -- platoboost secret
-            },                                                      
-        },                                                          
-    },  
    })
 local Tab = Window:Tab({
     Title = "Main",
@@ -611,6 +600,7 @@ BuyTab:Toggle({
       end
    end,
 })
+
 
 
 
