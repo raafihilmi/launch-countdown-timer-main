@@ -23,7 +23,7 @@ WindUI:AddTheme({
     WindowTopbarIcon = Color3.fromHex("#474350"),
     WindowTopbarButtonIcon = Color3.fromHex("#474350"),
     
-    TabBackground = Color3.fromHex("#FECDAA"),
+    TabBackground = Color3.fromHex("#FFFFFF"),
     TabTitle = Color3.fromHex("#474350"),
     TabIcon = Color3.fromHex("#474350"),
     
@@ -998,6 +998,7 @@ local Keybind = SettingTab:Keybind({
         Window:SetToggleKey(Enum.KeyCode[v])
     end
 })
+
 
 
 
