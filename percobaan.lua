@@ -41,7 +41,11 @@ local BuyTab = Window:Tab({
     Icon = "bird", -- optional
     Locked = false,
 })
-
+local SettingTab = Window:Tab({
+    Title = "Settings",
+    Icon = "bird", -- optional
+    Locked = false,
+})
 getgenv().SelectRarity = "Legendary"
 getgenv().MutationOnly = false
 getgenv().AutoCatchEnabled = true
@@ -614,6 +618,16 @@ BuyTab:Toggle({
           WindUI:Notify({Title = "Auto Buy OFF", Content = "Berhenti.", Duration = 2})
       end
    end,
+})
+
+-- Settings
+local Keybind = SettingTab:Keybind({
+    Title = "Keybind",
+    Desc = "Keybind to open ui",
+    Value = "K",
+    Callback = function(v)
+        Window:SetToggleKey(Enum.KeyCode[v])
+    end
 })
 
 
