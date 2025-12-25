@@ -4,9 +4,9 @@ print("Wind UI Load")
 local Window = WindUI:CreateWindow({
    Title = "Catch and Tame: AUTO FARM",
    Icon = "door-open",
-   Author = "JumantaraHub v11",
+   Author = "JumantaraHub v12",
    Theme= "Dark",
-   Folder= "CatchandTame_v1"
+   Folder= "CatchandTame_v12"
    })
 local Tab = Window:Tab({
     Title = "Main",
@@ -602,6 +602,7 @@ BuyTab:Toggle({
       end
    end,
 })
+
 
 
 
