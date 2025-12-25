@@ -2,6 +2,162 @@ print("Wind UI init")
 local WindUI = loadstring(game:HttpGet("https://pastebin.com/raw/m8P8dLfd"))()
 print("Wind UI Load")
 WindUI:AddTheme({
+    Name = "Peach Glow Dominant",
+    
+    Accent = Color3.fromHex("#474350"),
+    Background = Color3.fromHex("#FECDAA"),
+    BackgroundTransparency = 0,
+    Outline = Color3.fromHex("#474350"),
+    Text = Color3.fromHex("#474350"),
+    Placeholder = Color3.fromHex("#474350"),
+    Button = Color3.fromHex("#474350"),
+    Icon = Color3.fromHex("#474350"),
+    
+    Hover = Color3.fromHex("#fafac6"),
+    
+    WindowBackground = Color3.fromHex("#FECDAA"),
+    WindowShadow = Color3.fromHex("#000000"),
+    
+    WindowTopbarTitle = Color3.fromHex("#474350"),
+    WindowTopbarAuthor = Color3.fromHex("#474350"),
+    WindowTopbarIcon = Color3.fromHex("#474350"),
+    WindowTopbarButtonIcon = Color3.fromHex("#474350"),
+    
+    TabBackground = Color3.fromHex("#FECDAA"),
+    TabTitle = Color3.fromHex("#474350"),
+    TabIcon = Color3.fromHex("#474350"),
+    
+    ElementBackground = Color3.fromHex("#f8fff4"),
+    ElementTitle = Color3.fromHex("#474350"),
+    ElementDesc = Color3.fromHex("#474350"),
+    ElementIcon = Color3.fromHex("#474350"),
+    
+    PopupBackground = Color3.fromHex("#fcffeb"),
+    PopupBackgroundTransparency = 0,
+    PopupTitle = Color3.fromHex("#474350"),
+    PopupContent = Color3.fromHex("#474350"),
+    PopupIcon = Color3.fromHex("#474350"),
+    
+    DialogBackground = Color3.fromHex("#fcffeb"),
+    DialogBackgroundTransparency = 0,
+    DialogTitle = Color3.fromHex("#474350"),
+    DialogContent = Color3.fromHex("#474350"),
+    DialogIcon = Color3.fromHex("#474350"),
+    
+    Toggle = Color3.fromHex("#474350"),
+    ToggleBar = Color3.fromHex("#fafac6"),
+    
+    Checkbox = Color3.fromHex("#474350"),
+    CheckboxIcon = Color3.fromHex("#fafac6"),
+    
+    Slider = Color3.fromHex("#474350"),
+    SliderThumb = Color3.fromHex("#fafac6"),
+})
+WindUI:AddTheme({
+    Name = "Material White",
+    
+    Accent = Color3.fromHex("#4C662B"),
+    Background = Color3.fromHex("#F9FAEF"),
+    BackgroundTransparency = 0,
+    Outline = Color3.fromHex("#75796C"),
+    Text = Color3.fromHex("#1A1C16"),
+    Placeholder = Color3.fromHex("#44483D"),
+    Button = Color3.fromHex("#CDEDA3"),
+    Icon = Color3.fromHex("#44483D"),
+    
+    Hover = Color3.fromHex("#E1E4D5"),
+    
+    WindowBackground = Color3.fromHex("#F9FAEF"),
+    WindowShadow = Color3.fromHex("#000000"),
+    
+    WindowTopbarTitle = Color3.fromHex("#1A1C16"),
+    WindowTopbarAuthor = Color3.fromHex("#44483D"),
+    WindowTopbarIcon = Color3.fromHex("#44483D"),
+    WindowTopbarButtonIcon = Color3.fromHex("#44483D"),
+    
+    TabBackground = Color3.fromHex("#F9FAEF"),
+    TabTitle = Color3.fromHex("#1A1C16"),
+    TabIcon = Color3.fromHex("#44483D"),
+    
+    ElementBackground = Color3.fromHex("#EEEFE3"),
+    ElementTitle = Color3.fromHex("#1A1C16"),
+    ElementDesc = Color3.fromHex("#44483D"),
+    ElementIcon = Color3.fromHex("#44483D"),
+    
+    PopupBackground = Color3.fromHex("#EEEFE3"),
+    PopupBackgroundTransparency = 0,
+    PopupTitle = Color3.fromHex("#1A1C16"),
+    PopupContent = Color3.fromHex("#44483D"),
+    PopupIcon = Color3.fromHex("#44483D"),
+    
+    DialogBackground = Color3.fromHex("#EEEFE3"),
+    DialogBackgroundTransparency = 0,
+    DialogTitle = Color3.fromHex("#1A1C16"),
+    DialogContent = Color3.fromHex("#44483D"),
+    DialogIcon = Color3.fromHex("#44483D"),
+    
+    Toggle = Color3.fromHex("#4C662B"),
+    ToggleBar = Color3.fromHex("#FFFFFF"),
+    
+    Checkbox = Color3.fromHex("#4C662B"),
+    CheckboxIcon = Color3.fromHex("#FFFFFF"),
+    
+    Slider = Color3.fromHex("#4C662B"),
+    SliderThumb = Color3.fromHex("#FFFFFF"),
+})
+WindUI:AddTheme({
+    Name = "Material Dark",
+    
+    Accent = Color3.fromHex("#B1D18A"),
+    Background = Color3.fromHex("#12140E"),
+    BackgroundTransparency = 0,
+    Outline = Color3.fromHex("#8F9285"),
+    Text = Color3.fromHex("#E2E3D8"),
+    Placeholder = Color3.fromHex("#C5C8BA"),
+    Button = Color3.fromHex("#354E16"),
+    Icon = Color3.fromHex("#C5C8BA"),
+    
+    Hover = Color3.fromHex("#44483D"),
+    
+    WindowBackground = Color3.fromHex("#12140E"),
+    WindowShadow = Color3.fromHex("#000000"),
+    
+    WindowTopbarTitle = Color3.fromHex("#E2E3D8"),
+    WindowTopbarAuthor = Color3.fromHex("#C5C8BA"),
+    WindowTopbarIcon = Color3.fromHex("#C5C8BA"),
+    WindowTopbarButtonIcon = Color3.fromHex("#C5C8BA"),
+    
+    TabBackground = Color3.fromHex("#12140E"),
+    TabTitle = Color3.fromHex("#E2E3D8"),
+    TabIcon = Color3.fromHex("#C5C8BA"),
+    
+    ElementBackground = Color3.fromHex("#1E201A"),
+    ElementTitle = Color3.fromHex("#E2E3D8"),
+    ElementDesc = Color3.fromHex("#C5C8BA"),
+    ElementIcon = Color3.fromHex("#C5C8BA"),
+    
+    PopupBackground = Color3.fromHex("#1E201A"),
+    PopupBackgroundTransparency = 0,
+    PopupTitle = Color3.fromHex("#E2E3D8"),
+    PopupContent = Color3.fromHex("#C5C8BA"),
+    PopupIcon = Color3.fromHex("#C5C8BA"),
+    
+    DialogBackground = Color3.fromHex("#1E201A"),
+    DialogBackgroundTransparency = 0,
+    DialogTitle = Color3.fromHex("#E2E3D8"),
+    DialogContent = Color3.fromHex("#C5C8BA"),
+    DialogIcon = Color3.fromHex("#C5C8BA"),
+    
+    Toggle = Color3.fromHex("#B1D18A"),
+    ToggleBar = Color3.fromHex("#1F3701"),
+    
+    Checkbox = Color3.fromHex("#B1D18A"),
+    CheckboxIcon = Color3.fromHex("#1F3701"),
+    
+    Slider = Color3.fromHex("#B1D18A"),
+    SliderThumb = Color3.fromHex("#FFFFFF"),
+})
+WindUI:AddTheme({
     Name = "Pacific Dark",
     
     Accent = Color3.fromHex("#58a4b0"),
@@ -57,7 +213,7 @@ local Window = WindUI:CreateWindow({
    Title = "Catch and Tame: AUTO FARM",
    Icon = "door-open",
    Author = "JumantaraHub v16",
-   Theme= "Pacific Dark",
+   Theme= "Peach Glow Dominant",
    Folder= "CatchandTame_v16"
    })
 Window:EditOpenButton({
@@ -842,6 +998,7 @@ local Keybind = SettingTab:Keybind({
         Window:SetToggleKey(Enum.KeyCode[v])
     end
 })
+
 
 
 
