@@ -715,7 +715,7 @@ local Section =
 
 Tab:Dropdown(
     {
-        Title = "Pilih Rarity",
+        Title = "Choose Rarity",
         Values = rarityList,
         Value = "Legendary",
         Multi = false,
@@ -1102,3 +1102,4 @@ local ThemeDropdown =
         end
     }
 )
+
