@@ -1,12 +1,64 @@
 print("Wind UI init")
 local WindUI = loadstring(game:HttpGet("https://pastebin.com/raw/m8P8dLfd"))()
 print("Wind UI Load")
+WindUI:AddTheme({
+    Name = "Material",
+    
+    Accent = Color3.fromHex("#B1D18A"),
+    Background = Color3.fromHex("#12140E"),
+    BackgroundTransparency = 0,
+    Outline = Color3.fromHex("#8F9285"),
+    Text = Color3.fromHex("#E2E3D8"),
+    Placeholder = Color3.fromHex("#C5C8BA"),
+    Button = Color3.fromHex("#354E16"),
+    Icon = Color3.fromHex("#C5C8BA"),
+    
+    Hover = Color3.fromHex("#44483D"),
+    
+    WindowBackground = Color3.fromHex("#12140E"),
+    WindowShadow = Color3.fromHex("#000000"),
+    
+    WindowTopbarTitle = Color3.fromHex("#E2E3D8"),
+    WindowTopbarAuthor = Color3.fromHex("#C5C8BA"),
+    WindowTopbarIcon = Color3.fromHex("#C5C8BA"),
+    WindowTopbarButtonIcon = Color3.fromHex("#C5C8BA"),
+    
+    TabBackground = Color3.fromHex("#12140E"),
+    TabTitle = Color3.fromHex("#E2E3D8"),
+    TabIcon = Color3.fromHex("#C5C8BA"),
+    
+    ElementBackground = Color3.fromHex("#1E201A"),
+    ElementTitle = Color3.fromHex("#E2E3D8"),
+    ElementDesc = Color3.fromHex("#C5C8BA"),
+    ElementIcon = Color3.fromHex("#C5C8BA"),
+    
+    PopupBackground = Color3.fromHex("#1E201A"),
+    PopupBackgroundTransparency = 0,
+    PopupTitle = Color3.fromHex("#E2E3D8"),
+    PopupContent = Color3.fromHex("#C5C8BA"),
+    PopupIcon = Color3.fromHex("#C5C8BA"),
+    
+    DialogBackground = Color3.fromHex("#1E201A"),
+    DialogBackgroundTransparency = 0,
+    DialogTitle = Color3.fromHex("#E2E3D8"),
+    DialogContent = Color3.fromHex("#C5C8BA"),
+    DialogIcon = Color3.fromHex("#C5C8BA"),
+    
+    Toggle = Color3.fromHex("#B1D18A"),
+    ToggleBar = Color3.fromHex("#1F3701"),
+    
+    Checkbox = Color3.fromHex("#B1D18A"),
+    CheckboxIcon = Color3.fromHex("#1F3701"),
+    
+    Slider = Color3.fromHex("#B1D18A"),
+    SliderThumb = Color3.fromHex("#FFFFFF"),
+})
 local Window = WindUI:CreateWindow({
    Title = "Catch and Tame: AUTO FARM",
    Icon = "door-open",
-   Author = "JumantaraHub v15",
-   Theme= "Dark",
-   Folder= "CatchandTame_v15"
+   Author = "JumantaraHub v16",
+   Theme= "Material",
+   Folder= "CatchandTame_v16"
    })
 Window:EditOpenButton({
     Title = "Open UI",
@@ -790,6 +842,7 @@ local Keybind = SettingTab:Keybind({
         Window:SetToggleKey(Enum.KeyCode[v])
     end
 })
+
 
 
 
