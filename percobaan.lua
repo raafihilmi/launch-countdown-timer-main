@@ -18,7 +18,7 @@ local Window = WindUI:CreateWindow({
             },                                                      
         },                                                          
     },  
-
+   })
 local Tab = Window:Tab({
     Title = "Main",
     Icon = "bird", -- optional
@@ -611,6 +611,7 @@ BuyTab:Toggle({
       end
    end,
 })
+
 
 
 
