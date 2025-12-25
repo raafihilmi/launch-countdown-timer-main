@@ -8,6 +8,19 @@ local Window = WindUI:CreateWindow({
    Theme= "Dark",
    Folder= "CatchandTame_v13"
    })
+Window:EditOpenButton({
+    Title = "Open UI",
+    Icon = "monitor",
+    CornerRadius = UDim.new(0,16),
+    StrokeThickness = 2,
+    Color = ColorSequence.new( -- gradient
+        Color3.fromHex("FF0F7B"), 
+        Color3.fromHex("F89B29")
+    ),
+    OnlyMobile = false,
+    Enabled = true,
+    Draggable = true,
+})
 local Tab = Window:Tab({
     Title = "Main",
     Icon = "bird", -- optional
@@ -602,6 +615,7 @@ BuyTab:Toggle({
       end
    end,
 })
+
 
 
 
