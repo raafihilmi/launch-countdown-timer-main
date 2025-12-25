@@ -392,7 +392,9 @@ local function StartAutoBuy()
     end)
 end
 -- UI Setup
-local Section = Tab:CreateSection("Target")
+local Section = Tab:Section({
+      Title = "Target",
+})
 
 Tab:Dropdown({
    Title = "Pilih Rarity",
@@ -600,6 +602,7 @@ BuyTab:Toggle({
       end
    end,
 })
+
 
 
 
