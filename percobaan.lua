@@ -1,6 +1,6 @@
-local Version = "1.6.41"
-local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/download/" .. Version .. "/main.lua"))()
-
+print("Wind UI init")
+local WindUI = loadstring(game:HttpGet("https://pastebin.com/raw/m8P8dLfd"))()
+print("Wind UI Load")
 local Window = WindUI:CreateWindow({
    Title = "Catch and Tame: AUTO FARM",
    Icon = "door-open",
@@ -600,6 +600,7 @@ BuyTab:Toggle({
       end
    end,
 })
+
 
 
 
