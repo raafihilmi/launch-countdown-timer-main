@@ -181,9 +181,9 @@ local Window =
     {
         Title = "Catch and Tame: AUTO FARM",
         Icon = "door-open",
-        Author = "JumantaraHub v17",
+        Author = "JumantaraHub v18",
         Theme = "Peach Glow Dominant",
-        Folder = "CatchandTame_v17",
+        Folder = "CatchandTame_v18",
         KeySystem = {                                                   
         Note = "Key System. With platoboost.",              
         API = {                                                     
@@ -1112,5 +1112,6 @@ local ThemeDropdown =
         end
     }
 )
+
 
 
