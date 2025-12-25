@@ -83,6 +83,9 @@ local foodList = {
     -- Tambahkan nama lain di sini jika ada
 }
 local petMap = {}
+-- Label untuk menampilkan status UUID (Placeholder, akan diupdate nanti)
+local SectionStatus = FeedTab:Section({Title = "Status Target"})
+local UUIDLabel = FeedTab:Paragraph({Title = "UUID: Belum dipilih"})
 -- Fungsi untuk Memegang Lasso/Alat
 local function EquipLasso()
     local backpack = LocalPlayer:FindFirstChild("Backpack")
@@ -712,7 +715,8 @@ FeedTab:Dropdown({
    Multi = false,
    Desc = "FeedFoodDrop", 
    Callback = function(Option)
-      getgenv().SelectedFeedFood = Option[1]
+      local val = (type(Option) == "table" and Option[1]) or Option
+      getgenv().SelectedFeedFood = val
    end,
 })
 
@@ -740,14 +744,14 @@ local PetDropdown = FeedTab:Dropdown({
           UUIDLabel:Set("UUID: " .. realUUID)
           
           -- Notifikasi
-          WindUI:Notify({Title = "Target Set", Content = "Pet ID tersimpan.", Duration = 1})
+          Rayfield:Notify({Title = "Target Set", Content = "Pet ID tersimpan.", Duration = 1})
           
           print("[DEBUG] UUID berhasil diset: ", realUUID) -- Cek di F9
       else
           warn("[DEBUG] Nama tidak ada di mapping petMap!")
           UUIDLabel:Set("UUID: Error / Refresh ulang")
       end
-   end,,
+   end,
 })
 
 -- Tombol Refresh (PENTING)
@@ -771,6 +775,7 @@ FeedTab:Toggle({
       if Value then
           if getgenv().TargetPetUUID then
              StartAutoFeed()
+             WindUI:Notify({Title = "Auto Feed ON", Content = "Makan dimulai...", Duration = 2})
           else
              WindUI:Notify({Title = "Error", Content = "Pilih Pet dulu di atas!", Duration = 2})
              -- Matikan toggle otomatis jika belum pilih pet (Visual only, butuh logic library support)
@@ -787,8 +792,6 @@ local Keybind = SettingTab:Keybind({
         Window:SetToggleKey(Enum.KeyCode[v])
     end
 })
-
-
 
 
 
