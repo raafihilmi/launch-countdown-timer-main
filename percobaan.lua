@@ -210,6 +210,13 @@ Window:EditOpenButton(
     }
 )
 
+Window:Tag({
+    Title = "Christmas Update",
+    Icon = "rss",
+    Color = Color3.fromHex("#30ff6a"),
+    Radius = 0, 
+})
+
 local Tab =
     Window:Tab(
     {
@@ -1112,6 +1119,7 @@ local ThemeDropdown =
         end
     }
 )
+
 
 
 
