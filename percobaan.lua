@@ -1007,22 +1007,7 @@ local ThemeDropdown = SettingTab:Dropdown({
         "Material Nature Light",
         "Pacific Dark",
         "Peach Glow Dominant",
-        "Dark",
-            "Light",
-            "Rose",
-            "Plant",
-            "Red",
-            "Indigo",
-            "Sky",
-            "Violet",
-            "Amber",
-            "Emerald",
-            "Midnight,
-            "Crimson",
-            "Monokai Pro",
-            "Cotton Candy",
-            "Rainbow",
-            
+        "Rainbow",
     },
     Value = "Material Nature Dark", -- Tema default saat dijalankan
     Callback = function(option)
@@ -1030,6 +1015,7 @@ local ThemeDropdown = SettingTab:Dropdown({
         WindUI:SetTheme(option)
     end
 })
+
 
 
 
