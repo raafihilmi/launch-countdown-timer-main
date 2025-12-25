@@ -2,62 +2,62 @@ print("Wind UI init")
 local WindUI = loadstring(game:HttpGet("https://pastebin.com/raw/m8P8dLfd"))()
 print("Wind UI Load")
 WindUI:AddTheme({
-    Name = "Material",
+    Name = "Pacific Dark",
     
-    Accent = Color3.fromHex("#4C662B"),
-    Background = Color3.fromHex("#F9FAEF"),
+    Accent = Color3.fromHex("#58a4b0"),
+    Background = Color3.fromHex("#2b303a"),
     BackgroundTransparency = 0,
-    Outline = Color3.fromHex("#75796C"),
-    Text = Color3.fromHex("#1A1C16"),
-    Placeholder = Color3.fromHex("#44483D"),
-    Button = Color3.fromHex("#CDEDA3"),
-    Icon = Color3.fromHex("#44483D"),
+    Outline = Color3.fromHex("#bac1b8"),
+    Text = Color3.fromHex("#bac1b8"),
+    Placeholder = Color3.fromHex("#bac1b8"),
+    Button = Color3.fromHex("#0c7c59"),
+    Icon = Color3.fromHex("#bac1b8"),
     
-    Hover = Color3.fromHex("#E1E4D5"),
+    Hover = Color3.fromHex("#d64933"),
     
-    WindowBackground = Color3.fromHex("#F9FAEF"),
+    WindowBackground = Color3.fromHex("#2b303a"),
     WindowShadow = Color3.fromHex("#000000"),
     
-    WindowTopbarTitle = Color3.fromHex("#1A1C16"),
-    WindowTopbarAuthor = Color3.fromHex("#44483D"),
-    WindowTopbarIcon = Color3.fromHex("#44483D"),
-    WindowTopbarButtonIcon = Color3.fromHex("#44483D"),
+    WindowTopbarTitle = Color3.fromHex("#bac1b8"),
+    WindowTopbarAuthor = Color3.fromHex("#bac1b8"),
+    WindowTopbarIcon = Color3.fromHex("#bac1b8"),
+    WindowTopbarButtonIcon = Color3.fromHex("#bac1b8"),
     
-    TabBackground = Color3.fromHex("#F9FAEF"),
-    TabTitle = Color3.fromHex("#1A1C16"),
-    TabIcon = Color3.fromHex("#44483D"),
+    TabBackground = Color3.fromHex("#2b303a"),
+    TabTitle = Color3.fromHex("#bac1b8"),
+    TabIcon = Color3.fromHex("#bac1b8"),
     
-    ElementBackground = Color3.fromHex("#EEEFE3"),
-    ElementTitle = Color3.fromHex("#1A1C16"),
-    ElementDesc = Color3.fromHex("#44483D"),
-    ElementIcon = Color3.fromHex("#44483D"),
+    ElementBackground = Color3.fromHex("#2b303a"),
+    ElementTitle = Color3.fromHex("#bac1b8"),
+    ElementDesc = Color3.fromHex("#bac1b8"),
+    ElementIcon = Color3.fromHex("#bac1b8"),
     
-    PopupBackground = Color3.fromHex("#EEEFE3"),
+    PopupBackground = Color3.fromHex("#2b303a"),
     PopupBackgroundTransparency = 0,
-    PopupTitle = Color3.fromHex("#1A1C16"),
-    PopupContent = Color3.fromHex("#44483D"),
-    PopupIcon = Color3.fromHex("#44483D"),
+    PopupTitle = Color3.fromHex("#bac1b8"),
+    PopupContent = Color3.fromHex("#bac1b8"),
+    PopupIcon = Color3.fromHex("#bac1b8"),
     
-    DialogBackground = Color3.fromHex("#EEEFE3"),
+    DialogBackground = Color3.fromHex("#2b303a"),
     DialogBackgroundTransparency = 0,
-    DialogTitle = Color3.fromHex("#1A1C16"),
-    DialogContent = Color3.fromHex("#44483D"),
-    DialogIcon = Color3.fromHex("#44483D"),
+    DialogTitle = Color3.fromHex("#bac1b8"),
+    DialogContent = Color3.fromHex("#bac1b8"),
+    DialogIcon = Color3.fromHex("#bac1b8"),
     
-    Toggle = Color3.fromHex("#4C662B"),
-    ToggleBar = Color3.fromHex("#FFFFFF"),
+    Toggle = Color3.fromHex("#58a4b0"),
+    ToggleBar = Color3.fromHex("#bac1b8"),
     
-    Checkbox = Color3.fromHex("#4C662B"),
-    CheckboxIcon = Color3.fromHex("#FFFFFF"),
+    Checkbox = Color3.fromHex("#58a4b0"),
+    CheckboxIcon = Color3.fromHex("#2b303a"),
     
-    Slider = Color3.fromHex("#4C662B"),
-    SliderThumb = Color3.fromHex("#FFFFFF"),
+    Slider = Color3.fromHex("#58a4b0"),
+    SliderThumb = Color3.fromHex("#d64933"),
 })
 local Window = WindUI:CreateWindow({
    Title = "Catch and Tame: AUTO FARM",
    Icon = "door-open",
    Author = "JumantaraHub v16",
-   Theme= "Material",
+   Theme= "Pacific Dark",
    Folder= "CatchandTame_v16"
    })
 Window:EditOpenButton({
@@ -842,6 +842,7 @@ local Keybind = SettingTab:Keybind({
         Window:SetToggleKey(Enum.KeyCode[v])
     end
 })
+
 
 
 
