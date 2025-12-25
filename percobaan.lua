@@ -744,7 +744,7 @@ local PetDropdown = FeedTab:Dropdown({
           UUIDLabel:Set("UUID: " .. realUUID)
           
           -- Notifikasi
-          Rayfield:Notify({Title = "Target Set", Content = "Pet ID tersimpan.", Duration = 1})
+          WindUI:Notify({Title = "Target Set", Content = "Pet ID tersimpan.", Duration = 1})
           
           print("[DEBUG] UUID berhasil diset: ", realUUID) -- Cek di F9
       else
@@ -792,6 +792,7 @@ local Keybind = SettingTab:Keybind({
         Window:SetToggleKey(Enum.KeyCode[v])
     end
 })
+
 
 
 
