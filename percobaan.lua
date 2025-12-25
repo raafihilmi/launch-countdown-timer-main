@@ -4,9 +4,9 @@ print("Wind UI Load")
 local Window = WindUI:CreateWindow({
    Title = "Catch and Tame: AUTO FARM",
    Icon = "door-open",
-   Author = "JumantaraHub v14",
+   Author = "JumantaraHub v15",
    Theme= "Dark",
-   Folder= "CatchandTame_v14"
+   Folder= "CatchandTame_v15"
    })
 Window:EditOpenButton({
     Title = "Open UI",
@@ -726,13 +726,28 @@ local PetDropdown = FeedTab:Dropdown({
    Multi = false,
    Desc = "TargetPetDrop", 
    Callback = function(Option)
-      -- Ambil UUID asli berdasarkan nama yang dipilih user
-      local selectedName = Option[1]
+      -- PERBAIKAN DI SINI: Deteksi tipe data Option
+      local selectedName = (type(Option) == "table" and Option[1]) or Option
+      
+      print("[DEBUG] User memilih nama: ", selectedName) -- Cek di F9
+      
       if petMap[selectedName] then
-          getgenv().TargetPetUUID = petMap[selectedName]
-          WindUI:Notify({Title = "Target Set", Content = "Target: " .. selectedName, Duration = 1})
+          -- Ambil UUID dari tabel
+          local realUUID = petMap[selectedName]
+          getgenv().TargetPetUUID = realUUID
+          
+          -- Update Label Visual (Bukti bahwa UUID terambil)
+          UUIDLabel:Set("UUID: " .. realUUID)
+          
+          -- Notifikasi
+          WindUI:Notify({Title = "Target Set", Content = "Pet ID tersimpan.", Duration = 1})
+          
+          print("[DEBUG] UUID berhasil diset: ", realUUID) -- Cek di F9
+      else
+          warn("[DEBUG] Nama tidak ada di mapping petMap!")
+          UUIDLabel:Set("UUID: Error / Refresh ulang")
       end
-   end,
+   end,,
 })
 
 -- Tombol Refresh (PENTING)
@@ -772,6 +787,7 @@ local Keybind = SettingTab:Keybind({
         Window:SetToggleKey(Enum.KeyCode[v])
     end
 })
+
 
 
 
