@@ -162,7 +162,7 @@ WindUI:AddTheme({
     
     Accent = Color3.fromHex("#58a4b0"),
     Background = Color3.fromHex("#2b303a"),
-    BackgroundTransparency = 0,
+    BackgroundTransparency = 1,
     Outline = Color3.fromHex("#bac1b8"),
     Text = Color3.fromHex("#bac1b8"),
     Placeholder = Color3.fromHex("#bac1b8"),
@@ -1006,7 +1006,23 @@ local ThemeDropdown = SettingTab:Dropdown({
         "Material Nature Dark",
         "Material Nature Light",
         "Pacific Dark",
-        "Peach Glow Dominant"
+        "Peach Glow Dominant",
+        "Dark",
+            "Light",
+            "Rose",
+            "Plant",
+            "Red",
+            "Indigo",
+            "Sky",
+            "Violet",
+            "Amber",
+            "Emerald",
+            "Midnight,
+            "Crimson",
+            "Monokai Pro",
+            "Cotton Candy",
+            "Rainbow",
+            
     },
     Value = "Material Nature Dark", -- Tema default saat dijalankan
     Callback = function(option)
@@ -1014,6 +1030,7 @@ local ThemeDropdown = SettingTab:Dropdown({
         WindUI:SetTheme(option)
     end
 })
+
 
 
 
