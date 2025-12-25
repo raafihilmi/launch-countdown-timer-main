@@ -707,10 +707,12 @@ local Section = Tab:Section({
 Tab:Dropdown({
    Title = "Pilih Rarity",
    Values = rarityList,
-   Value = {"Legendary"},
-   Multi = true,
+   Value = "Legendary", 
+   Multi = false,      
    Desc = "RarityDrop", 
-   Callback = function(Opt) getgenv().SelectRarity = Opt[1] end,
+   Callback = function(Option) 
+        getgenv().SelectRarity = Option 
+   end,
 })
 
 Tab:Toggle({
@@ -1027,6 +1029,7 @@ local ThemeDropdown = SettingTab:Dropdown({
         WindUI:SetTheme(option)
     end
 })
+
 
 
 
