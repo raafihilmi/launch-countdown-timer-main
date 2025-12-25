@@ -54,7 +54,7 @@ WindUI:AddTheme({
     SliderThumb = Color3.fromHex("#fafac6"),
 })
 WindUI:AddTheme({
-    Name = "Material Nature White",
+    Name = "Material Nature Light",
     
     Accent = Color3.fromHex("#4C662B"),
     Background = Color3.fromHex("#F9FAEF"),
@@ -1014,6 +1014,7 @@ local ThemeDropdown = SettingTab:Dropdown({
         WindUI:SetTheme(option)
     end
 })
+
 
 
 
