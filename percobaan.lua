@@ -54,7 +54,7 @@ WindUI:AddTheme({
     SliderThumb = Color3.fromHex("#fafac6"),
 })
 WindUI:AddTheme({
-    Name = "Material White",
+    Name = "Material Nature White",
     
     Accent = Color3.fromHex("#4C662B"),
     Background = Color3.fromHex("#F9FAEF"),
@@ -106,7 +106,7 @@ WindUI:AddTheme({
     SliderThumb = Color3.fromHex("#FFFFFF"),
 })
 WindUI:AddTheme({
-    Name = "Material Dark",
+    Name = "Material Nature Dark",
     
     Accent = Color3.fromHex("#B1D18A"),
     Background = Color3.fromHex("#12140E"),
@@ -998,6 +998,23 @@ local Keybind = SettingTab:Keybind({
         Window:SetToggleKey(Enum.KeyCode[v])
     end
 })
+
+local ThemeDropdown = SettingTab:Dropdown({
+    Title = "Select Theme",
+    Desc = "Pilih tampilan antarmuka yang diinginkan",
+    Values = {
+        "Material Nature Dark",
+        "Material Nature Light",
+        "Pacific Dark",
+        "Peach Glow Dominant"
+    },
+    Value = "Material Nature Dark", -- Tema default saat dijalankan
+    Callback = function(option)
+        -- Fungsi ini akan mengganti tema sesuai pilihan
+        WindUI:SetTheme(option)
+    end
+})
+
 
 
 
