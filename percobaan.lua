@@ -4,9 +4,9 @@ print("Wind UI Load")
 local Window = WindUI:CreateWindow({
    Title = "Catch and Tame: AUTO FARM",
    Icon = "door-open",
-   Author = "JumantaraHub v12",
+   Author = "JumantaraHub v13",
    Theme= "Dark",
-   Folder= "CatchandTame_v12"
+   Folder= "CatchandTame_v13"
    })
 local Tab = Window:Tab({
     Title = "Main",
@@ -417,7 +417,7 @@ Tab:Toggle({
    Callback = function(Val) getgenv().AutoCatchEnabled = Val end,
 })
 
-Tab:CreateToggle({
+Tab:Toggle({
    Title = "Auto Farm Event Candy (Loop)",
    Value = false,
    Desc = "CandyFarmToggle", 
@@ -602,6 +602,7 @@ BuyTab:Toggle({
       end
    end,
 })
+
 
 
 
