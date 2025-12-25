@@ -1,4 +1,5 @@
-local Rayfield = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+local Version = "1.6.62"
+local Rayfield = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/download/" .. Version .. "/main.lua"))()
 
 local Window = WindUI:CreateWindow({
    Title = "Catch and Tame: AUTO FARM",
@@ -610,6 +611,7 @@ BuyTab:Toggle({
       end
    end,
 })
+
 
 
 
