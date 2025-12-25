@@ -41,16 +41,17 @@ local BuyTab = Window:Tab({
     Icon = "bird", -- optional
     Locked = false,
 })
-local SettingTab = Window:Tab({
-    Title = "Settings",
-    Icon = "bird", -- optional
-    Locked = false,
-})
 local FeedTab = Window:Tab({
     Title = "Feed",
     Icon = "bird", -- optional
     Locked = false,
 })
+local SettingTab = Window:Tab({
+    Title = "Settings",
+    Icon = "bird", -- optional
+    Locked = false,
+})
+
 getgenv().SelectRarity = "Legendary"
 getgenv().MutationOnly = false
 getgenv().AutoCatchEnabled = true
@@ -83,9 +84,6 @@ local foodList = {
     -- Tambahkan nama lain di sini jika ada
 }
 local petMap = {}
--- Label untuk menampilkan status UUID (Placeholder, akan diupdate nanti)
-local SectionStatus = FeedTab:Section({Title = "Status Target"})
-local UUIDLabel = FeedTab:Paragraph({Title = "UUID: Belum dipilih"})
 -- Fungsi untuk Memegang Lasso/Alat
 local function EquipLasso()
     local backpack = LocalPlayer:FindFirstChild("Backpack")
@@ -792,6 +790,7 @@ local Keybind = SettingTab:Keybind({
         Window:SetToggleKey(Enum.KeyCode[v])
     end
 })
+
 
 
 
