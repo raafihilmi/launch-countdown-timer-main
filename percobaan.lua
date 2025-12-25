@@ -212,9 +212,9 @@ WindUI:AddTheme({
 local Window = WindUI:CreateWindow({
    Title = "Catch and Tame: AUTO FARM",
    Icon = "door-open",
-   Author = "JumantaraHub v16",
+   Author = "JumantaraHub v17",
    Theme= "Peach Glow Dominant",
-   Folder= "CatchandTame_v16"
+   Folder= "CatchandTame_v17"
    })
 Window:EditOpenButton({
     Title = "Open UI",
@@ -998,6 +998,7 @@ local Keybind = SettingTab:Keybind({
         Window:SetToggleKey(Enum.KeyCode[v])
     end
 })
+
 
 
 
