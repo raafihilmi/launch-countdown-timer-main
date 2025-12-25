@@ -4,9 +4,9 @@ print("Wind UI Load")
 local Window = WindUI:CreateWindow({
    Title = "Catch and Tame: AUTO FARM",
    Icon = "door-open",
-   Author = "JumantaraHub v13",
+   Author = "JumantaraHub v14",
    Theme= "Dark",
-   Folder= "CatchandTame_v13"
+   Folder= "CatchandTame_v14"
    })
 Window:EditOpenButton({
     Title = "Open UI",
@@ -46,6 +46,11 @@ local SettingTab = Window:Tab({
     Icon = "bird", -- optional
     Locked = false,
 })
+local FeedTab = Window:Tab({
+    Title = "Feed",
+    Icon = "bird", -- optional
+    Locked = false,
+})
 getgenv().SelectRarity = "Legendary"
 getgenv().MutationOnly = false
 getgenv().AutoCatchEnabled = true
@@ -63,6 +68,10 @@ getgenv().SellConfig = {
 getgenv().AutoBuyFood = false
 getgenv().SelectedFoodList = {}-- Default
 getgenv().BuyAmount = 1
+getgenv().AutoFeed = false
+getgenv().SelectedFeedFood = "Steak"
+getgenv().TargetPetUUID = nil
+
 
 local rarityList = {"Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythical"}
 local Remotes = game:GetService("ReplicatedStorage"):WaitForChild("Remotes")
@@ -73,6 +82,7 @@ local foodList = {
     "Enriched Feed", "Prime Feed", "Hay", "Bone", "Steak" 
     -- Tambahkan nama lain di sini jika ada
 }
+local petMap = {}
 -- Fungsi untuk Memegang Lasso/Alat
 local function EquipLasso()
     local backpack = LocalPlayer:FindFirstChild("Backpack")
@@ -408,6 +418,78 @@ local function StartAutoBuy()
         end
     end)
 end
+
+-- Fungsi untuk mendapatkan Pen Pemain
+local function GetMyPen()
+    local p = game.Players.LocalPlayer
+    local pensFolder = workspace:FindFirstChild("PlayerPens")
+    if pensFolder then
+        for _, pen in pairs(pensFolder:GetChildren()) do
+            if pen:GetAttribute("Owner") == p.Name then
+                return pen
+            end
+        end
+    end
+    return nil
+end
+
+-- Fungsi Memperbarui Daftar Pet untuk Dropdown
+local function UpdatePetList()
+    petMap = {} -- Reset tabel
+    local listForDropdown = {}
+    
+    local myPen = GetMyPen()
+    if myPen then
+        local petsFolder = myPen:FindFirstChild("Pets")
+        if petsFolder then
+            for _, pet in pairs(petsFolder:GetChildren()) do
+                -- Ambil atribut Name dan Level
+                local pName = pet:GetAttribute("Name") or "Unknown"
+                local pLevel = pet:GetAttribute("Level") or 0
+                
+                -- Format tampilan sesuai request: "Cat (0)"
+                local displayName = pName .. " (" .. tostring(pLevel) .. ")"
+                
+                -- Jika ada nama kembar, tambahkan sedikit pembeda agar tidak error
+                -- (Misal ada 2 Cat level 0, script perlu membedakan)
+                if petMap[displayName] then
+                    displayName = displayName .. " [" .. string.sub(pet.Name, 1, 3) .. "]"
+                end
+                
+                -- Simpan ke tabel mapping: Kunci=Tampilan, Nilai=UUID
+                petMap[displayName] = pet.Name 
+                
+                table.insert(listForDropdown, displayName)
+            end
+        end
+    end
+    
+    -- Urutkan nama abjad
+    table.sort(listForDropdown)
+    return listForDropdown
+end
+
+-- Fungsi Auto Feed Loop
+local function StartAutoFeed()
+    task.spawn(function()
+        while getgenv().AutoFeed do
+            -- Cek apakah target valid
+            if getgenv().TargetPetUUID then
+                local success, err = pcall(function()
+                    -- Path Remote
+                    local FeedRemote = game:GetService("ReplicatedStorage").Packages._Index["sleitnick_knit@1.7.0"].knit.Services.FoodService.RF.FeedPet
+                    
+                    -- Eksekusi Feed ke Target Spesifik
+                    FeedRemote:InvokeServer(getgenv().SelectedFeedFood, getgenv().TargetPetUUID)
+                end)
+            else
+                if getgenv().DebugMode then warn("Target Pet belum dipilih atau tidak valid!") end
+            end
+
+            task.wait(0.2) -- Kecepatan Feed
+        end
+    end)
+end   
 -- UI Setup
 local Section = Tab:Section({
       Title = "Target",
@@ -620,6 +702,67 @@ BuyTab:Toggle({
    end,
 })
 
+-- AUTO FEED
+local SectionConfig = FeedTab:Section({Title = "1. Pilih Makanan"})
+
+FeedTab:Dropdown({
+   Title = "Jenis Makanan",
+   Values = foodList,
+   Value = "Steak",
+   Multi = false,
+   Desc = "FeedFoodDrop", 
+   Callback = function(Option)
+      getgenv().SelectedFeedFood = Option[1]
+   end,
+})
+
+local SectionTarget = FeedTab:Section({Title ="2. Pilih Pet Target"})
+
+-- Dropdown Pet (Akan kosong saat pertama load, harus di-refresh)
+local PetDropdown = FeedTab:Dropdown({
+   Title = "Target Pet",
+   Values = {"Klik Refresh Dulu..."},
+   Value = "",
+   Multi = false,
+   Desc = "TargetPetDrop", 
+   Callback = function(Option)
+      -- Ambil UUID asli berdasarkan nama yang dipilih user
+      local selectedName = Option[1]
+      if petMap[selectedName] then
+          getgenv().TargetPetUUID = petMap[selectedName]
+          WindUI:Notify({Title = "Target Set", Content = "Target: " .. selectedName, Duration = 1})
+      end
+   end,
+})
+
+-- Tombol Refresh (PENTING)
+FeedTab:Button({
+   Title = "Refresh Daftar Pet (Klik saat ganti pet)",
+   Callback = function()
+      local newList = UpdatePetList()
+      PetDropdown:Refresh(newList) -- Update isi dropdown
+      WindUI:Notify({Title = "Updated", Content = "Daftar pet diperbarui!", Duration = 1})
+   end,
+})
+
+local SectionExec = FeedTab:Section({Title ="Eksekusi"})
+
+FeedTab:Toggle({
+   Title = "Auto Feed Target Terpilih (Loop)",
+   Value = false,
+   Desc = "AutoFeedSpecific", 
+   Callback = function(Value)
+      getgenv().AutoFeed = Value
+      if Value then
+          if getgenv().TargetPetUUID then
+             StartAutoFeed()
+          else
+             WindUI:Notify({Title = "Error", Content = "Pilih Pet dulu di atas!", Duration = 2})
+             -- Matikan toggle otomatis jika belum pilih pet (Visual only, butuh logic library support)
+          end
+      end
+   end,
+})
 -- Settings
 local Keybind = SettingTab:Keybind({
     Title = "Keybind",
@@ -629,6 +772,7 @@ local Keybind = SettingTab:Keybind({
         Window:SetToggleKey(Enum.KeyCode[v])
     end
 })
+
 
 
 
