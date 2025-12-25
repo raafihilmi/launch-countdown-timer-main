@@ -1,27 +1,43 @@
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+local Rayfield = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
 
-local Window = Rayfield:CreateWindow({
-   Name = "Catch and Tame: AUTO FARM",
-   LoadingTitle = "Memuat Script...",
-   LoadingSubtitle = "JumantaraHub v11",
-   Theme= "Ocean",
-   ConfigurationSaving = {
-      Enabled = true,
-      FolderName = nil, 
-      FileName = "CatchAndTame_Autov11"
-   },
-   Discord = {
-      Enabled = false,
-      Invite = "", 
-      RememberJoins = true 
-   },
-   KeySystem = false, 
+local Window = WindUI:CreateWindow({
+   Title = "Catch and Tame: AUTO FARM",
+   Icon = "door-open",
+   Author = "JumantaraHub v11",
+   Theme= "Dark",
+   Folder= "CatchandTame_v1"
+
+   KeySystem = {                                                   
+        Note = "Key System. With platoboost.",              
+        API = {                                                     
+            { -- PlatoBoost
+                Type = "platoboost",                                
+                ServiceId = 16361, -- service id
+                Secret = "4485a80f-25df-4788-b082-5d3f19a932ac", -- platoboost secret
+            },                                                      
+        },                                                          
+    },  
+
+local Tab = Window:Tab({
+    Title = "Main",
+    Icon = "bird", -- optional
+    Locked = false,
 })
-
-local Tab = Window:CreateTab("Main", 4483362458)
-local CollectTab = Window:CreateTab("Auto Collect", 4483362458)
-local SellTab = Window:CreateTab("Auto Sell", 4483362458)
-local BuyTab = Window:CreateTab("Auto Buy Food", 4483362458)
+local CollectTab = Window:Tab({
+    Title = "Auto Collect",
+    Icon = "bird", -- optional
+    Locked = false,
+})
+local SellTab = Window:Tab({
+    Title = "Auto Sell",
+    Icon = "bird", -- optional
+    Locked = false,
+})
+local BuyTab = Window:Tab({
+    Title = "Auto Buy Food",
+    Icon = "bird", -- optional
+    Locked = false,
+})
 
 getgenv().SelectRarity = "Legendary"
 getgenv().MutationOnly = false
@@ -388,30 +404,31 @@ end
 -- UI Setup
 local Section = Tab:CreateSection("Target")
 
-Tab:CreateDropdown({
-   Name = "Pilih Rarity",
-   Options = rarityList,
-   CurrentOption = "Legendary",
-   Flag = "RarityDrop", 
+Tab:Dropdown({
+   Title = "Pilih Rarity",
+   Values = rarityList,
+   Value = {"Legendary"},
+   Multi = true,
+   Desc = "RarityDrop", 
    Callback = function(Opt) getgenv().SelectRarity = Opt[1] end,
 })
 
-Tab:CreateToggle({
-   Name = "Hanya Mutasi",
-   CurrentValue = false,
+Tab:Toggle({
+   Title = "Hanya Mutasi",
+   Value = false,
    Callback = function(Val) getgenv().MutationOnly = Val end,
 })
 
-Tab:CreateToggle({
-   Name = "Auto Catch (Setelah Teleport)",
-   CurrentValue = true,
+Tab:Toggle({
+   Title = "Auto Catch (Setelah Teleport)",
+   Value = true,
    Callback = function(Val) getgenv().AutoCatchEnabled = Val end,
 })
 
 Tab:CreateToggle({
-   Name = "Auto Farm Event Candy (Loop)",
-   CurrentValue = false,
-   Flag = "CandyFarmToggle", 
+   Title = "Auto Farm Event Candy (Loop)",
+   Value = false,
+   Desc = "CandyFarmToggle", 
    Callback = function(Value)
       getgenv().AutoFarmCandy = Value
       if Value then
@@ -422,11 +439,13 @@ Tab:CreateToggle({
       end
    end,
 })
-local SectionExecution = Tab:CreateSection("Eksekusi")
+local SectionExecution = Tab:Section({
+         Title = "Eksekusi",
+         })
 
 -- 1. TOMBOL SINGLE CATCH (Hanya 1 Kali)
-Tab:CreateButton({
-   Name = "Tangkap 1 Target (Safe Mode)",
+Tab:Button({
+   Title = "Tangkap 1 Target (Safe Mode)",
    Callback = function()
       Rayfield:Notify({Title = "Mode Manual", Content = "Mencari 1 target...", Duration = 2})
       
@@ -472,10 +491,10 @@ Tab:CreateButton({
 })
 
 -- 2. TOGGLE AUTO FARM (Looping Terus-menerus)
-Tab:CreateToggle({
-   Name = "Auto Farm Rarity Terpilih (Loop)",
-   CurrentValue = false,
-   Flag = "RarityFarmToggle", 
+Tab:Toggle({
+   Title = "Auto Farm Rarity Terpilih (Loop)",
+   Value = false,
+   Desc = "RarityFarmToggle", 
    Callback = function(Value)
       getgenv().AutoFarmRarity = Value
       if Value then
@@ -488,12 +507,14 @@ Tab:CreateToggle({
 })
 
 -- AUTO COLLECT TAB
-local SectionCollect = CollectTab:CreateSection("Fitur Farming")
+local SectionCollect = CollectTab:Section({
+            Title = "Fitur Farming",
+})
 
-CollectTab:CreateToggle({
-   Name = "Auto Collect Cash (My Pen)",
-   CurrentValue = false,
-   Flag = "AutoCollectToggle", 
+CollectTab:Toggle({
+   Title = "Auto Collect Cash (My Pen)",
+   Value = false,
+   Desc = "AutoCollectToggle", 
    Callback = function(Value)
       getgenv().AutoCollectCash = Value
       if Value then
@@ -506,28 +527,32 @@ CollectTab:CreateToggle({
 })
 
 -- AUTO SELL TAB
-local SectionConfig = SellTab:CreateSection("Pilih Rarity untuk Dijual")
+local SectionConfig = SellTab:Section({
+         Title = "Pilih Rarity untuk Dijual",
+         })
 
 -- Loop untuk membuat Toggle setiap Rarity secara otomatis
 local rarities = {"Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythical"}
 
 for _, rarity in ipairs(rarities) do
-    SellTab:CreateToggle({
-       Name = "Jual " .. rarity,
-       CurrentValue = false,
-       Flag = "Sell" .. rarity, -- ID Unik untuk Config
+    SellTab:Toggle({
+       Title = "Jual " .. rarity,
+       Value = false,
+       Desc = "Sell" .. rarity, -- ID Unik untuk Config
        Callback = function(Value)
           getgenv().SellConfig[rarity] = Value
        end,
     })
 end
 
-local SectionAction = SellTab:CreateSection("Eksekusi")
+local SectionAction = SellTab:Section({
+            Title = "Eksekusi"
+})
 
-SellTab:CreateToggle({
-   Name = "Aktifkan Auto Sell (Loop)",
-   CurrentValue = false,
-   Flag = "AutoSellMain", 
+SellTab:Toggle({
+   Title = "Aktifkan Auto Sell (Loop)",
+   Value = false,
+   Desc = "AutoSellMain", 
    Callback = function(Value)
       getgenv().AutoSell = Value
       if Value then
@@ -540,37 +565,41 @@ SellTab:CreateToggle({
 })
 
 -- AUTO BUY FOOD TAB
-local SectionBuy = BuyTab:CreateSection("Konfigurasi Pembelian")
+local SectionBuy = BuyTab:Section({
+         Title = "Konfigurasi Pembelian"
+         })
 
-BuyTab:CreateDropdown({
-   Name = "Pilih Makanan (Bisa Lebih dari 1)",
-   Options = foodList,
-   CurrentOption = {"Apple"}, 
-   MultipleOptions = true, -- Multi Select aktif
-   Flag = "FoodDropdownMulti", 
+BuyTab:Dropdown({
+   Title = "Pilih Makanan (Bisa Lebih dari 1)",
+   Values = foodList,
+   Value = {"Apple"}, 
+   Multi = true, -- Multi Select aktif
+   Desc = "FoodDropdownMulti", 
    Callback = function(Option)
       getgenv().SelectedFoodList = Option
    end,
 })
 
-BuyTab:CreateSlider({
-   Name = "Jumlah Per Item",
-   Range = {1, 100},
-   Increment = 1,
-   Suffix = "Pcs",
-   CurrentValue = 1,
-   Flag = "BuyAmountSlider", 
+BuyTab:Slider({
+   Title = "Jumlah Per Item",
+   Value = {
+               Min = 1,
+               Max = 100,
+               Default = 5,
+            },
+   Step = 1,
+   Desc = "BuyAmountSlider", 
    Callback = function(Value)
       getgenv().BuyAmount = Value
    end,
 })
 
-local SectionExec = BuyTab:CreateSection("Eksekusi")
+local SectionExec = BuyTab:Section({Title = "Eksekusi"})
 
-BuyTab:CreateToggle({
-   Name = "Auto Buy Food (Loop)",
-   CurrentValue = false,
-   Flag = "AutoBuyToggle", 
+BuyTab:Toggle({
+   Title = "Auto Buy Food (Loop)",
+   Value = false,
+   Desc = "AutoBuyToggle", 
    Callback = function(Value)
       getgenv().AutoBuyFood = Value
       if Value then
@@ -581,7 +610,6 @@ BuyTab:CreateToggle({
       end
    end,
 })
-Rayfield:LoadConfiguration()
 
 
 
