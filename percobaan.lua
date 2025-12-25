@@ -5,7 +5,7 @@ WindUI:AddTheme({
     Name = "Peach Glow Dominant",
     
     Accent = Color3.fromHex("#474350"),
-    Background = Color3.fromHex("#FECDAA"),
+    Background = Color3.fromHex("#FFFFFF"),
     BackgroundTransparency = 0,
     Outline = Color3.fromHex("#474350"),
     Text = Color3.fromHex("#474350"),
@@ -998,6 +998,7 @@ local Keybind = SettingTab:Keybind({
         Window:SetToggleKey(Enum.KeyCode[v])
     end
 })
+
 
 
 
