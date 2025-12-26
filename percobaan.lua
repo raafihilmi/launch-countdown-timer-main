@@ -1,56 +1,13 @@
 local WindUI = loadstring(game:HttpGet("https://pastebin.com/raw/m8P8dLfd"))()
 
--- [[ THEMES CONFIGURATION ]] --
-WindUI:AddTheme({
-    Name = "Peach Glow Dominant",
-    Accent = Color3.fromHex("#474350"),
-    Background = Color3.fromHex("#FFFFFF"),
-    BackgroundTransparency = 0,
-    Outline = Color3.fromHex("#474350"),
-    Text = Color3.fromHex("#474350"),
-    Placeholder = Color3.fromHex("#474350"),
-    Button = Color3.fromHex("#474350"),
-    Icon = Color3.fromHex("#474350"),
-    Hover = Color3.fromHex("#fafac6"),
-    WindowBackground = Color3.fromHex("#FECDAA"),
-    WindowShadow = Color3.fromHex("#000000"),
-    WindowTopbarTitle = Color3.fromHex("#474350"),
-    WindowTopbarAuthor = Color3.fromHex("#474350"),
-    WindowTopbarIcon = Color3.fromHex("#474350"),
-    WindowTopbarButtonIcon = Color3.fromHex("#474350"),
-    TabBackground = Color3.fromHex("#FFFFFF"),
-    TabTitle = Color3.fromHex("#474350"),
-    TabIcon = Color3.fromHex("#474350"),
-    ElementBackground = Color3.fromHex("#f8fff4"),
-    ElementTitle = Color3.fromHex("#474350"),
-    ElementDesc = Color3.fromHex("#474350"),
-    ElementIcon = Color3.fromHex("#474350"),
-    PopupBackground = Color3.fromHex("#fcffeb"),
-    PopupBackgroundTransparency = 0,
-    PopupTitle = Color3.fromHex("#474350"),
-    PopupContent = Color3.fromHex("#474350"),
-    PopupIcon = Color3.fromHex("#474350"),
-    DialogBackground = Color3.fromHex("#fcffeb"),
-    DialogBackgroundTransparency = 0,
-    DialogTitle = Color3.fromHex("#474350"),
-    DialogContent = Color3.fromHex("#474350"),
-    DialogIcon = Color3.fromHex("#474350"),
-    Toggle = Color3.fromHex("#474350"),
-    ToggleBar = Color3.fromHex("#fafac6"),
-    Checkbox = Color3.fromHex("#474350"),
-    CheckboxIcon = Color3.fromHex("#fafac6"),
-    Slider = Color3.fromHex("#474350"),
-    SliderThumb = Color3.fromHex("#fafac6")
-})
--- (Tema lain disembunyikan agar script ringkas, Peach Glow tetap default)
 
 -- [[ MAIN WINDOW CREATION ]] --
 local Window = WindUI:CreateWindow({
     Title = "TForge",
     Icon = "gamepad-2",
-    Author = "JumantaraHub",
-    Theme = "Peach Glow Dominant",
-    Folder = "UniversalScript_v3"
+    Author = "JumantaraHub v4",
+    Theme = "Plant",
+    Folder = "UniversalScript_v4"
 })
 
 Window:EditOpenButton({
@@ -70,8 +27,11 @@ getgenv().WalkSpeedVal = 16
 getgenv().JumpPowerVal = 50
 getgenv().NoClip = false
 getgenv().ESPEnabled = false
-getgenv().AutoRun = false -- Variabel baru untuk Auto Run
+getgenv().AutoRun = false 
 getgenv().AutoAttack = false
+getgenv().AutoMine = false 
+getgenv().TargetWeaponName = "Weapon" 
+getgenv().TargetMineName = "Pickaxe" 
 
 -- [[ SERVICES ]] --
 local Players = game:GetService("Players")
@@ -213,42 +173,32 @@ local function StopRunSequence()
         ReplicatedStorage.Shared.Packages.Knit.Services.CharacterService.RF.StopRun:InvokeServer()
     end)
 end
-local function StartAutoAttack()
-    task.spawn(function()
-        while getgenv().AutoAttack do
-            local player = game.Players.LocalPlayer
-            local char = player.Character
-            local backpack = player.Backpack
-            local humanoid = char and char:FindFirstChild("Humanoid")
+local function EquipToolByName(targetName)
+    local char = LocalPlayer.Character
+    local hum = char and char:FindFirstChild("Humanoid")
+    local backpack = LocalPlayer.Backpack
 
-            if char and humanoid then
-                -- LOGIKA 1: Cek apakah sudah pegang senjata?
-                local currentTool = char:FindFirstChildWhichIsA("Tool")
-
-                -- Jika tidak ada senjata di tangan, coba ambil dari Hotbar 2 (Slot 2)
-                if not currentTool then
-                    local tools = backpack:GetChildren()
-                    -- tools[2] mengacu pada slot 2. Jika slot 2 kosong, dia akan diam.
-                    if tools[2] then 
-                        humanoid:EquipTool(tools[2])
-                        task.wait(0.2) -- Beri waktu sedikit untuk animasi equip
-                    elseif tools[1] then
-                         -- Opsional: Jika slot 2 kosong, ambil slot 1 sebagai cadangan
-                        humanoid:EquipTool(tools[1])
-                        task.wait(0.2)
-                    end
-                end
-
-                -- LOGIKA 2: Jalankan Remote Attack
-                pcall(function()
-                    local args = { "Weapon" }
-                    game:GetService("ReplicatedStorage").Shared.Packages.Knit.Services.ToolService.RF.ToolActivated:InvokeServer(unpack(args))
-                end)
-            end
-            
-            task.wait(0.1) -- Kecepatan Attack (bisa diatur)
+    if char and hum and hum.Health > 0 then
+        -- 1. Cek apakah alat sudah dipegang?
+        local toolInHand = char:FindFirstChild(targetName)
+        if toolInHand then
+            return true -- Tool sudah di tangan, SIAP.
         end
-    end)
+
+        -- 2. Jika tidak, cari di Backpack
+        local toolInBag = backpack:FindFirstChild(targetName)
+        if toolInBag then
+            -- Opsional: Lepas alat lain dulu (Unequip) agar tidak bug
+            hum:UnequipTools()
+            
+            -- Equip alat target
+            hum:EquipTool(toolInBag)
+            
+            return true -- Berhasil equip
+        end
+    end
+    
+    return false -- Tool tidak ditemukan di tangan maupun backpack
 end
 
 -- [[ TABS ]] --
@@ -257,33 +207,51 @@ local PlayerTab = Window:Tab({ Title = "Player", Icon = "user" })
 local SettingTab = Window:Tab({ Title = "Settings", Icon = "settings" })
 
 -- [[ MAIN TAB ]] --
+-- Masukan di Section Combat / Main Tab
 MainTab:Toggle({
-    Title = "Auto Click (Universal)",
+    Title = "Auto Attack",
+    Desc = "Equip 'Weapon' & Attack",
     Value = false,
     Callback = function(Value)
-        getgenv().AutoClick = Value
+        getgenv().AutoAttack = Value
+        
         if Value then
             task.spawn(function()
-                local VirtualUser = game:GetService("VirtualUser")
-                while getgenv().AutoClick do
-                    pcall(function()
-                        VirtualUser:CaptureController()
-                        VirtualUser:ClickButton1(Vector2.new(987, 132))
-                    end)
-                    task.wait(0.1)
+                while getgenv().AutoAttack do
+                    local isReady = EquipToolByName(getgenv().TargetWeaponName)
+                    
+                    if isReady then
+                        pcall(function()
+                            local args = { getgenv().TargetWeaponName }
+                            game:GetService("ReplicatedStorage").Shared.Packages.Knit.Services.ToolService.RF.ToolActivated:InvokeServer(unpack(args))
+                        end)
+                    end
+
                 end
             end)
         end
     end
 })
 MainTab:Toggle({
-    Title = "Auto Attack (Slot 2)",
-    Desc = "Auto equip slot 2 & attack",
+    Title = "Auto Mine",
+    Desc = "Equip 'Pickaxe' & Mining",
     Value = false,
     Callback = function(Value)
-        getgenv().AutoAttack = Value
+        getgenv().AutoMine = Value
+        
         if Value then
-            StartAutoAttack()
+            task.spawn(function()
+                while getgenv().AutoAttack do
+                    local isReady = EquipToolByName(getgenv().TargetMineName)
+                    
+                    if isReady then
+                        pcall(function()
+                            local args = { getgenv().TargetMineName }
+                            game:GetService("ReplicatedStorage").Shared.Packages.Knit.Services.ToolService.RF.ToolActivated:InvokeServer(unpack(args))
+                        end)
+                    end
+                end
+            end)
         end
     end
 })
@@ -364,8 +332,12 @@ SettingTab:Keybind({
 
 SettingTab:Dropdown({
     Title = "Select Theme",
-    Values = {"Peach Glow Dominant"},
-    Value = "Peach Glow Dominant",
+    Values = {
+            "Plant",
+            "Rose",
+            "Dark"
+            },
+    Value = "Planet",
     Callback = function(option)
         WindUI:SetTheme(option)
     end
@@ -381,4 +353,5 @@ task.spawn(function()
         end
     end
 end)
+
 
