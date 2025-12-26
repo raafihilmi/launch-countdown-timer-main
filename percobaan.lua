@@ -5,9 +5,9 @@ local WindUI = loadstring(game:HttpGet("https://pastebin.com/raw/m8P8dLfd"))()
 local Window = WindUI:CreateWindow({
     Title = "TForge",
     Icon = "gamepad-2",
-    Author = "JumantaraHub v8",
+    Author = "JumantaraHub v9",
     Theme = "Plant",
-    Folder = "UniversalScript_v8"
+    Folder = "UniversalScript_v9"
 })
 
 Window:EditOpenButton({
@@ -32,12 +32,14 @@ getgenv().AutoAttack = false
 getgenv().AutoMine = false
 getgenv().TargetWeaponName = "Weapon"
 getgenv().TargetMineName = "Pickaxe"
+getgenv().SelectedAreas = {}
 
 -- [[ SERVICES ]] --
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
+local TweenService = game:GetService("TweenService")
 
 -- [[ ESP FUNCTIONS ]] --
 local espHolder = Instance.new("Folder", game.CoreGui)
@@ -200,7 +202,76 @@ local function EquipToolByName(targetName)
 
     return false -- Tool tidak ditemukan di tangan maupun backpack
 end
+-- Fungsi mengambil daftar nama Area dari Workspace.Rocks
+local function GetAreaList()
+    local list = {}
+    local rocksFolder = workspace:FindFirstChild("Rocks")
+    if rocksFolder then
+        for _, folder in pairs(rocksFolder:GetChildren()) do
+            table.insert(list, folder.Name)
+        end
+    end
+    return list
+end
 
+-- Fungsi Tween (Gerak Halus)
+local function TweenTo(targetCFrame)
+    local char = LocalPlayer.Character
+    if char and char:FindFirstChild("HumanoidRootPart") then
+        local hrp = char.HumanoidRootPart
+        local dist = (hrp.Position - targetCFrame.Position).Magnitude
+        local speed = 50 -- Atur kecepatan tween di sini (makin besar makin cepat)
+        local time = dist / speed
+
+        local info = TweenInfo.new(time, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
+        local tween = TweenService:Create(hrp, info, { CFrame = targetCFrame })
+        tween:Play()
+        tween.Completed:Wait() -- Tunggu sampai sampai
+    end
+end
+
+-- Fungsi Mencari Rock di dalam Area yang dipilih
+local function FindNearestRockInSelectedAreas()
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return nil end
+
+    local nearestRock = nil
+    local minDist = math.huge
+
+    local rocksFolder = workspace:FindFirstChild("Rocks")
+    if not rocksFolder then return nil end
+
+    -- Loop area yang dipilih user
+    for _, areaName in pairs(getgenv().SelectedAreas) do
+        local area = rocksFolder:FindFirstChild(areaName)
+        if area then
+            -- Loop SpawnLocation di dalam Area
+            for _, spawnLoc in pairs(area:GetChildren()) do
+                if spawnLoc.Name == "SpawnLocation" then
+                    -- Cek logic hierarki sesuai gambar/deskripsi:
+                    -- SpawnLocation > Ada Model Rock > Ada Part/List
+                    local rockModel = spawnLoc:FindFirstChildWhichIsA("Model")
+
+                    if rockModel then
+                        -- Ambil posisi target
+                        -- Kita gunakan GetPivot() karena lebih universal untuk Model
+                        local targetCFrame = rockModel:GetPivot()
+
+                        -- Cek jarak
+                        local dist = (hrp.Position - targetCFrame.Position).Magnitude
+                        if dist < minDist then
+                            minDist = dist
+                            nearestRock = targetCFrame
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    return nearestRock
+end
 -- [[ TABS ]] --
 local MainSection = Window:Section({ Title = "Main", Icon = "swords" })
 local AutoMineTab = MainSection:Tab({ Title = "Auto Mine", Icon = "pickaxe" })
@@ -233,9 +304,30 @@ AutoFightTab:Toggle({
         end
     end
 })
+-- AUTO MINE TAB
+AutoMineTab:Dropdown({
+    Title = "Select Mining Area",
+    Values = GetAreaList(), -- Mengambil list otomatis
+    Multi = true,           -- Bisa pilih banyak area
+    Value = {},
+    Desc = "Select areas to farm",
+    Callback = function(Value)
+        getgenv().SelectedAreas = Value
+    end
+})
+
+-- Tombol Refresh jika area baru loading (Opsional)
+AutoMineTab:Button({
+    Title = "Refresh Area List",
+    Callback = function()
+        -- Kamu perlu menyimpan object dropdown ke variable jika ingin refresh,
+        -- tapi untuk simpelnya restart script jika area belum load.
+        WindUI:Notify({ Title = "Info", Content = "Please re-execute script to refresh list if needed.", Duration = 2 })
+    end
+})
 AutoMineTab:Toggle({
     Title = "Auto Mine",
-    Desc = "Equip 'Pickaxe' & Mining",
+    Desc = "Tween to Area -> Equip -> Mine",
     Value = false,
     Callback = function(Value)
         getgenv().AutoMine = Value
@@ -243,21 +335,36 @@ AutoMineTab:Toggle({
         if Value then
             task.spawn(function()
                 while getgenv().AutoMine do
-                    local isReady = EquipToolByName(getgenv().TargetMineName)
+                    -- 1. Cari Rock Terdekat di area yang dipilih
+                    local targetCFrame = FindNearestRockInSelectedAreas()
 
-                    if isReady then
-                        pcall(function()
-                            local args = { getgenv().TargetMineName }
-                            game:GetService("ReplicatedStorage").Shared.Packages.Knit.Services.ToolService.RF
-                                .ToolActivated:InvokeServer(unpack(args))
-                        end)
+                    if targetCFrame then
+                        -- 2. Tween ke lokasi (offset dikit biar ga nyangkut, misal +3 ke atas)
+                        TweenTo(targetCFrame * CFrame.new(0, 3, 0))
+
+                        -- 3. Equip Pickaxe (Pakai fungsi yang sudah kita buat sebelumnya)
+                        local isReady = EquipToolByName(getgenv().TargetMineName)
+
+                        -- 4. Eksekusi Mining
+                        if isReady then
+                            pcall(function()
+                                local args = { getgenv().TargetMineName }
+                                game:GetService("ReplicatedStorage").Shared.Packages.Knit.Services.ToolService.RF
+                                    .ToolActivated:InvokeServer(unpack(args))
+                            end)
+                        end
+                    else
+                        -- Jika tidak ada rock (mungkin belum spawn/area salah), tunggu sebentar
+                        WindUI:Notify({ Title = "Warning", Content = "No rocks found in selected area!", Duration = 1 })
+                        task.wait(2)
                     end
+
+                    task.wait(0.2) -- Loop speed
                 end
             end)
         end
     end
 })
-
 -- [[ PLAYER TAB ]] --
 local SectionMove = PlayerTab:Section({ Title = "Movement" })
 
