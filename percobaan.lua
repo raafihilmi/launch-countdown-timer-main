@@ -203,22 +203,135 @@ end
 
 -- [[ TABS ]] --
 local MainTab = Window:Tab({ Title = "Main", Icon = "swords" })
-local Section = Window:Section({
-    Title = "Section for the tabs",
-    Icon = "bird",
-    Opened = true,
+-- */  Elements Section  /* --
+local ElementsSection = Window:Section({
+    Title = "Elements",
 })
+local ConfigUsageSection = Window:Section({
+    Title = "Config Usage",
+})
+local OtherSection = Window:Section({
+    Title = "Other",
+})
+
 local PlayerTab = Window:Tab({ Title = "Player", Icon = "user" })
 local SettingTab = Window:Tab({ Title = "Settings", Icon = "settings" })
 
-Section:Toggle({
-    Title = "Example Toggle",
-    Desc = "This is an example toggle",
-    Value = false,
-    Callback = function(Value)
-        print("Example Toggle is now:", Value)
-    end
-})
+-- */  Overview Tab  /* --
+do
+    local OverviewTab = ElementsSection:Tab({
+        Title = "Overview",
+        Icon = "solar:home-2-bold",
+        IconColor = Grey,
+        IconShape = "Square",
+    })
+
+    local OverviewSection1 = OverviewTab:Section({
+        Title = "Group's Example"
+    })
+
+    local OverviewGroup1 = OverviewTab:Group({})
+
+    OverviewGroup1:Button({
+        Title = "Button 1",
+        Justify = "Center",
+        Icon = "",
+        Callback = function()
+            print(
+                "clicked button 1")
+        end
+    })
+    OverviewGroup1:Space()
+    OverviewGroup1:Button({
+        Title = "Button 2",
+        Justify = "Center",
+        Icon = "",
+        Callback = function()
+            print(
+                "clicked button 2")
+        end
+    })
+
+    OverviewTab:Space()
+
+    local OverviewGroup2 = OverviewTab:Group({})
+
+    OverviewGroup2:Button({
+        Title = "Button 1",
+        Justify = "Center",
+        Icon = "",
+        Callback = function()
+            print(
+                "clicked button 1")
+        end
+    })
+    OverviewGroup2:Space()
+    OverviewGroup2:Toggle({ Title = "Toggle 2", Callback = function(v) print("clicked toggle 2:", v) end })
+    OverviewGroup2:Space()
+    OverviewGroup2:Colorpicker({
+        Title = "Colorpicker 3",
+        Default = Color3.fromHex("#30ff6a"),
+        Callback = function(color)
+            print(color)
+        end
+    })
+
+    OverviewTab:Space()
+
+    local OverviewGroup3 = OverviewTab:Group({})
+
+
+    local OverviewSection1 = OverviewGroup3:Section({
+        Title = "Section 1",
+        Desc = "Section exampleee",
+        Box = true,
+        BoxBorder = true,
+        Opened = true,
+    })
+    OverviewSection1:Button({
+        Title = "Button 1",
+        Justify = "Center",
+        Icon = "",
+        Callback = function()
+            print(
+                "clicked button 1")
+        end
+    })
+    OverviewSection1:Space()
+    OverviewSection1:Toggle({ Title = "Toggle 2", Callback = function(v) print("clicked toggle 2:", v) end })
+
+
+    OverviewGroup3:Space()
+
+
+    local OverviewSection2 = OverviewGroup3:Section({
+        Title = "Section 2",
+        Box = true,
+        BoxBorder = true,
+        Opened = true,
+    })
+    OverviewSection2:Button({
+        Title = "Button 1",
+        Justify = "Center",
+        Icon = "",
+        Callback = function()
+            print(
+                "clicked button 1")
+        end
+    })
+    OverviewSection2:Space()
+    OverviewSection2:Button({
+        Title = "Button 2",
+        Justify = "Center",
+        Icon = "",
+        Callback = function()
+            print(
+                "clicked button 2")
+        end
+    })
+
+    --OverviewTab:Space()
+end
 -- [[ MAIN TAB ]] --
 -- Masukan di Section Combat / Main Tab
 MainTab:Toggle({
