@@ -528,37 +528,43 @@ local function GetMobOptions()
     end
 end
 
--- [[ FUNCTION: GET EQUIPMENT GUIDs ]] --
+-- [[ FUNCTION: GET EQUIPMENT GUIDs (WITH DEBUG) ]] --
 local function GetEquipmentsToSell(targetNames)
     local guids = {}
     local Knit = require(game:GetService("ReplicatedStorage").Shared.Packages.Knit)
 
-    -- Coba akses Data Pemain
     local success, PlayerController = pcall(function() return Knit.GetController("PlayerController") end)
     if success and PlayerController and PlayerController.Replica then
         local Data = PlayerController.Replica.Data
 
-        -- Kita cari di Data.Equipments (Sesuai temuan debug)
-        -- Jika kosong, fallback ke Data.Inventory.Equipments (Sesuai temuan decompiler)
+        -- Cek sumber data
         local EquipSource = Data.Equipments or (Data.Inventory and Data.Inventory.Equipments)
 
         if EquipSource then
+            -- print("[DEBUG SCAN] Memindai " .. tostring(table.concat(targetNames, ", ")) .. "...")
+
             for _, itemData in pairs(EquipSource) do
                 if type(itemData) == "table" then
-                    -- Cek Nama Item
+                    -- Cek apakah nama item ada di daftar target
                     if table.find(targetNames, itemData.Name) then
-                        -- AMBIL GUID (Ini kunci utama penjualan!)
-                        if itemData.GUID then
-                            table.insert(guids, itemData.GUID)
+                        -- Cek apakah punya GUID
+                        local id = itemData.GUID or itemData.UniqueId -- Jaga-jaga nama var beda
+
+                        if id then
+                            table.insert(guids, id)
+                            print("   ✅ Ditemukan: " .. itemData.Name .. " | ID: " .. tostring(id))
+                        else
+                            warn("   ⚠️ Item ditemukan (" .. itemData.Name .. ") tapi TIDAK ADA GUID!")
                         end
                     end
                 end
             end
+        else
+            warn("❌ [DEBUG] Gagal menemukan folder Equipments di Data Pemain!")
         end
     end
     return guids
 end
-
 -- [[ TABS ]] --
 local MainSection = Window:Section({ Title = "Main", Icon = "swords" })
 local SetupTab = MainSection:Tab({ Title = "Setup", Icon = "wrench" })
@@ -943,33 +949,57 @@ for _, categoryName in ipairs(sortedCats) do
             getgenv().CategoryConfig[categoryName].Auto = Value
 
             if Value then
+                print("🟢 [AUTO SELL STARTED] Category: " .. categoryName)
+
                 task.spawn(function()
                     while getgenv().CategoryConfig[categoryName].Auto do
                         local targetNames = getgenv().CategoryConfig[categoryName].Items
+
                         if #targetNames > 0 then
+                            print("------------------------------------------------")
+                            print("🔍 [SCAN] Mencari item untuk kategori: " .. categoryName)
+
                             -- 1. Cari GUID item di Inventory
                             local guidsToSell = GetEquipmentsToSell(targetNames)
 
                             if #guidsToSell > 0 then
+                                print("💰 [FOUND] Menemukan " .. #guidsToSell .. " item untuk dijual.")
+
                                 -- 2. Masukkan ke Basket
                                 local basket = {}
                                 for _, guid in pairs(guidsToSell) do
-                                    basket[guid] = true -- Format Basket Equipment: [GUID] = true
+                                    basket[guid] = true
                                 end
 
                                 -- 3. Jual!
-                                pcall(function()
+                                print("📤 [SENDING] Mengirim Remote SellConfirm...")
+                                local success, err = pcall(function()
                                     local args = { "SellConfirm", { ["Basket"] = basket } }
                                     game:GetService("ReplicatedStorage").Shared.Packages.Knit.Services.DialogueService
                                         .RF.RunCommand:InvokeServer(unpack(args))
                                 end)
 
-                                -- Notif kecil (opsional, matikan jika spam)
-                                -- WindUI:Notify({Title = "Sold", Content = #guidsToSell .. " items from " .. categoryName, Duration = 1})
+                                if success then
+                                    print("✅ [SUCCESS] Remote berhasil dikirim!")
+                                    WindUI:Notify({
+                                        Title = "Sold",
+                                        Content = "Sold " ..
+                                            #guidsToSell .. " " .. categoryName,
+                                        Duration = 2
+                                    })
+                                else
+                                    warn("❌ [FAILED] Gagal mengirim remote: " .. tostring(err))
+                                end
+                            else
+                                print("💤 [IDLE] Tidak ada item " .. categoryName .. " yang cocok di tas.")
                             end
+                        else
+                            warn("⚠️ [CONFIG ERROR] Anda belum memilih item apapun di dropdown " .. categoryName)
                         end
-                        task.wait(3)
+
+                        task.wait(3) -- Delay scan
                     end
+                    print("🔴 [AUTO SELL STOPPED] Category: " .. categoryName)
                 end)
             end
         end
