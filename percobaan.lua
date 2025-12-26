@@ -5,9 +5,9 @@ local WindUI = loadstring(game:HttpGet("https://pastebin.com/raw/m8P8dLfd"))()
 local Window = WindUI:CreateWindow({
     Title = "TForge",
     Icon = "gamepad-2",
-    Author = "JumantaraHub v9",
+    Author = "JumantaraHub v10",
     Theme = "Plant",
-    Folder = "UniversalScript_v9"
+    Folder = "UniversalScript_v10"
 })
 
 Window:EditOpenButton({
@@ -33,6 +33,9 @@ getgenv().AutoMine = false
 getgenv().TargetWeaponName = "Weapon"
 getgenv().TargetMineName = "Pickaxe"
 getgenv().SelectedAreas = {}
+getgenv().MineHeight = 5
+getgenv().MineDistance = 0
+getgenv().TweenSpeed = 50
 
 -- [[ SERVICES ]] --
 local Players = game:GetService("Players")
@@ -220,13 +223,19 @@ local function TweenTo(targetCFrame)
     if char and char:FindFirstChild("HumanoidRootPart") then
         local hrp = char.HumanoidRootPart
         local dist = (hrp.Position - targetCFrame.Position).Magnitude
-        local speed = 50 -- Atur kecepatan tween di sini (makin besar makin cepat)
+
+        -- MENGGUNAKAN VARIABLE GLOBAL
+        local speed = getgenv().TweenSpeed
+
+        -- Mencegah error jika speed 0 atau nil
+        if speed == nil or speed <= 0 then speed = 50 end
+
         local time = dist / speed
 
         local info = TweenInfo.new(time, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
         local tween = TweenService:Create(hrp, info, { CFrame = targetCFrame })
         tween:Play()
-        tween.Completed:Wait() -- Tunggu sampai sampai
+        tween.Completed:Wait()
     end
 end
 
@@ -335,17 +344,17 @@ AutoMineTab:Toggle({
         if Value then
             task.spawn(function()
                 while getgenv().AutoMine do
-                    -- 1. Cari Rock Terdekat di area yang dipilih
                     local targetCFrame = FindNearestRockInSelectedAreas()
 
                     if targetCFrame then
-                        -- 2. Tween ke lokasi (offset dikit biar ga nyangkut, misal +3 ke atas)
-                        TweenTo(targetCFrame * CFrame.new(0, 3, 0))
+                        -- [[ UPDATE DI SINI ]] --
+                        -- Menggunakan Height (Y) dan Distance (Z) dari Slider
+                        local finalPosition = targetCFrame * CFrame.new(0, getgenv().MineHeight, getgenv().MineDistance)
 
-                        -- 3. Equip Pickaxe (Pakai fungsi yang sudah kita buat sebelumnya)
+                        TweenTo(finalPosition)
+
                         local isReady = EquipToolByName(getgenv().TargetMineName)
 
-                        -- 4. Eksekusi Mining
                         if isReady then
                             pcall(function()
                                 local args = { getgenv().TargetMineName }
@@ -354,15 +363,43 @@ AutoMineTab:Toggle({
                             end)
                         end
                     else
-                        -- Jika tidak ada rock (mungkin belum spawn/area salah), tunggu sebentar
                         WindUI:Notify({ Title = "Warning", Content = "No rocks found in selected area!", Duration = 1 })
                         task.wait(2)
                     end
 
-                    task.wait(0.2) -- Loop speed
+                    task.wait(0.2)
                 end
             end)
         end
+    end
+})
+AutoMineTab:Slider({
+    Title = "Tween Speed",
+    Desc = "Movement Speed (Higher = Faster)",
+    Value = { Min = 10, Max = 300, Default = 50 },
+    Step = 10,
+    Callback = function(Value)
+        getgenv().TweenSpeed = Value
+    end
+})
+
+AutoMineTab:Slider({
+    Title = "Mine Height (Y Offset)",
+    Desc = "Position height above/below target",
+    Value = { Min = -10, Max = 20, Default = 5 },
+    Step = 1,
+    Callback = function(Value)
+        getgenv().MineHeight = Value
+    end
+})
+
+AutoMineTab:Slider({
+    Title = "Mine Distance (Z Offset)",
+    Desc = "Distance from center of the rock",
+    Value = { Min = -10, Max = 20, Default = 0 },
+    Step = 1,
+    Callback = function(Value)
+        getgenv().MineDistance = Value
     end
 })
 -- [[ PLAYER TAB ]] --
