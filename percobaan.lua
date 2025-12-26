@@ -449,30 +449,35 @@ AutoFightTab:Toggle({
         end
 
         if Value then
+            -- [[ UPDATE BAGIAN LOOP AUTO FARM MOBS ]] --
             task.spawn(function()
                 while getgenv().AutoFarmMobs do
-                    local targetPart = FindNearestMob() -- Fungsi baru dipanggil di sini
+                    local targetPart = FindNearestMob()
 
                     if targetPart then
                         local mobPos = targetPart.Position
 
-                        -- Logika Posisi & Attack (Sama seperti sebelumnya)
+                        -- [[ LOGIKA BARU MENGGUNAKAN GLOBAL SETUP ]] --
+                        -- Menggunakan GlobalHeight dan GlobalDistance dari Setup Tab
                         local targetPos = mobPos + Vector3.new(0, getgenv().GlobalHeight, getgenv().GlobalDistance)
 
+                        -- LookAt: Tatap Mob
                         local finalCFrame = CFrame.lookAt(targetPos, mobPos)
 
                         local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
                         if hrp then
-                            local dist = (hrp.Position - attackPos).Magnitude
+                            local dist = (hrp.Position - targetPos).Magnitude
 
-                            if dist > 3 then
+                            if dist > 3 then -- Beri toleransi dikit (3 studs)
                                 SetAnchor(false)
                                 TweenTo(finalCFrame)
                             else
+                                -- Teleport presisi & Anchor
                                 hrp.CFrame = finalCFrame
                                 SetAnchor(true)
                             end
 
+                            -- Attack
                             local isReady = EquipToolByName(getgenv().TargetWeaponName)
                             if isReady then
                                 pcall(function()
@@ -485,6 +490,7 @@ AutoFightTab:Toggle({
                     else
                         SetAnchor(false)
                     end
+                    task.wait(0.1)
                 end
                 SetAnchor(false)
             end)
