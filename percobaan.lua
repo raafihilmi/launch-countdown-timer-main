@@ -36,11 +36,11 @@ local MobDatabase = {
         "Crystal Spider", "Diamond Spider", "Prismarine Spider",
         "Common Orc", "Elite Orc", "Crystal Golem", "Yeti", "Ice Golem Boss"
     },
-    ["[DETECTED IN SERVER]"] = {} -- Placeholder untuk hasil scan manual
+    ["[DETECTED IN SERVER]"] = {}
 }
 
 -- Default Variable
-getgenv().CurrentWorld = "Island 1: Stonewake"
+getgenv().CurrentWorld = ""
 getgenv().AutoClick = false
 getgenv().WalkSpeedVal = 16
 getgenv().JumpPowerVal = 50
@@ -181,6 +181,19 @@ RunService.Stepped:Connect(function()
 end)
 
 -- [[ AUTO RUN LOGIC ]] --
+local function DetectCurrentWorld()
+    local rocks = workspace:FindFirstChild("Rocks")
+    if rocks then
+        for _, folder in pairs(rocks:GetChildren()) do
+            local n = folder.Name
+            if string.find(n, "Island3") then return "Island 3: Frostspire" end
+            if string.find(n, "Island2") then return "Island 2: Forgotten" end
+        end
+    end
+    return "Island 1: Stonewake" -- Default
+end
+getgenv().CurrentWorld = DetectCurrentWorld()
+
 local function StartAutoRun()
     task.spawn(function()
         while getgenv().AutoRun do
@@ -394,14 +407,15 @@ end
 local function GetMobOptions()
     local world = getgenv().CurrentWorld
     if world == "[DETECTED IN SERVER]" then
-        return GetMobList() -- Menggunakan fungsi scan scanner yang lama
+        return GetMobList()
     else
         return MobDatabase[world] or {}
     end
 end
+
 -- [[ TABS ]] --
 local MainSection = Window:Section({ Title = "Main", Icon = "swords" })
-local SetupTab = MainSection:Tab({ Title = "Setup", Icon = "sliders" })
+local SetupTab = MainSection:Tab({ Title = "Setup", Icon = "wrench" })
 local AutoMineTab = MainSection:Tab({ Title = "Auto Mine", Icon = "pickaxe" })
 local AutoFightTab = MainSection:Tab({ Title = "Auto Fight", Icon = "swords" })
 local PlayerTab = Window:Tab({ Title = "Player", Icon = "user" })
@@ -450,26 +464,10 @@ AutoFightTab:Dropdown({
         "Island 3: Frostspire",
         "[DETECTED IN SERVER]" -- Opsi jika ingin scan manual
     },
-    Value = "Island 1: Stonewake",
-    Desc = "Filter mob list by region",
+    Value = getgenv().CurrentWorld,
+    Desc = "Detected: " .. getgenv().CurrentWorld,
     Callback = function(Value)
         getgenv().CurrentWorld = Value
-        -- Nanti kita refresh dropdown mob di bawah
-    end
-})
-
--- 2. TOMBOL REFRESH LIST (PENTING)
--- Kita butuh tombol ini untuk "Menerapkan" pilihan World ke Dropdown Mob
-local MobDropdown -- Deklarasi dulu biar bisa dipanggil
-AutoFightTab:Button({
-    Title = "Load Mobs from World",
-    Desc = "Click this after changing World",
-    Callback = function()
-        local newList = GetMobOptions()
-        if MobDropdown then
-            MobDropdown:Refresh(newList)
-        end
-        WindUI:Notify({ Title = "List Updated", Content = "Loaded mobs for " .. getgenv().CurrentWorld, Duration = 1 })
     end
 })
 
@@ -479,7 +477,6 @@ MobDropdown = AutoFightTab:Dropdown({
     Values = MobDatabase["Island 1: Stonewake"], -- Default awal
     Multi = true,
     Value = {},
-    Desc = "Select monsters to hunt",
     Callback = function(Value)
         getgenv().SelectedMobs = Value
     end
@@ -488,7 +485,6 @@ MobDropdown = AutoFightTab:Dropdown({
 -- 4. TOGGLE UTAMA (LOGIKA STABILIZER)
 AutoFightTab:Toggle({
     Title = "Auto Farm Mobs",
-    Desc = "Tween -> Equip Weapon -> Kill",
     Value = false,
     Callback = function(Value)
         getgenv().AutoFarmMobs = Value
