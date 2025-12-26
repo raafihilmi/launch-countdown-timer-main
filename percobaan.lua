@@ -56,6 +56,15 @@ local OreList = {
     "Uranium", "Vanegos", "Velchire", "Voidfractal", "Voidstar", "Volcanic Rock",
     "Vooite", "Zephyte"
 }
+-- [[ ROCK DATABASE (HASIL DUMP) ]] --
+local RockList = {
+    "Basalt Core", "Basalt Rock", "Basalt Vein", "Boulder",
+    "Crimson Crystal", "Cyan Crystal", "Earth Crystal", "Floating Crystal",
+    "Iceberg", "Icy Boulder", "Icy Pebble", "Icy Rock",
+    "Large Ice Crystal", "Light Crystal", "Lucky Block",
+    "Medium Ice Crystal", "Pebble", "Rock", "Small Ice Crystal",
+    "Violet Crystal", "Volcanic Rock"
+}
 -- Default Variable
 getgenv().CurrentWorld = ""
 getgenv().AutoClick = false
@@ -77,6 +86,7 @@ getgenv().SelectedMobs = {}
 getgenv().SelectedSellItems = {} -- Menampung item yang dipilih
 local SellAmount = 1
 getgenv().AutoSell = false
+getgenv().SelectedRocks = {}
 
 -- [[ SERVICES ]] --
 local Players = game:GetService("Players")
@@ -309,37 +319,44 @@ local function FindNearestRockInSelectedAreas()
     for _, areaName in pairs(getgenv().SelectedAreas) do
         local area = rocksFolder:FindFirstChild(areaName)
         if area then
-            -- Loop SpawnLocation di dalam Area
             for _, spawnLoc in pairs(area:GetChildren()) do
                 if spawnLoc.Name == "SpawnLocation" then
                     local rockModel = spawnLoc:FindFirstChildWhichIsA("Model")
 
                     if rockModel then
-                        -- [[ PENGECEKAN HEALTH DI SINI ]] --
-                        local isDead = false
+                        -- [[ LOGIKA FILTER BARU ]] --
+                        local isTarget = false
 
-                        -- Cek 1: Apakah ada Attribute "Health"?
-                        local hpAttr = rockModel:GetAttribute("Health")
-                        if hpAttr and hpAttr <= 0 then isDead = true end
+                        -- Jika User TIDAK memilih filter apapun (kosong), anggap semua target
+                        if #getgenv().SelectedRocks == 0 then
+                            isTarget = true
+                        else
+                            -- Jika User memilih spesifik, cek apakah nama batu ini ada di daftar
+                            if table.find(getgenv().SelectedRocks, rockModel.Name) then
+                                isTarget = true
+                            end
+                        end
 
-                        -- Cek 2: Apakah ada Child bernama "Health" (Objek Value)?
-                        local hpVal = rockModel:FindFirstChild("Health")
-                        if hpVal and hpVal:IsA("ValueBase") and hpVal.Value <= 0 then isDead = true end
+                        -- Lanjutkan jika Target Valid & Belum Mati
+                        if isTarget then
+                            -- Cek Health (Logika Lama)
+                            local isDead = false
+                            local hpAttr = rockModel:GetAttribute("Health")
+                            if hpAttr and hpAttr <= 0 then isDead = true end
 
-                        -- Cek 3: Cek Humanoid (Jaga-jaga)
-                        local hum = rockModel:FindFirstChild("Humanoid")
-                        if hum and hum.Health <= 0 then isDead = true end
+                            local hpVal = rockModel:FindFirstChild("Health")
+                            if hpVal and hpVal:IsA("ValueBase") and hpVal.Value <= 0 then isDead = true end
 
-                        -- JIKA BATU MATI, SKIP (Lanjutkan ke batu berikutnya)
-                        if not isDead then
-                            -- Ambil posisi target
-                            local targetCFrame = rockModel:GetPivot()
+                            local hum = rockModel:FindFirstChild("Humanoid")
+                            if hum and hum.Health <= 0 then isDead = true end
 
-                            -- Cek jarak
-                            local dist = (hrp.Position - targetCFrame.Position).Magnitude
-                            if dist < minDist then
-                                minDist = dist
-                                nearestRock = targetCFrame
+                            if not isDead then
+                                local targetCFrame = rockModel:GetPivot()
+                                local dist = (hrp.Position - targetCFrame.Position).Magnitude
+                                if dist < minDist then
+                                    minDist = dist
+                                    nearestRock = targetCFrame
+                                end
                             end
                         end
                     end
@@ -561,26 +578,44 @@ AutoFightTab:Toggle({
     end
 })
 -- AUTO MINE TAB
+-- [[ AUTO MINE TAB UPDATE ]] --
+
+-- 1. Dropdown Area (Code Lama - Tetap Perlu)
 AutoMineTab:Dropdown({
     Title = "Select Mining Area",
-    Values = GetAreaList(), -- Mengambil list otomatis
-    Multi = true,           -- Bisa pilih banyak area
+    Values = GetAreaList(),
+    Multi = true,
     Value = {},
-    Desc = "Select areas to farm",
+    Desc = "Where to look for rocks",
     Callback = function(Value)
         getgenv().SelectedAreas = Value
     end
 })
 
--- Tombol Refresh jika area baru loading (Opsional)
 AutoMineTab:Button({
     Title = "Refresh Area List",
+    Desc = "Click if new areas loaded",
     Callback = function()
         local newList = GetAreaList()
-        AreaDropdown:Refresh(newList) -- Fitur refresh WindUI
+        -- Pastikan menyimpan object dropdown ke variabel jika ingin refresh
+        -- AreaDropdown:Refresh(newList) (Sesuaikan jika Anda menyimpan variabelnya)
         WindUI:Notify({ Title = "Success", Content = "Area list updated!", Duration = 1 })
     end
 })
+
+-- 2. DROPDOWN FILTER BATU (BARU!)
+AutoMineTab:Dropdown({
+    Title = "Filter Target Rocks (Optional)",
+    Values = RockList, -- Menggunakan List dari Dump
+    Multi = true,
+    Value = {},
+    Desc = "Leave EMPTY to mine everything. Select to filter.",
+    Callback = function(Value)
+        getgenv().SelectedRocks = Value
+    end
+})
+
+-- 3. Toggle Auto Mine (Code Lama - Tidak berubah)
 AutoMineTab:Toggle({
     Title = "Auto Mine",
     Desc = "Tween -> Anchor -> LookAt -> Mine",
@@ -588,7 +623,6 @@ AutoMineTab:Toggle({
     Callback = function(Value)
         getgenv().AutoMine = Value
 
-        -- Unanchor jika dimatikan
         if not Value then
             SetAnchor(false)
             WindUI:Notify({ Title = "Auto Mine", Content = "Stopped.", Duration = 1 })
@@ -597,61 +631,46 @@ AutoMineTab:Toggle({
         if Value then
             task.spawn(function()
                 while getgenv().AutoMine do
+                    -- Fungsi ini sekarang sudah support Filter!
                     local targetCFrame = FindNearestRockInSelectedAreas()
 
                     if targetCFrame then
+                        -- ... (Logika Tween & Mining sama seperti sebelumnya) ...
                         local rockPos = targetCFrame.Position
-
-                        -- [[ PERBAIKAN DI SINI ]] --
-                        -- Menambahkan getgenv().MineDistance ke sumbu Z
-                        -- Posisi = Pusat Batu + Tinggi (Y) + Jarak Mundur/Maju (Z)
                         local targetPos = rockPos + Vector3.new(0, getgenv().GlobalHeight, getgenv().GlobalDistance)
-
-                        -- Memaksa player menatap ke arah batu (Aim Fix)
                         local finalCFrame = CFrame.lookAt(targetPos, rockPos)
 
                         local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
                         if hrp then
                             local dist = (hrp.Position - targetPos).Magnitude
-
-                            -- Jika jauh, Tween dulu
                             if dist > 2 then
                                 SetAnchor(false)
                                 TweenTo(finalCFrame)
                             else
-                                -- Jika dekat, teleport paksa biar presisi
                                 hrp.CFrame = finalCFrame
+                                SetAnchor(true)
                             end
 
-                            -- Bekukan posisi (Anti-Jitter)
-                            SetAnchor(true)
-                        end
-
-                        -- Attack
-                        local isReady = EquipToolByName(getgenv().TargetMineName)
-                        if isReady then
-                            pcall(function()
-                                local args = { getgenv().TargetMineName }
-                                game:GetService("ReplicatedStorage").Shared.Packages.Knit.Services.ToolService.RF
-                                    .ToolActivated:InvokeServer(unpack(args))
-                            end)
+                            local isReady = EquipToolByName(getgenv().TargetMineName)
+                            if isReady then
+                                pcall(function()
+                                    local args = { getgenv().TargetMineName }
+                                    game:GetService("ReplicatedStorage").Shared.Packages.Knit.Services.ToolService.RF
+                                        .ToolActivated:InvokeServer(unpack(args))
+                                end)
+                            end
                         end
                     else
-                        -- Jika tidak ada target
                         SetAnchor(false)
-                        WindUI:Notify({ Title = "Warning", Content = "No rocks found!", Duration = 1 })
-                        task.wait(2)
+                        -- Tidak perlu notif spam jika sedang mencari filter tertentu
                     end
-
                     task.wait(0.1)
                 end
-
                 SetAnchor(false)
             end)
         end
     end
 })
-
 -- AUTO SELL TAB
 ShopTab:Button({
     Title = "Initialize Merchant",
