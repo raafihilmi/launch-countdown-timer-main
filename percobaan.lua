@@ -5,9 +5,9 @@ local WindUI = loadstring(game:HttpGet("https://pastebin.com/raw/m8P8dLfd"))()
 local Window = WindUI:CreateWindow({
     Title = "TForge",
     Icon = "gamepad-2",
-    Author = "JumantaraHub v13",
+    Author = "JumantaraHub v14",
     Theme = "Plant",
-    Folder = "UniversalScript_v13s"
+    Folder = "UniversalScript_v14s"
 })
 
 Window:EditOpenButton({
@@ -297,12 +297,65 @@ local function FindNearestRockInSelectedAreas()
     return nearestRock
 end
 
+-- Scan folder Living untuk mengambil nama-nama Mob (Filter Player)
+local function GetMobList()
+    local list = {}
+    local living = workspace:FindFirstChild("Living")
+    if living then
+        for _, model in pairs(living:GetChildren()) do
+            if model:IsA("Model") and model:FindFirstChild("Humanoid") then
+                -- Cek apakah Model ini adalah Player Asli?
+                if not Players:GetPlayerFromCharacter(model) then
+                    -- Jika bukan Player, berarti Mob. Masukkan ke list jika belum ada.
+                    if not table.find(list, model.Name) then
+                        table.insert(list, model.Name)
+                    end
+                end
+            end
+        end
+    end
+    return list
+end
+
+-- Mencari Mob terdekat yang HIDUP
+local function FindNearestMob()
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return nil end
+
+    local nearestMob = nil
+    local minDist = math.huge
+
+    local living = workspace:FindFirstChild("Living")
+    if living then
+        for _, mob in pairs(living:GetChildren()) do
+            -- 1. Cek Nama (Apakah ada di daftar pilihan user?)
+            if table.find(getgenv().SelectedMobs, mob.Name) then
+                local mobHum = mob:FindFirstChild("Humanoid")
+                local mobRoot = mob:FindFirstChild("HumanoidRootPart") or mob.PrimaryPart
+
+                -- 2. Cek Validitas & Darah
+                if mobHum and mobRoot and mobHum.Health > 0 then
+                    local dist = (hrp.Position - mobRoot.Position).Magnitude
+
+                    if dist < minDist then
+                        minDist = dist
+                        nearestMob = mobRoot -- Kita return RootPart-nya langsung
+                    end
+                end
+            end
+        end
+    end
+
+    return nearestMob
+end
 local function SetAnchor(state)
     local char = LocalPlayer.Character
     if char and char:FindFirstChild("HumanoidRootPart") then
         char.HumanoidRootPart.Anchored = state
     end
 end
+
 -- [[ TABS ]] --
 local MainSection = Window:Section({ Title = "Main", Icon = "swords" })
 local AutoMineTab = MainSection:Tab({ Title = "Auto Mine", Icon = "pickaxe" })
@@ -335,6 +388,110 @@ AutoFightTab:Toggle({
         end
     end
 })
+-- [[ AUTO FIGHT TAB ]] --
+
+-- 1. DROPDOWN PILIH MOB
+local MobDropdown = AutoFightTab:Dropdown({
+    Title = "Select Mobs",
+    Values = GetMobList(), -- Scan otomatis
+    Multi = true,
+    Value = {},
+    Desc = "Select monsters to hunt",
+    Callback = function(Value)
+        getgenv().SelectedMobs = Value
+    end
+})
+
+-- 2. REFRESH BUTTON (Penting karena mob spawn-nya ganti-ganti)
+AutoFightTab:Button({
+    Title = "Refresh Mob List",
+    Desc = "Click if target mob is not in list",
+    Callback = function()
+        local newList = GetMobList()
+        MobDropdown:Refresh(newList)
+        WindUI:Notify({ Title = "Success", Content = "Mob list updated!", Duration = 1 })
+    end
+})
+
+-- 3. SLIDER JARAK SERANG
+AutoFightTab:Slider({
+    Title = "Attack Distance",
+    Desc = "Distance to stop from mob",
+    Value = { Min = 0, Max = 15, Default = 4 },
+    Step = 1,
+    Callback = function(Value)
+        getgenv().MobDistance = Value
+    end
+})
+
+-- 4. TOGGLE UTAMA AUTO FARM MOBS
+AutoFightTab:Toggle({
+    Title = "Auto Farm Mobs",
+    Desc = "Tween -> Equip Weapon -> Kill",
+    Value = false,
+    Callback = function(Value)
+        getgenv().AutoFarmMobs = Value
+
+        if not Value then
+            SetAnchor(false)
+            WindUI:Notify({ Title = "Auto Farm", Content = "Stopped.", Duration = 1 })
+        end
+
+        if Value then
+            task.spawn(function()
+                while getgenv().AutoFarmMobs do
+                    local targetPart = FindNearestMob()
+
+                    if targetPart then
+                        local mobPos = targetPart.Position
+
+                        -- Logika Posisi: Di atas tanah sedikit, jarak sesuai slider
+                        -- Kita kunci Y (Height) sama dengan Mob agar tidak terbang terlalu tinggi
+                        local myPos = Vector3.new(mobPos.X, mobPos.Y, mobPos.Z)
+
+                        -- Offset mundur sedikit agar tidak menabrak badan mob (Collision)
+                        local attackPos = myPos + Vector3.new(0, 0, getgenv().MobDistance)
+
+                        -- LookAt: Tatap Mob
+                        local finalCFrame = CFrame.lookAt(attackPos, mobPos)
+
+                        local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                        if hrp then
+                            local dist = (hrp.Position - attackPos).Magnitude
+
+                            -- Jika jauh, Tween. Jika dekat, Teleport/Stay.
+                            if dist > 4 then
+                                SetAnchor(false)
+                                TweenTo(finalCFrame)
+                            else
+                                hrp.CFrame = finalCFrame
+                                SetAnchor(true) -- Bekukan agar tidak didorong musuh
+                            end
+
+                            -- Equip Weapon & Serang
+                            local isReady = EquipToolByName(getgenv().TargetWeaponName)
+                            if isReady then
+                                pcall(function()
+                                    local args = { getgenv().TargetWeaponName }
+                                    game:GetService("ReplicatedStorage").Shared.Packages.Knit.Services.ToolService.RF
+                                        .ToolActivated:InvokeServer(unpack(args))
+                                end)
+                            end
+                        end
+                    else
+                        -- Jika tidak ada target, Unanchor dan tunggu
+                        SetAnchor(false)
+                        -- Opsional: WindUI:Notify({Title = "Searching...", Content = "No mobs found", Duration = 1})
+                    end
+
+                    task.wait(0.1) -- Loop cepat
+                end
+                SetAnchor(false)
+            end)
+        end
+    end
+})
+
 -- AUTO MINE TAB
 AutoMineTab:Dropdown({
     Title = "Select Mining Area",
@@ -351,9 +508,9 @@ AutoMineTab:Dropdown({
 AutoMineTab:Button({
     Title = "Refresh Area List",
     Callback = function()
-        -- Kamu perlu menyimpan object dropdown ke variable jika ingin refresh,
-        -- tapi untuk simpelnya restart script jika area belum load.
-        WindUI:Notify({ Title = "Info", Content = "Please re-execute script to refresh list if needed.", Duration = 2 })
+        local newList = GetAreaList()
+        AreaDropdown:Refresh(newList) -- Fitur refresh WindUI
+        WindUI:Notify({ Title = "Success", Content = "Area list updated!", Duration = 1 })
     end
 })
 AutoMineTab:Toggle({
@@ -538,7 +695,7 @@ SettingTab:Dropdown({
         "Rose",
         "Dark"
     },
-    Value = "Planet",
+    Value = "Plant",
     Callback = function(option)
         WindUI:SetTheme(option)
     end
