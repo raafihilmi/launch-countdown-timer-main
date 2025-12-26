@@ -25,7 +25,7 @@ Window:EditOpenButton({
 -- [[ DATABASE MOBS ]] --
 local MobDatabase = {
     ["Island 1: Stonewake"] = {
-        "Zombie", "Delver Zombie", "Elite Zombie", "Brute Zombie"
+        "Zombie", "Delver Zombie", "EliteZombie", "Brute Zombie"
     },
     ["Island 2: Forgotten"] = {
         "Bomber", "Skeleton Rogue", "Axe Skeleton", "Deathaxe Skeleton",
