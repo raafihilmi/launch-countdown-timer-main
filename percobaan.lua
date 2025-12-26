@@ -38,7 +38,24 @@ local MobDatabase = {
     },
     ["[DETECTED IN SERVER]"] = {}
 }
-
+-- [[ DATABASE ORE LENGKAP (HASIL DUMP) ]] --
+local OreList = {
+    "Aether Lotus", "Aetherit", "Aite", "Amethyst", "Aqujade", "Arcane Crystal",
+    "Bananite", "Blue Crystal", "Boneite", "Cardboardite", "Ceyite", "Cobalt",
+    "Coinite", "Copper", "Crimson Crystal", "Crimsonite", "Cryptex", "Cuprite",
+    "Dark Boneite", "Darkryte", "Demonite", "Diamond", "Emerald", "Etherealite",
+    "Eye Ore", "Fichillium", "Fichilliumorite", "Fireite", "Frost Fossil",
+    "Galaxite", "Galestor", "Gargantuan", "Gold", "Graphite", "Grass",
+    "Green Crystal", "Heavenite", "Iceite", "Iron", "Lapis Lazuli", "Larimar",
+    "Lgarite", "Lightite", "Magenta Crystal", "Magmaite", "Malachite", "Marblite",
+    "Mistvein", "Moltenfrost", "Mosasaursit", "Mushroomite", "Mythril",
+    "Neurotite", "Obsidian", "Orange Crystal", "Platinum", "Poopite", "Pumice",
+    "Quartz", "Rainbow Crystal", "Rivalite", "Ruby", "Sanctis", "Sand Stone",
+    "Sapphire", "Scheelite", "Silver", "Slimite", "Snowite", "Starite", "Stone",
+    "Sulfur", "Suryafal", "Tide Carve", "Tin", "Titanium", "Topaz", "Tungsten",
+    "Uranium", "Vanegos", "Velchire", "Voidfractal", "Voidstar", "Volcanic Rock",
+    "Vooite", "Zephyte"
+}
 -- Default Variable
 getgenv().CurrentWorld = ""
 getgenv().AutoClick = false
@@ -56,7 +73,10 @@ getgenv().TweenSpeed = 50
 getgenv().GlobalHeight = 5
 getgenv().GlobalDistance = 0
 getgenv().AutoFarmMobs = false
-getgenv().SelectedMobs = {} --
+getgenv().SelectedMobs = {}
+getgenv().SelectedSellItems = {} -- Menampung item yang dipilih
+local SellAmount = 1
+getgenv().AutoSell = false
 
 -- [[ SERVICES ]] --
 local Players = game:GetService("Players")
@@ -418,6 +438,7 @@ local MainSection = Window:Section({ Title = "Main", Icon = "swords" })
 local SetupTab = MainSection:Tab({ Title = "Setup", Icon = "wrench" })
 local AutoMineTab = MainSection:Tab({ Title = "Auto Mine", Icon = "pickaxe" })
 local AutoFightTab = MainSection:Tab({ Title = "Auto Fight", Icon = "swords" })
+local ShopTab = Window:Tab({ Title = "Shop & Sell", Icon = "shopping-cart" })
 local PlayerTab = Window:Tab({ Title = "Player", Icon = "user" })
 local SettingTab = Window:Tab({ Title = "Settings", Icon = "settings" })
 
@@ -626,6 +647,134 @@ AutoMineTab:Toggle({
                 end
 
                 SetAnchor(false)
+            end)
+        end
+    end
+})
+
+-- AUTO SELL TAB
+ShopTab:Button({
+    Title = "Initialize Merchant",
+    Desc = "Walk & Talk to Greedy Cey (Once)",
+    Callback = function()
+        task.spawn(function()
+            -- Cari Toko & NPC
+            local shop = workspace:FindFirstChild("Shops") and workspace.Shops:FindFirstChild("Ore Seller")
+            local npc = workspace:FindFirstChild("Proximity") and workspace.Proximity:FindFirstChild("Greedy Cey")
+
+            if shop and npc then
+                SetAnchor(false)
+                WindUI:Notify({ Title = "Shop", Content = "Walking to Merchant...", Duration = 1 })
+
+                -- Tween ke Toko
+                local targetPos = shop.WorldPivot * CFrame.new(0, 0, 5)
+                local finalCFrame = CFrame.lookAt(targetPos.Position, shop.WorldPivot.Position)
+                TweenTo(finalCFrame)
+
+                -- Buka Dialog
+                task.wait(0.5)
+                pcall(function()
+                    local args = { npc }
+                    game:GetService("ReplicatedStorage").Shared.Packages.Knit.Services.ProximityService.RF.Dialogue
+                        :InvokeServer(unpack(args))
+                end)
+                WindUI:Notify({ Title = "Shop", Content = "Dialog Opened! Remote Sell Ready.", Duration = 3 })
+            else
+                WindUI:Notify({ Title = "Error", Content = "Merchant not found!", Duration = 2 })
+            end
+        end)
+    end
+})
+
+ShopTab:Section({ Title = "Bulk Selling" })
+
+-- 2. MULTI DROPDOWN ITEM (LENGKAP)
+ShopTab:Dropdown({
+    Title = "Select Items to Sell",
+    Values = OreList, -- Database Ore 86 item
+    Multi = true,     -- BISA PILIH BANYAK
+    Value = {},
+    Desc = "Select ores/stones to sell",
+    Callback = function(Value)
+        getgenv().SelectedSellItems = Value
+    end
+})
+
+ShopTab:Slider({
+    Title = "Amount Per Item",
+    Desc = "Quantity for EACH selected item",
+    Value = { Min = 1, Max = 100, Default = 1 },
+    Step = 1,
+    Callback = function(Value)
+        SellAmount = Value
+    end
+})
+
+-- 3. TOMBOL JUAL BULK (SATU REMOTE UNTUK SEMUA)
+ShopTab:Button({
+    Title = "Sell Selected Items",
+    Desc = "Sells everything in selection list",
+    Callback = function()
+        local itemsToSell = getgenv().SelectedSellItems
+
+        if #itemsToSell == 0 then
+            WindUI:Notify({ Title = "Warning", Content = "Select items first!", Duration = 2 })
+            return
+        end
+
+        -- MEMBUAT BASKET (KERANJANG)
+        -- Menggabungkan semua item pilihan menjadi satu paket
+        local basketContent = {}
+        for _, itemName in pairs(itemsToSell) do
+            basketContent[itemName] = SellAmount
+        end
+
+        pcall(function()
+            local args = {
+                [1] = "SellConfirm",
+                [2] = {
+                    ["Basket"] = basketContent
+                }
+            }
+            game:GetService("ReplicatedStorage").Shared.Packages.Knit.Services.DialogueService.RF.RunCommand
+                :InvokeServer(unpack(args))
+            WindUI:Notify({ Title = "Success", Content = "Sold selected items!", Duration = 1 })
+        end)
+    end
+})
+
+-- 4. AUTO SELL (SPAM BULK)
+ShopTab:Toggle({
+    Title = "Auto Sell Selected",
+    Desc = "Loop sell selected items",
+    Value = false,
+    Callback = function(Value)
+        getgenv().AutoSell = Value
+
+        if Value then
+            task.spawn(function()
+                while getgenv().AutoSell do
+                    local itemsToSell = getgenv().SelectedSellItems
+                    if #itemsToSell > 0 then
+                        -- Buat Basket ulang setiap loop
+                        local basketContent = {}
+                        for _, itemName in pairs(itemsToSell) do
+                            basketContent[itemName] = SellAmount
+                        end
+
+                        pcall(function()
+                            local args = {
+                                [1] = "SellConfirm",
+                                [2] = {
+                                    ["Basket"] = basketContent
+                                }
+                            }
+                            game:GetService("ReplicatedStorage").Shared.Packages.Knit.Services.DialogueService.RF
+                                .RunCommand:InvokeServer(unpack(args))
+                        end)
+                    end
+                    task.wait(1.5) -- Delay aman agar tidak dianggap spammer
+                end
             end)
         end
     end
