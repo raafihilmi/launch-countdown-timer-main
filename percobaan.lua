@@ -5,9 +5,9 @@ local WindUI = loadstring(game:HttpGet("https://pastebin.com/raw/m8P8dLfd"))()
 local Window = WindUI:CreateWindow({
     Title = "TForge",
     Icon = "gamepad-2",
-    Author = "JumantaraHub v12",
+    Author = "JumantaraHub v13",
     Theme = "Plant",
-    Folder = "UniversalScript_v12"
+    Folder = "UniversalScript_v13s"
 })
 
 Window:EditOpenButton({
@@ -347,7 +347,7 @@ AutoMineTab:Toggle({
     Callback = function(Value)
         getgenv().AutoMine = Value
 
-        -- Jika dimatikan, pastikan player jatuh kembali (Unanchor)
+        -- Unanchor jika dimatikan
         if not Value then
             SetAnchor(false)
             WindUI:Notify({ Title = "Auto Mine", Content = "Stopped.", Duration = 1 })
@@ -361,40 +361,32 @@ AutoMineTab:Toggle({
                     if targetCFrame then
                         local rockPos = targetCFrame.Position
 
-                        -- [[ LOGIKA POSISI BARU ]] --
-                        -- Kita gunakan Vector3 biasa agar "Height" selalu ke atas langit (World Space),
-                        -- bukan ke atas kepala rock (Object Space) yang mungkin miring.
-                        -- Distance kita asumsikan mundur sedikit dari batu.
+                        -- [[ PERBAIKAN DI SINI ]] --
+                        -- Menambahkan getgenv().MineDistance ke sumbu Z
+                        -- Posisi = Pusat Batu + Tinggi (Y) + Jarak Mundur/Maju (Z)
+                        local targetPos = rockPos + Vector3.new(0, getgenv().MineHeight, getgenv().MineDistance)
 
-                        -- Posisi tujuan: Posisi Batu + Tinggi (Y) + Jarak (Z/Mundur)
-                        -- Catatan: Logika jarak sederhana disini saya buat random dikit disekitar batu atau fix offset
-                        -- Tapi agar simple dan pasti, kita taruh player di atas batu persis + tinggi
-
-                        local targetPos = rockPos + Vector3.new(0, getgenv().MineHeight, 0)
-
-                        -- [[ LOGIKA ROTASI (SOLUSI MASALAH 1) ]] --
-                        -- CFrame.lookAt(PosisiKita, PosisiTarget)
-                        -- Ini memaksa player menatap langsung ke pusat batu
+                        -- Memaksa player menatap ke arah batu (Aim Fix)
                         local finalCFrame = CFrame.lookAt(targetPos, rockPos)
 
-                        -- Cek jarak dulu, kalau jauh baru Tween, kalau sudah dekat langsung teleport/diam
                         local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
                         if hrp then
                             local dist = (hrp.Position - targetPos).Magnitude
+
+                            -- Jika jauh, Tween dulu
                             if dist > 2 then
-                                SetAnchor(false) -- Lepas anchor biar bisa jalan/tween
+                                SetAnchor(false)
                                 TweenTo(finalCFrame)
                             else
-                                -- Kalau sudah dekat, paksa set posisi biar akurat menatap batu
+                                -- Jika dekat, teleport paksa biar presisi
                                 hrp.CFrame = finalCFrame
                             end
 
-                            -- [[ SOLUSI MASALAH 2 (JITTER) ]] --
-                            -- Bekukan player di udara
+                            -- Bekukan posisi (Anti-Jitter)
                             SetAnchor(true)
                         end
 
-                        -- Equip & Attack
+                        -- Attack
                         local isReady = EquipToolByName(getgenv().TargetMineName)
                         if isReady then
                             pcall(function()
@@ -410,10 +402,9 @@ AutoMineTab:Toggle({
                         task.wait(2)
                     end
 
-                    task.wait(0.1) -- Loop speed lebih cepat agar responsif
+                    task.wait(0.1)
                 end
 
-                -- Jaga-jaga jika loop pecah, unanchor
                 SetAnchor(false)
             end)
         end
