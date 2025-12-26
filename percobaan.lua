@@ -65,6 +65,60 @@ local RockList = {
     "Medium Ice Crystal", "Pebble", "Rock", "Small Ice Crystal",
     "Violet Crystal", "Volcanic Rock"
 }
+-- [[ DATABASE: EQUIPMENTS (RAW DUMP) ]] --
+local RawEquipData = {
+    ["Axe"] = { "Axe", "Battleaxe", "Curved Handle Axe", "Spade Armed Axe" },
+    ["ColossalSword"] = { "Great Sword", "Dragon Slayer", "Hammer", "Skull Crusher", "Comically Large Spoon", "Excalibur" },
+    ["Dagger"] = { "Dagger", "Falchion Knife", "Gladius Dagger", "Hook" },
+    ["Gauntlet"] = { "Ironhand", "Boxing Gloves", "Relevator", "Savage Claws" },
+    ["GreatAxe"] = { "Reaper", "Scythe", "Double Battle Axe", "Wyvern Axe", "Greater Battle Axe" },
+    ["GreatSword"] = { "Crusader Sword", "Long Sword" },
+    ["HeavyChestplate"] = { "Knight Chestplate", "Dark Knight Chestplate", "Wolf Chestplate", "Raven's Chestplate" },
+    ["HeavyHelmet"] = { "Knight Helmet", "Dark Knight Helmet", "Wolf Helmet", "Raven's Helmet" },
+    ["HeavyLeggings"] = { "Knight Leggings", "Dark Knight Leggings", "Wolf Leggings", "Raven's Leggings" },
+    ["Katana"] = { "Uchigatana", "Tachi" },
+    ["LightChestplate"] = { "Light Chestplate" },
+    ["LightHelmet"] = { "Light Helmet" },
+    ["LightLeggings"] = { "Light Leggings" },
+    ["Mace"] = { "Mace", "Spiked Mace", "Winged Mace", "Hammerhead Mace", "Grave Maker" },
+    ["MediumChestplate"] = { "Medium Chestplate", "Samurai Chestplate", "Viking Chestplate" },
+    ["MediumHelmet"] = { "Medium Helmet", "Samurai Helmet", "Viking Helmet" },
+    ["MediumLeggings"] = { "Medium Leggings", "Samurai Leggings", "Viking Leggings" },
+    ["Spear"] = { "Angelic Spear", "Demonic Spear", "Spear", "Trident" },
+    ["StraightSword"] = { "Falchion", "Gladius", "Cutlass", "Rapier", "Chaos", "Candy Cane", "Hell Slayer" }
+}
+
+-- [[ LOGIC: MERGE CATEGORIES ]] --
+local EquipmentDatabase = {}
+local MergedCategories = {
+    ["Light Armor"] = { "LightChestplate", "LightHelmet", "LightLeggings" },
+    ["Medium Armor"] = { "MediumChestplate", "MediumHelmet", "MediumLeggings" },
+}
+for cat, items in pairs(RawEquipData) do
+    local isMerged = false
+    for _, subCats in pairs(MergedCategories) do
+        if table.find(subCats, cat) then
+            isMerged = true
+            break
+        end
+    end
+    if not isMerged then
+        EquipmentDatabase[cat] = items
+    end
+end
+
+-- 2. Masukkan kategori gabungan (Armor)
+for newName, subCats in pairs(MergedCategories) do
+    EquipmentDatabase[newName] = {}
+    for _, oldCat in pairs(subCats) do
+        if RawEquipData[oldCat] then
+            for _, item in pairs(RawEquipData[oldCat]) do
+                table.insert(EquipmentDatabase[newName], item)
+            end
+        end
+    end
+    table.sort(EquipmentDatabase[newName]) -- Urutkan abjad itemnya
+end
 -- Default Variable
 getgenv().CurrentWorld = ""
 getgenv().AutoClick = false
@@ -87,6 +141,7 @@ getgenv().SelectedSellItems = {} -- Menampung item yang dipilih
 local SellAmount = 1
 getgenv().AutoSell = false
 getgenv().SelectedRocks = {}
+getgenv().SelectedSellEquips = {}
 
 -- [[ SERVICES ]] --
 local Players = game:GetService("Players")
@@ -605,6 +660,7 @@ AutoMineTab:Dropdown({
     Values = GetAreaList(),
     Multi = true,
     Value = {},
+    AllowNone = true,
     Desc = "Where to look for rocks",
     Callback = function(Value)
         getgenv().SelectedAreas = Value
@@ -774,6 +830,41 @@ ShopTab:Toggle({
         end
     end
 })
+
+-- 3. EQUIPMENT SELLING GROUP (AUTO GENERATED UI)
+local EquipGroup = ShopTab:Group({ Name = "Sell Equipment by Category" })
+
+-- Urutkan nama kategori biar rapi di UI (A-Z)
+local sortedCats = {}
+for cat in pairs(EquipmentDatabase) do table.insert(sortedCats, cat) end
+table.sort(sortedCats)
+
+for _, category in ipairs(sortedCats) do
+    local items = EquipmentDatabase[category]
+
+    -- Tentukan nilai default (Medium & Light Armor -> Pilih Semua)
+    local defaultValues = {}
+    if category == "Medium Armor" or category == "Light Armor" then
+        defaultValues = items -- Auto Select All
+    end
+
+    -- Simpan default value ke global state
+    if not getgenv().SelectedSellEquips[category] then
+        getgenv().SelectedSellEquips[category] = defaultValues
+    end
+
+    local section = EquipGroup:Section({ Title = category, Box = true, Opened = false })
+
+    section:Dropdown({
+        Title = "Items in " .. category,
+        Values = items,
+        Multi = true,
+        Value = defaultValues, -- Set default checked items
+        Callback = function(Value)
+            getgenv().SelectedSellEquips[category] = Value
+        end
+    })
+end
 -- [[ PLAYER TAB ]] --
 local SectionMove = PlayerTab:Section({ Title = "Movement" })
 
