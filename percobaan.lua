@@ -528,7 +528,7 @@ local function GetMobOptions()
     end
 end
 
--- [[ FUNCTION: GET EQUIPMENT GUIDs (WITH DEBUG) ]] --
+-- [[ FUNCTION: GET EQUIPMENT GUIDs (FIXED LOGIC) ]] --
 local function GetEquipmentsToSell(targetNames)
     local guids = {}
     local Knit = require(game:GetService("ReplicatedStorage").Shared.Packages.Knit)
@@ -537,30 +537,33 @@ local function GetEquipmentsToSell(targetNames)
     if success and PlayerController and PlayerController.Replica then
         local Data = PlayerController.Replica.Data
 
-        -- Cek sumber data
+        -- Cek sumber data (Equipments / Inventory.Equipments)
         local EquipSource = Data.Equipments or (Data.Inventory and Data.Inventory.Equipments)
 
         if EquipSource then
-            -- print("[DEBUG SCAN] Memindai " .. tostring(table.concat(targetNames, ", ")) .. "...")
+            -- print("[DEBUG SCAN] Memulai Scan Inventory...")
 
             for _, itemData in pairs(EquipSource) do
                 if type(itemData) == "table" then
-                    -- Cek apakah nama item ada di daftar target
-                    if table.find(targetNames, itemData.Name) then
-                        -- Cek apakah punya GUID
-                        local id = itemData.GUID or itemData.UniqueId -- Jaga-jaga nama var beda
+                    -- [[ PERBAIKAN LOGIKA ]] --
+                    -- Beberapa item namanya ada di properti 'Name', tapi ada juga di 'Type'
+                    local realName = itemData.Name or itemData.Type
+
+                    if realName and table.find(targetNames, realName) then
+                        -- Ambil GUID
+                        local id = itemData.GUID or itemData.UniqueId
 
                         if id then
                             table.insert(guids, id)
-                            print("   ✅ Ditemukan: " .. itemData.Name .. " | ID: " .. tostring(id))
+                            print("   ✅ Ditemukan: " .. realName .. " | ID: " .. tostring(id))
                         else
-                            warn("   ⚠️ Item ditemukan (" .. itemData.Name .. ") tapi TIDAK ADA GUID!")
+                            warn("   ⚠️ Item ditemukan (" .. realName .. ") tapi TIDAK ADA GUID!")
                         end
                     end
                 end
             end
         else
-            warn("❌ [DEBUG] Gagal menemukan folder Equipments di Data Pemain!")
+            warn("❌ [DEBUG] Gagal menemukan folder Equipments!")
         end
     end
     return guids
