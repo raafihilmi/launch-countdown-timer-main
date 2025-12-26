@@ -5,9 +5,9 @@ local WindUI = loadstring(game:HttpGet("https://pastebin.com/raw/m8P8dLfd"))()
 local Window = WindUI:CreateWindow({
     Title = "TForge",
     Icon = "gamepad-2",
-    Author = "JumantaraHub v4",
+    Author = "JumantaraHub v5",
     Theme = "Plant",
-    Folder = "UniversalScript_v4"
+    Folder = "UniversalScript_v5"
 })
 
 Window:EditOpenButton({
@@ -241,7 +241,7 @@ MainTab:Toggle({
         
         if Value then
             task.spawn(function()
-                while getgenv().AutoAttack do
+                while getgenv().AutoMine do
                     local isReady = EquipToolByName(getgenv().TargetMineName)
                     
                     if isReady then
@@ -353,5 +353,6 @@ task.spawn(function()
         end
     end
 end)
+
 
 
