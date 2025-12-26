@@ -142,6 +142,7 @@ local SellAmount = 1
 getgenv().AutoSell = false
 getgenv().SelectedRocks = {}
 getgenv().SelectedSellEquips = {}
+getgenv().CategoryConfig = {}
 
 -- [[ SERVICES ]] --
 local Players = game:GetService("Players")
@@ -831,39 +832,87 @@ ShopTab:Toggle({
     end
 })
 
--- 3. EQUIPMENT SELLING GROUP (AUTO GENERATED UI)
-local EquipGroup = ShopTab:Group({ Name = "Sell Equipment by Category" })
+ShopTab:Space()
 
--- Urutkan nama kategori biar rapi di UI (A-Z)
+-- 3. EQUIPMENT GENERATOR (2 SECTION PER GROUP)
 local sortedCats = {}
 for cat in pairs(EquipmentDatabase) do table.insert(sortedCats, cat) end
 table.sort(sortedCats)
 
-for _, category in ipairs(sortedCats) do
-    local items = EquipmentDatabase[category]
-
-    -- Tentukan nilai default (Medium & Light Armor -> Pilih Semua)
+-- Helper Function untuk Membuat Section
+local function CreateCategorySection(parentGroup, categoryName)
+    local items = EquipmentDatabase[categoryName]
     local defaultValues = {}
-    if category == "Medium Armor" or category == "Light Armor" then
-        defaultValues = items -- Auto Select All
+
+    -- Auto select untuk Medium & Light Armor
+    if categoryName == "Medium Armor" or categoryName == "Light Armor" then
+        defaultValues = items
     end
 
-    -- Simpan default value ke global state
-    if not getgenv().SelectedSellEquips[category] then
-        getgenv().SelectedSellEquips[category] = defaultValues
-    end
+    -- Setup config table
+    getgenv().CategoryConfig[categoryName] = { Items = defaultValues, Auto = false }
 
-    local section = EquipGroup:Section({ Title = category, Box = true, Opened = false })
+    local section = parentGroup:Section({
+        Title = categoryName,
+        Box = true,
+        BoxBorder = true,
+        Opened = false -- Biar ga kepanjangan, user bisa buka sendiri
+    })
 
     section:Dropdown({
-        Title = "Items in " .. category,
+        Title = "Items",
         Values = items,
         Multi = true,
-        Value = defaultValues, -- Set default checked items
+        Value = defaultValues,
         Callback = function(Value)
-            getgenv().SelectedSellEquips[category] = Value
+            getgenv().CategoryConfig[categoryName].Items = Value
         end
     })
+
+    section:Toggle({
+        Title = "Auto Sell " .. categoryName,
+        Callback = function(Value)
+            getgenv().CategoryConfig[categoryName].Auto = Value
+
+            -- Spawn Loop khusus untuk Kategori ini saat dinyalakan
+            if Value then
+                task.spawn(function()
+                    while getgenv().CategoryConfig[categoryName].Auto do
+                        local sellList = getgenv().CategoryConfig[categoryName].Items
+                        if #sellList > 0 then
+                            local basket = {}
+                            for _, name in pairs(sellList) do
+                                basket[name] = 1 -- Jual 1 per 1 equipment
+                            end
+                            pcall(function()
+                                game:GetService("ReplicatedStorage").Shared.Packages.Knit.Services.DialogueService.RF
+                                    .RunCommand:InvokeServer("SellConfirm", { ["Basket"] = basket })
+                            end)
+                        end
+                        task.wait(2) -- Delay tiap kategori (aman)
+                    end
+                end)
+            end
+        end
+    })
+end
+
+-- LOOP UTAMA (STEP 2: Pasangan Kiri-Kanan)
+for i = 1, #sortedCats, 2 do
+    local cat1 = sortedCats[i]
+    local cat2 = sortedCats[i + 1]  -- Bisa nil jika jumlah ganjil
+
+    local Group = ShopTab:Group({}) -- Buat Grup Baru
+
+    -- Buat Section 1 (Kiri)
+    CreateCategorySection(Group, cat1)
+
+    -- Jika ada pasangan (Kanan), buat Section 2
+    if cat2 then
+        CreateCategorySection(Group, cat2)
+    end
+
+    ShopTab:Space() -- Spasi antar Grup
 end
 -- [[ PLAYER TAB ]] --
 local SectionMove = PlayerTab:Section({ Title = "Movement" })
