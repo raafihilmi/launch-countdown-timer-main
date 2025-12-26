@@ -205,16 +205,10 @@ end
 local MainSection = Window:Section({ Title = "Main", Icon = "swords" })
 local AutoMineTab = MainSection:Tab({ Title = "Auto Mine", Icon = "pickaxe" })
 local AutoFightTab = MainSection:Tab({ Title = "Auto Fight", Icon = "swords" })
--- */  Elements Section  /* --
-local ElementsSection = Window:Section({
-    Title = "Elements",
-})
-
 local PlayerTab = Window:Tab({ Title = "Player", Icon = "user" })
 local SettingTab = Window:Tab({ Title = "Settings", Icon = "settings" })
 
 -- [[ MAIN TAB ]] --
--- Masukan di Section Combat / Main Tab
 AutoFightTab:Toggle({
     Title = "Auto Attack",
     Desc = "Equip 'Weapon' & Attack",
@@ -270,8 +264,7 @@ local SectionMove = PlayerTab:Section({ Title = "Movement" })
 -- FITUR BARU: AUTO RUN
 local SectionGroup1 = PlayerTab:Group({})
 SectionGroup1:Toggle({
-    Title = "Auto Run (Knit)",
-    Desc = "Auto Sprint using Remote",
+    Title = "Auto Run",
     Value = false,
     Callback = function(Value)
         getgenv().AutoRun = Value
@@ -289,7 +282,6 @@ SectionGroup1:Space()
 
 SectionGroup1:Toggle({
     Title = "No Clip",
-    Desc = "Walk through walls",
     Value = false,
     Callback = function(Value)
         getgenv().NoClip = Value
