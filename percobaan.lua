@@ -700,49 +700,6 @@ ShopTab:Dropdown({
     end
 })
 
-ShopTab:Slider({
-    Title = "Amount Per Item",
-    Desc = "Quantity for EACH selected item",
-    Value = { Min = 1, Max = 100, Default = 1 },
-    Step = 1,
-    Callback = function(Value)
-        SellAmount = Value
-    end
-})
-
--- 3. TOMBOL JUAL BULK (SATU REMOTE UNTUK SEMUA)
-ShopTab:Button({
-    Title = "Sell Selected Items",
-    Desc = "Sells everything in selection list",
-    Callback = function()
-        local itemsToSell = getgenv().SelectedSellItems
-
-        if #itemsToSell == 0 then
-            WindUI:Notify({ Title = "Warning", Content = "Select items first!", Duration = 2 })
-            return
-        end
-
-        -- MEMBUAT BASKET (KERANJANG)
-        -- Menggabungkan semua item pilihan menjadi satu paket
-        local basketContent = {}
-        for _, itemName in pairs(itemsToSell) do
-            basketContent[itemName] = SellAmount
-        end
-
-        pcall(function()
-            local args = {
-                [1] = "SellConfirm",
-                [2] = {
-                    ["Basket"] = basketContent
-                }
-            }
-            game:GetService("ReplicatedStorage").Shared.Packages.Knit.Services.DialogueService.RF.RunCommand
-                :InvokeServer(unpack(args))
-            WindUI:Notify({ Title = "Success", Content = "Sold selected items!", Duration = 1 })
-        end)
-    end
-})
-
 -- 4. AUTO SELL (SPAM BULK)
 ShopTab:Toggle({
     Title = "Auto Sell Selected",
