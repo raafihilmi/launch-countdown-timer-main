@@ -5,9 +5,9 @@ local WindUI = loadstring(game:HttpGet("https://pastebin.com/raw/m8P8dLfd"))()
 local Window = WindUI:CreateWindow({
     Title = "TForge",
     Icon = "gamepad-2",
-    Author = "JumantaraHub v6",
+    Author = "JumantaraHub v7",
     Theme = "Plant",
-    Folder = "UniversalScript_v6"
+    Folder = "UniversalScript_v7"
 })
 
 Window:EditOpenButton({
@@ -211,6 +211,14 @@ local Section = Window:Section({
 local PlayerTab = Window:Tab({ Title = "Player", Icon = "user" })
 local SettingTab = Window:Tab({ Title = "Settings", Icon = "settings" })
 
+Section:Toggle({
+    Title = "Example Toggle",
+    Desc = "This is an example toggle",
+    Value = false,
+    Callback = function(Value)
+        print("Example Toggle is now:", Value)
+    end
+})
 -- [[ MAIN TAB ]] --
 -- Masukan di Section Combat / Main Tab
 MainTab:Toggle({
