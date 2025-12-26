@@ -29,7 +29,7 @@ local MobDatabase = {
     },
     ["Island 2: Forgotten"] = {
         "Bomber", "Skeleton Rogue", "Axe Skeleton", "Deathaxe Skeleton",
-        "Elite Skeleton Rogue", "Elite Deathaxe Skeleton",
+        "Elite Rogue Skeleton", "Elite Deathaxe Skeleton",
         "Slime", "Blazing Slime", "Blight Pyromancer", "Reaper"
     },
     ["Island 3: Frostspire"] = {
