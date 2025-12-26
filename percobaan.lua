@@ -36,6 +36,9 @@ getgenv().SelectedAreas = {}
 getgenv().MineHeight = 5
 getgenv().MineDistance = 0
 getgenv().TweenSpeed = 50
+getgenv().AutoFarmMobs = false
+getgenv().SelectedMobs = {} -- Menampung nama mob yang dipilih
+getgenv().MobDistance = 4
 
 -- [[ SERVICES ]] --
 local Players = game:GetService("Players")
