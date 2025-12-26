@@ -5,9 +5,9 @@ local WindUI = loadstring(game:HttpGet("https://pastebin.com/raw/m8P8dLfd"))()
 local Window = WindUI:CreateWindow({
     Title = "TForge",
     Icon = "gamepad-2",
-    Author = "JumantaraHub v14",
+    Author = "JumantaraHub v15",
     Theme = "Plant",
-    Folder = "UniversalScript_v14s"
+    Folder = "UniversalScript_v15s"
 })
 
 Window:EditOpenButton({
@@ -297,27 +297,37 @@ local function FindNearestRockInSelectedAreas()
     return nearestRock
 end
 
--- Scan folder Living untuk mengambil nama-nama Mob (Filter Player)
+local function GetCleanName(name)
+    -- Menghapus semua angka (%d+) dari nama
+    local clean = string.gsub(name, "%d+", "")
+    -- Menghapus spasi berlebih di akhir nama (jika ada)
+    return string.match(clean, "^%s*(.-)%s*$")
+end
+
+-- Scan folder Living untuk mengambil nama BASE Mob (tanpa angka)
 local function GetMobList()
     local list = {}
     local living = workspace:FindFirstChild("Living")
     if living then
         for _, model in pairs(living:GetChildren()) do
             if model:IsA("Model") and model:FindFirstChild("Humanoid") then
-                -- Cek apakah Model ini adalah Player Asli?
+                -- Cek apakah Model ini Player Asli?
                 if not Players:GetPlayerFromCharacter(model) then
-                    -- Jika bukan Player, berarti Mob. Masukkan ke list jika belum ada.
-                    if not table.find(list, model.Name) then
-                        table.insert(list, model.Name)
+                    local cleanName = GetCleanName(model.Name)
+
+                    -- Masukkan ke list hanya jika nama bersihnya belum ada
+                    if not table.find(list, cleanName) then
+                        table.insert(list, cleanName)
                     end
                 end
             end
         end
     end
+    table.sort(list) -- Urutkan abjad biar rapi
     return list
 end
 
--- Mencari Mob terdekat yang HIDUP
+-- Mencari Mob terdekat dengan logika "Nama Bersih"
 local function FindNearestMob()
     local char = LocalPlayer.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
@@ -329,12 +339,15 @@ local function FindNearestMob()
     local living = workspace:FindFirstChild("Living")
     if living then
         for _, mob in pairs(living:GetChildren()) do
-            -- 1. Cek Nama (Apakah ada di daftar pilihan user?)
-            if table.find(getgenv().SelectedMobs, mob.Name) then
+            -- 1. Ambil Nama Bersih mob ini (misal: Brute Zombie176 -> Brute Zombie)
+            local mobCleanName = GetCleanName(mob.Name)
+
+            -- 2. Cek apakah Nama Bersih ini ada di daftar pilihan user?
+            if table.find(getgenv().SelectedMobs, mobCleanName) then
                 local mobHum = mob:FindFirstChild("Humanoid")
                 local mobRoot = mob:FindFirstChild("HumanoidRootPart") or mob.PrimaryPart
 
-                -- 2. Cek Validitas & Darah
+                -- 3. Cek Validitas & Darah
                 if mobHum and mobRoot and mobHum.Health > 0 then
                     local dist = (hrp.Position - mobRoot.Position).Magnitude
 
@@ -349,6 +362,7 @@ local function FindNearestMob()
 
     return nearestMob
 end
+-- Fungsi untuk mengatur Anchored HumanoidRootPart
 local function SetAnchor(state)
     local char = LocalPlayer.Character
     if char and char:FindFirstChild("HumanoidRootPart") then
@@ -389,23 +403,23 @@ AutoFightTab:Toggle({
     end
 })
 -- [[ AUTO FIGHT TAB ]] --
-
--- 1. DROPDOWN PILIH MOB
+-- 1. DROPDOWN (Otomatis menampilkan nama bersih seperti "Brute Zombie")
 local MobDropdown = AutoFightTab:Dropdown({
     Title = "Select Mobs",
-    Values = GetMobList(), -- Scan otomatis
+    Values = GetMobList(),
     Multi = true,
     Value = {},
-    Desc = "Select monsters to hunt",
+    Desc = "Select monsters (Names are cleaned)",
     Callback = function(Value)
         getgenv().SelectedMobs = Value
+        -- Contoh Output Value: {"Brute Zombie", "Zombie"}
     end
 })
 
--- 2. REFRESH BUTTON (Penting karena mob spawn-nya ganti-ganti)
+-- 2. REFRESH BUTTON
 AutoFightTab:Button({
     Title = "Refresh Mob List",
-    Desc = "Click if target mob is not in list",
+    Desc = "Click if new mobs spawned",
     Callback = function()
         local newList = GetMobList()
         MobDropdown:Refresh(newList)
@@ -413,18 +427,7 @@ AutoFightTab:Button({
     end
 })
 
--- 3. SLIDER JARAK SERANG
-AutoFightTab:Slider({
-    Title = "Attack Distance",
-    Desc = "Distance to stop from mob",
-    Value = { Min = 0, Max = 15, Default = 4 },
-    Step = 1,
-    Callback = function(Value)
-        getgenv().MobDistance = Value
-    end
-})
-
--- 4. TOGGLE UTAMA AUTO FARM MOBS
+-- 3. TOGGLE UTAMA (Logic Tween tidak berubah, karena FindNearestMob sudah diperbaiki)
 AutoFightTab:Toggle({
     Title = "Auto Farm Mobs",
     Desc = "Tween -> Equip Weapon -> Kill",
@@ -440,35 +443,28 @@ AutoFightTab:Toggle({
         if Value then
             task.spawn(function()
                 while getgenv().AutoFarmMobs do
-                    local targetPart = FindNearestMob()
+                    local targetPart = FindNearestMob() -- Fungsi baru dipanggil di sini
 
                     if targetPart then
                         local mobPos = targetPart.Position
 
-                        -- Logika Posisi: Di atas tanah sedikit, jarak sesuai slider
-                        -- Kita kunci Y (Height) sama dengan Mob agar tidak terbang terlalu tinggi
+                        -- Logika Posisi & Attack (Sama seperti sebelumnya)
                         local myPos = Vector3.new(mobPos.X, mobPos.Y, mobPos.Z)
-
-                        -- Offset mundur sedikit agar tidak menabrak badan mob (Collision)
                         local attackPos = myPos + Vector3.new(0, 0, getgenv().MobDistance)
-
-                        -- LookAt: Tatap Mob
                         local finalCFrame = CFrame.lookAt(attackPos, mobPos)
 
                         local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
                         if hrp then
                             local dist = (hrp.Position - attackPos).Magnitude
 
-                            -- Jika jauh, Tween. Jika dekat, Teleport/Stay.
                             if dist > 4 then
                                 SetAnchor(false)
                                 TweenTo(finalCFrame)
                             else
                                 hrp.CFrame = finalCFrame
-                                SetAnchor(true) -- Bekukan agar tidak didorong musuh
+                                SetAnchor(true)
                             end
 
-                            -- Equip Weapon & Serang
                             local isReady = EquipToolByName(getgenv().TargetWeaponName)
                             if isReady then
                                 pcall(function()
@@ -479,12 +475,9 @@ AutoFightTab:Toggle({
                             end
                         end
                     else
-                        -- Jika tidak ada target, Unanchor dan tunggu
                         SetAnchor(false)
-                        -- Opsional: WindUI:Notify({Title = "Searching...", Content = "No mobs found", Duration = 1})
                     end
-
-                    task.wait(0.1) -- Loop cepat
+                    task.wait(0.1)
                 end
                 SetAnchor(false)
             end)
