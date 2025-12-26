@@ -860,7 +860,6 @@ local function CreateCategorySection(parentGroup, categoryName)
     })
 
     section:Dropdown({
-        Title = "Items",
         Values = items,
         Multi = true,
         Value = defaultValues,
@@ -870,7 +869,7 @@ local function CreateCategorySection(parentGroup, categoryName)
     })
 
     section:Toggle({
-        Title = "Auto Sell " .. categoryName,
+        Title = "Sell",
         Callback = function(Value)
             getgenv().CategoryConfig[categoryName].Auto = Value
 
