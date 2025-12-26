@@ -474,7 +474,7 @@ AutoFightTab:Dropdown({
 -- 3. DROPDOWN PILIH MOB (DINAMIS)
 MobDropdown = AutoFightTab:Dropdown({
     Title = "Select Target Mobs",
-    Values = MobDatabase["Island 1: Stonewake"], -- Default awal
+    Values = GetMobOptions(), -- Default awal
     Multi = true,
     Value = {},
     Callback = function(Value)
