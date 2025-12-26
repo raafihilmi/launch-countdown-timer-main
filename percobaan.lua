@@ -71,6 +71,7 @@ getgenv().JumpPowerVal = 50
 getgenv().NoClip = false
 getgenv().ESPEnabled = false
 getgenv().AutoRun = false -- Variabel baru untuk Auto Run
+getgenv().AutoAttack = false
 
 -- [[ SERVICES ]] --
 local Players = game:GetService("Players")
@@ -212,6 +213,43 @@ local function StopRunSequence()
         ReplicatedStorage.Shared.Packages.Knit.Services.CharacterService.RF.StopRun:InvokeServer()
     end)
 end
+local function StartAutoAttack()
+    task.spawn(function()
+        while getgenv().AutoAttack do
+            local player = game.Players.LocalPlayer
+            local char = player.Character
+            local backpack = player.Backpack
+            local humanoid = char and char:FindFirstChild("Humanoid")
+
+            if char and humanoid then
+                -- LOGIKA 1: Cek apakah sudah pegang senjata?
+                local currentTool = char:FindFirstChildWhichIsA("Tool")
+
+                -- Jika tidak ada senjata di tangan, coba ambil dari Hotbar 2 (Slot 2)
+                if not currentTool then
+                    local tools = backpack:GetChildren()
+                    -- tools[2] mengacu pada slot 2. Jika slot 2 kosong, dia akan diam.
+                    if tools[2] then 
+                        humanoid:EquipTool(tools[2])
+                        task.wait(0.2) -- Beri waktu sedikit untuk animasi equip
+                    elseif tools[1] then
+                         -- Opsional: Jika slot 2 kosong, ambil slot 1 sebagai cadangan
+                        humanoid:EquipTool(tools[1])
+                        task.wait(0.2)
+                    end
+                end
+
+                -- LOGIKA 2: Jalankan Remote Attack
+                pcall(function()
+                    local args = { "Weapon" }
+                    game:GetService("ReplicatedStorage").Shared.Packages.Knit.Services.ToolService.RF.ToolActivated:InvokeServer(unpack(args))
+                end)
+            end
+            
+            task.wait(0.1) -- Kecepatan Attack (bisa diatur)
+        end
+    end)
+end
 
 -- [[ TABS ]] --
 local MainTab = Window:Tab({ Title = "Main", Icon = "swords" })
@@ -235,6 +273,17 @@ MainTab:Toggle({
                     task.wait(0.1)
                 end
             end)
+        end
+    end
+})
+MainTab:Toggle({
+    Title = "Auto Attack (Slot 2)",
+    Desc = "Auto equip slot 2 & attack",
+    Value = false,
+    Callback = function(Value)
+        getgenv().AutoAttack = Value
+        if Value then
+            StartAutoAttack()
         end
     end
 })
@@ -332,3 +381,4 @@ task.spawn(function()
         end
     end
 end)
+
