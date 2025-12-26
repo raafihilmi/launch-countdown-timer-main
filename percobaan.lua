@@ -835,8 +835,11 @@ ShopTab:Button({
                 task.wait(0.5)
                 -- Force Dialogue (Sesuai Request Anda)
                 pcall(function()
-                    local args = { npc, "SellConfirm" }
-                    game:GetService("ReplicatedStorage").Shared.Packages.Knit.Services.ProximityService.RF.ForceDialogue
+                    local args = {
+                        [1] = npc
+                    }
+
+                    game:GetService("ReplicatedStorage").Shared.Packages.Knit.Services.ProximityService.RF.Dialogue
                         :InvokeServer(unpack(args))
                 end)
                 WindUI:Notify({ Title = "Weapon Shop", Content = "Ready!", Duration = 2 })
@@ -965,7 +968,7 @@ for _, categoryName in ipairs(sortedCats) do
                                 -- WindUI:Notify({Title = "Sold", Content = #guidsToSell .. " items from " .. categoryName, Duration = 1})
                             end
                         end
-                        task.wait(3) -- Delay agak lama karena scan inventory berat
+                        task.wait(3)
                     end
                 end)
             end
