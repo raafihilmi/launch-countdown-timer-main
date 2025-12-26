@@ -258,20 +258,35 @@ local function FindNearestRockInSelectedAreas()
             -- Loop SpawnLocation di dalam Area
             for _, spawnLoc in pairs(area:GetChildren()) do
                 if spawnLoc.Name == "SpawnLocation" then
-                    -- Cek logic hierarki sesuai gambar/deskripsi:
-                    -- SpawnLocation > Ada Model Rock > Ada Part/List
                     local rockModel = spawnLoc:FindFirstChildWhichIsA("Model")
 
                     if rockModel then
-                        -- Ambil posisi target
-                        -- Kita gunakan GetPivot() karena lebih universal untuk Model
-                        local targetCFrame = rockModel:GetPivot()
+                        -- [[ PENGECEKAN HEALTH DI SINI ]] --
+                        local isDead = false
 
-                        -- Cek jarak
-                        local dist = (hrp.Position - targetCFrame.Position).Magnitude
-                        if dist < minDist then
-                            minDist = dist
-                            nearestRock = targetCFrame
+                        -- Cek 1: Apakah ada Attribute "Health"?
+                        local hpAttr = rockModel:GetAttribute("Health")
+                        if hpAttr and hpAttr <= 0 then isDead = true end
+
+                        -- Cek 2: Apakah ada Child bernama "Health" (Objek Value)?
+                        local hpVal = rockModel:FindFirstChild("Health")
+                        if hpVal and hpVal:IsA("ValueBase") and hpVal.Value <= 0 then isDead = true end
+
+                        -- Cek 3: Cek Humanoid (Jaga-jaga)
+                        local hum = rockModel:FindFirstChild("Humanoid")
+                        if hum and hum.Health <= 0 then isDead = true end
+
+                        -- JIKA BATU MATI, SKIP (Lanjutkan ke batu berikutnya)
+                        if not isDead then
+                            -- Ambil posisi target
+                            local targetCFrame = rockModel:GetPivot()
+
+                            -- Cek jarak
+                            local dist = (hrp.Position - targetCFrame.Position).Magnitude
+                            if dist < minDist then
+                                minDist = dist
+                                nearestRock = targetCFrame
+                            end
                         end
                     end
                 end
@@ -281,6 +296,7 @@ local function FindNearestRockInSelectedAreas()
 
     return nearestRock
 end
+
 local function SetAnchor(state)
     local char = LocalPlayer.Character
     if char and char:FindFirstChild("HumanoidRootPart") then
