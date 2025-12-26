@@ -22,6 +22,25 @@ Window:EditOpenButton({
 })
 
 -- [[ GLOBAL VARIABLES ]] --
+-- [[ DATABASE MOBS ]] --
+local MobDatabase = {
+    ["Island 1: Stonewake"] = {
+        "Zombie", "Delver Zombie", "Elite Zombie", "Brute Zombie"
+    },
+    ["Island 2: Forgotten"] = {
+        "Bomber", "Skeleton Rogue", "Axe Skeleton", "Deathaxe Skeleton",
+        "Elite Skeleton Rogue", "Elite Deathaxe Skeleton",
+        "Slime", "Blazing Slime", "Blight Pyromancer", "Reaper"
+    },
+    ["Island 3: Frostspire"] = {
+        "Crystal Spider", "Diamond Spider", "Prismarine Spider",
+        "Common Orc", "Elite Orc", "Crystal Golem", "Yeti", "Ice Golem Boss"
+    },
+    ["[DETECTED IN SERVER]"] = {} -- Placeholder untuk hasil scan manual
+}
+
+-- Default Variable
+getgenv().CurrentWorld = "Island 1: Stonewake"
 getgenv().AutoClick = false
 getgenv().WalkSpeedVal = 16
 getgenv().JumpPowerVal = 50
@@ -371,7 +390,15 @@ local function SetAnchor(state)
         char.HumanoidRootPart.Anchored = state
     end
 end
-
+-- [[ HELPER: GET MOBS FOR DROPDOWN ]] --
+local function GetMobOptions()
+    local world = getgenv().CurrentWorld
+    if world == "[DETECTED IN SERVER]" then
+        return GetMobList() -- Menggunakan fungsi scan scanner yang lama
+    else
+        return MobDatabase[world] or {}
+    end
+end
 -- [[ TABS ]] --
 local MainSection = Window:Section({ Title = "Main", Icon = "swords" })
 local SetupTab = MainSection:Tab({ Title = "Setup", Icon = "sliders" })
@@ -412,30 +439,53 @@ SetupTab:Slider({
     end
 })
 -- [[ AUTO FIGHT TAB ]] --
-local MobDropdown = AutoFightTab:Dropdown({
-    Title = "Select Mobs",
-    Values = GetMobList(),
+-- [[ AUTO FIGHT TAB UI ]] --
+
+-- 1. DROPDOWN PILIH DUNIA
+AutoFightTab:Dropdown({
+    Title = "Select World / Region",
+    Values = {
+        "Island 1: Stonewake",
+        "Island 2: Forgotten",
+        "Island 3: Frostspire",
+        "[DETECTED IN SERVER]" -- Opsi jika ingin scan manual
+    },
+    Value = "Island 1: Stonewake",
+    Desc = "Filter mob list by region",
+    Callback = function(Value)
+        getgenv().CurrentWorld = Value
+        -- Nanti kita refresh dropdown mob di bawah
+    end
+})
+
+-- 2. TOMBOL REFRESH LIST (PENTING)
+-- Kita butuh tombol ini untuk "Menerapkan" pilihan World ke Dropdown Mob
+local MobDropdown -- Deklarasi dulu biar bisa dipanggil
+AutoFightTab:Button({
+    Title = "Load Mobs from World",
+    Desc = "Click this after changing World",
+    Callback = function()
+        local newList = GetMobOptions()
+        if MobDropdown then
+            MobDropdown:Refresh(newList)
+        end
+        WindUI:Notify({ Title = "List Updated", Content = "Loaded mobs for " .. getgenv().CurrentWorld, Duration = 1 })
+    end
+})
+
+-- 3. DROPDOWN PILIH MOB (DINAMIS)
+MobDropdown = AutoFightTab:Dropdown({
+    Title = "Select Target Mobs",
+    Values = MobDatabase["Island 1: Stonewake"], -- Default awal
     Multi = true,
     Value = {},
-    Desc = "Select monsters (Names are cleaned)",
+    Desc = "Select monsters to hunt",
     Callback = function(Value)
         getgenv().SelectedMobs = Value
-        -- Contoh Output Value: {"Brute Zombie", "Zombie"}
     end
 })
 
--- 2. REFRESH BUTTON
-AutoFightTab:Button({
-    Title = "Refresh Mob List",
-    Desc = "Click if new mobs spawned",
-    Callback = function()
-        local newList = GetMobList()
-        MobDropdown:Refresh(newList)
-        WindUI:Notify({ Title = "Success", Content = "Mob list updated!", Duration = 1 })
-    end
-})
-
--- 3. TOGGLE UTAMA (Logic Tween tidak berubah, karena FindNearestMob sudah diperbaiki)
+-- 4. TOGGLE UTAMA (LOGIKA STABILIZER)
 AutoFightTab:Toggle({
     Title = "Auto Farm Mobs",
     Desc = "Tween -> Equip Weapon -> Kill",
@@ -449,47 +499,31 @@ AutoFightTab:Toggle({
         end
 
         if Value then
-            -- [[ UPDATE LOGIC AUTO FARM MOBS (STABILIZER) ]] --
             task.spawn(function()
                 while getgenv().AutoFarmMobs do
-                    local targetPart = FindNearestMob() -- Pastikan fungsi ini pakai versi "Nama Bersih" yang tadi
+                    local targetPart = FindNearestMob() -- Fungsi pencari mob (Clean Name)
 
                     if targetPart then
                         local mobPos = targetPart.Position
 
-                        -- [[ PERBAIKAN STABILITAS ]] --
-                        -- 1. Tentukan Posisi Target (Di atas Mob)
-                        -- Kita pakai GlobalHeight dan GlobalDistance dari Setup Tab
+                        -- Menggunakan Global Setup
                         local targetPos = mobPos + Vector3.new(0, getgenv().GlobalHeight, getgenv().GlobalDistance)
-
-                        -- 2. Kunci Pandangan (Aim)
-                        -- Agar karakter selalu menatap musuh
                         local finalCFrame = CFrame.lookAt(targetPos, mobPos)
 
-                        local char = LocalPlayer.Character
-                        local hrp = char and char:FindFirstChild("HumanoidRootPart")
-
+                        local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
                         if hrp then
                             local dist = (hrp.Position - targetPos).Magnitude
 
-                            -- [[ LOGIKA BARU ]] --
+                            -- Logic Stabilizer (Jauh Tween, Dekat Anchor)
                             if dist > 8 then
-                                -- KONDISI 1: MASIH JAUH (> 8 Meter)
-                                -- Lepas Anchor biar bisa jalan, lalu Tween (Gerak cepat ke lokasi)
                                 SetAnchor(false)
                                 TweenTo(finalCFrame)
                             else
-                                -- KONDISI 2: SUDAH DEKAT/SEDANG BERTARUNG
-                                -- Langsung Bekukan (Anchor)
                                 SetAnchor(true)
-
-                                -- Pindah posisi secara instant (Teleport CFrame) mengikuti mob
-                                -- Karena kita sudah Anchor, ini akan terlihat sangat mulus (tidak jitter)
-                                -- Lerp digunakan agar pergerakan kamera sedikit lebih smooth (opsional, bisa langsung = finalCFrame)
                                 hrp.CFrame = hrp.CFrame:Lerp(finalCFrame, 0.5)
                             end
 
-                            -- SERANG
+                            -- Serang
                             local isReady = EquipToolByName(getgenv().TargetWeaponName)
                             if isReady then
                                 pcall(function()
@@ -500,20 +534,15 @@ AutoFightTab:Toggle({
                             end
                         end
                     else
-                        -- Jika tidak ada musuh, lepas Anchor biar bisa gerak manual
                         SetAnchor(false)
                     end
-
-                    -- Loop dipercepat sedikit agar respon pergerakan mob lebih halus
-                    task.wait()
+                    task.wait() -- Loop Cepat
                 end
-                -- Matikan Anchor saat toggle dimatikan
                 SetAnchor(false)
             end)
         end
     end
 })
-
 -- AUTO MINE TAB
 AutoMineTab:Dropdown({
     Title = "Select Mining Area",
