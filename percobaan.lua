@@ -632,6 +632,7 @@ MobDropdown = AutoFightTab:Dropdown({
     Title = "Select Target Mobs",
     Values = GetMobOptions(), -- Default awal
     Multi = true,
+    AllowNone = true,
     Value = {},
     Callback = function(Value)
         getgenv().SelectedMobs = Value
