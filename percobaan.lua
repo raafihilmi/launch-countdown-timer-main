@@ -340,7 +340,7 @@ AutoMineTab:Button({
         WindUI:Notify({ Title = "Info", Content = "Please re-execute script to refresh list if needed.", Duration = 2 })
     end
 })
-MainTab:Toggle({
+AutoMineTab:Toggle({
     Title = "Auto Mine",
     Desc = "Tween -> Anchor -> LookAt -> Mine",
     Value = false,
