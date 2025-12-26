@@ -5,9 +5,9 @@ local WindUI = loadstring(game:HttpGet("https://pastebin.com/raw/m8P8dLfd"))()
 local Window = WindUI:CreateWindow({
     Title = "TForge",
     Icon = "gamepad-2",
-    Author = "JumantaraHub v5",
+    Author = "JumantaraHub v6",
     Theme = "Plant",
-    Folder = "UniversalScript_v5"
+    Folder = "UniversalScript_v6"
 })
 
 Window:EditOpenButton({
@@ -27,11 +27,11 @@ getgenv().WalkSpeedVal = 16
 getgenv().JumpPowerVal = 50
 getgenv().NoClip = false
 getgenv().ESPEnabled = false
-getgenv().AutoRun = false 
+getgenv().AutoRun = false
 getgenv().AutoAttack = false
-getgenv().AutoMine = false 
-getgenv().TargetWeaponName = "Weapon" 
-getgenv().TargetMineName = "Pickaxe" 
+getgenv().AutoMine = false
+getgenv().TargetWeaponName = "Weapon"
+getgenv().TargetMineName = "Pickaxe"
 
 -- [[ SERVICES ]] --
 local Players = game:GetService("Players")
@@ -52,7 +52,7 @@ local function CreateESP(player)
 
     local function UpdateVisuals()
         if not getgenv().ESPEnabled then return end
-        
+
         local char = player.Character
         if char and char:FindFirstChild("HumanoidRootPart") then
             -- Highlight
@@ -76,7 +76,7 @@ local function CreateESP(player)
                 bg.Size = UDim2.new(0, 200, 0, 50)
                 bg.StudsOffset = Vector3.new(0, 2, 0)
                 bg.AlwaysOnTop = true
-                
+
                 local nameLabel = Instance.new("TextLabel", bg)
                 nameLabel.Size = UDim2.new(1, 0, 1, 0)
                 nameLabel.BackgroundTransparency = 1
@@ -84,22 +84,22 @@ local function CreateESP(player)
                 nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
                 nameLabel.Font = Enum.Font.SourceSansBold
                 nameLabel.TextSize = 14
-                
+
                 task.spawn(function()
                     while char and char.Parent and head:FindFirstChild("WindESP_Tag") do
-                        if not getgenv().ESPEnabled then 
+                        if not getgenv().ESPEnabled then
                             bg:Destroy()
-                            break 
+                            break
                         end
-                        
-                        local dist = (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")) 
+
+                        local dist = (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart"))
                             and (LocalPlayer.Character.HumanoidRootPart.Position - head.Position).Magnitude or 0
-                            
+
                         nameLabel.Text = player.Name .. "\n[" .. math.floor(dist) .. "m]"
                         task.wait(0.1)
                     end
                 end)
-                
+
                 bg.Parent = head
             end
         end
@@ -109,7 +109,7 @@ local function CreateESP(player)
         task.wait(1)
         UpdateVisuals()
     end)
-    
+
     if player.Character then
         UpdateVisuals()
     end
@@ -129,7 +129,7 @@ local function ToggleESP(state)
             if p.Character then
                 local hl = p.Character:FindFirstChild("WindESP_Highlight")
                 if hl then hl:Destroy() end
-                
+
                 local head = p.Character:FindFirstChild("Head")
                 if head then
                     local tag = head:FindFirstChild("WindESP_Tag")
@@ -190,19 +190,24 @@ local function EquipToolByName(targetName)
         if toolInBag then
             -- Opsional: Lepas alat lain dulu (Unequip) agar tidak bug
             hum:UnequipTools()
-            
+
             -- Equip alat target
             hum:EquipTool(toolInBag)
-            
+
             return true -- Berhasil equip
         end
     end
-    
+
     return false -- Tool tidak ditemukan di tangan maupun backpack
 end
 
 -- [[ TABS ]] --
 local MainTab = Window:Tab({ Title = "Main", Icon = "swords" })
+local Section = Window:Section({
+    Title = "Section for the tabs",
+    Icon = "bird",
+    Opened = true,
+})
 local PlayerTab = Window:Tab({ Title = "Player", Icon = "user" })
 local SettingTab = Window:Tab({ Title = "Settings", Icon = "settings" })
 
@@ -214,19 +219,19 @@ MainTab:Toggle({
     Value = false,
     Callback = function(Value)
         getgenv().AutoAttack = Value
-        
+
         if Value then
             task.spawn(function()
                 while getgenv().AutoAttack do
                     local isReady = EquipToolByName(getgenv().TargetWeaponName)
-                    
+
                     if isReady then
                         pcall(function()
                             local args = { getgenv().TargetWeaponName }
-                            game:GetService("ReplicatedStorage").Shared.Packages.Knit.Services.ToolService.RF.ToolActivated:InvokeServer(unpack(args))
+                            game:GetService("ReplicatedStorage").Shared.Packages.Knit.Services.ToolService.RF
+                                .ToolActivated:InvokeServer(unpack(args))
                         end)
                     end
-
                 end
             end)
         end
@@ -238,16 +243,17 @@ MainTab:Toggle({
     Value = false,
     Callback = function(Value)
         getgenv().AutoMine = Value
-        
+
         if Value then
             task.spawn(function()
                 while getgenv().AutoMine do
                     local isReady = EquipToolByName(getgenv().TargetMineName)
-                    
+
                     if isReady then
                         pcall(function()
                             local args = { getgenv().TargetMineName }
-                            game:GetService("ReplicatedStorage").Shared.Packages.Knit.Services.ToolService.RF.ToolActivated:InvokeServer(unpack(args))
+                            game:GetService("ReplicatedStorage").Shared.Packages.Knit.Services.ToolService.RF
+                                .ToolActivated:InvokeServer(unpack(args))
                         end)
                     end
                 end
@@ -267,10 +273,10 @@ PlayerTab:Toggle({
     Callback = function(Value)
         getgenv().AutoRun = Value
         if Value then
-            WindUI:Notify({Title = "Auto Run", Content = "Running enabled!", Duration = 1})
+            WindUI:Notify({ Title = "Auto Run", Content = "Running enabled!", Duration = 1 })
             StartAutoRun()
         else
-            WindUI:Notify({Title = "Auto Run", Content = "Running disabled.", Duration = 1})
+            WindUI:Notify({ Title = "Auto Run", Content = "Running disabled.", Duration = 1 })
             StopRunSequence()
         end
     end
@@ -333,10 +339,10 @@ SettingTab:Keybind({
 SettingTab:Dropdown({
     Title = "Select Theme",
     Values = {
-            "Plant",
-            "Rose",
-            "Dark"
-            },
+        "Plant",
+        "Rose",
+        "Dark"
+    },
     Value = "Planet",
     Callback = function(option)
         WindUI:SetTheme(option)
@@ -353,6 +359,3 @@ task.spawn(function()
         end
     end
 end)
-
-
-
