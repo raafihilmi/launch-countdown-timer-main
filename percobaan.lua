@@ -449,35 +449,47 @@ AutoFightTab:Toggle({
         end
 
         if Value then
-            -- [[ UPDATE BAGIAN LOOP AUTO FARM MOBS ]] --
+            -- [[ UPDATE LOGIC AUTO FARM MOBS (STABILIZER) ]] --
             task.spawn(function()
                 while getgenv().AutoFarmMobs do
-                    local targetPart = FindNearestMob()
+                    local targetPart = FindNearestMob() -- Pastikan fungsi ini pakai versi "Nama Bersih" yang tadi
 
                     if targetPart then
                         local mobPos = targetPart.Position
 
-                        -- [[ LOGIKA BARU MENGGUNAKAN GLOBAL SETUP ]] --
-                        -- Menggunakan GlobalHeight dan GlobalDistance dari Setup Tab
+                        -- [[ PERBAIKAN STABILITAS ]] --
+                        -- 1. Tentukan Posisi Target (Di atas Mob)
+                        -- Kita pakai GlobalHeight dan GlobalDistance dari Setup Tab
                         local targetPos = mobPos + Vector3.new(0, getgenv().GlobalHeight, getgenv().GlobalDistance)
 
-                        -- LookAt: Tatap Mob
+                        -- 2. Kunci Pandangan (Aim)
+                        -- Agar karakter selalu menatap musuh
                         local finalCFrame = CFrame.lookAt(targetPos, mobPos)
 
-                        local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                        local char = LocalPlayer.Character
+                        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+
                         if hrp then
                             local dist = (hrp.Position - targetPos).Magnitude
 
-                            if dist > 3 then -- Beri toleransi dikit (3 studs)
+                            -- [[ LOGIKA BARU ]] --
+                            if dist > 8 then
+                                -- KONDISI 1: MASIH JAUH (> 8 Meter)
+                                -- Lepas Anchor biar bisa jalan, lalu Tween (Gerak cepat ke lokasi)
                                 SetAnchor(false)
                                 TweenTo(finalCFrame)
                             else
-                                -- Teleport presisi & Anchor
-                                hrp.CFrame = finalCFrame
+                                -- KONDISI 2: SUDAH DEKAT/SEDANG BERTARUNG
+                                -- Langsung Bekukan (Anchor)
                                 SetAnchor(true)
+
+                                -- Pindah posisi secara instant (Teleport CFrame) mengikuti mob
+                                -- Karena kita sudah Anchor, ini akan terlihat sangat mulus (tidak jitter)
+                                -- Lerp digunakan agar pergerakan kamera sedikit lebih smooth (opsional, bisa langsung = finalCFrame)
+                                hrp.CFrame = hrp.CFrame:Lerp(finalCFrame, 0.5)
                             end
 
-                            -- Attack
+                            -- SERANG
                             local isReady = EquipToolByName(getgenv().TargetWeaponName)
                             if isReady then
                                 pcall(function()
@@ -488,10 +500,14 @@ AutoFightTab:Toggle({
                             end
                         end
                     else
+                        -- Jika tidak ada musuh, lepas Anchor biar bisa gerak manual
                         SetAnchor(false)
                     end
-                    task.wait(0.1)
+
+                    -- Loop dipercepat sedikit agar respon pergerakan mob lebih halus
+                    task.wait()
                 end
+                -- Matikan Anchor saat toggle dimatikan
                 SetAnchor(false)
             end)
         end
@@ -587,35 +603,6 @@ AutoMineTab:Toggle({
                 SetAnchor(false)
             end)
         end
-    end
-})
-AutoMineTab:Slider({
-    Title = "Tween Speed",
-    Desc = "Movement Speed (Higher = Faster)",
-    Value = { Min = 10, Max = 300, Default = 50 },
-    Step = 5,
-    Callback = function(Value)
-        getgenv().TweenSpeed = Value
-    end
-})
-
-AutoMineTab:Slider({
-    Title = "Mine Height (Y Offset)",
-    Desc = "Position height above/below target",
-    Value = { Min = -10, Max = 20, Default = 5 },
-    Step = 0.5,
-    Callback = function(Value)
-        getgenv().MineHeight = Value
-    end
-})
-
-AutoMineTab:Slider({
-    Title = "Mine Distance (Z Offset)",
-    Desc = "Distance from center of the rock",
-    Value = { Min = -10, Max = 20, Default = 0 },
-    Step = 0.5,
-    Callback = function(Value)
-        getgenv().MineDistance = Value
     end
 })
 -- [[ PLAYER TAB ]] --
