@@ -378,30 +378,6 @@ local PlayerTab = Window:Tab({ Title = "Player", Icon = "user" })
 local SettingTab = Window:Tab({ Title = "Settings", Icon = "settings" })
 
 -- [[ MAIN TAB ]] --
-AutoFightTab:Toggle({
-    Title = "Auto Attack",
-    Desc = "Equip 'Weapon' & Attack",
-    Value = false,
-    Callback = function(Value)
-        getgenv().AutoAttack = Value
-
-        if Value then
-            task.spawn(function()
-                while getgenv().AutoAttack do
-                    local isReady = EquipToolByName(getgenv().TargetWeaponName)
-
-                    if isReady then
-                        pcall(function()
-                            local args = { getgenv().TargetWeaponName }
-                            game:GetService("ReplicatedStorage").Shared.Packages.Knit.Services.ToolService.RF
-                                .ToolActivated:InvokeServer(unpack(args))
-                        end)
-                    end
-                end
-            end)
-        end
-    end
-})
 -- [[ AUTO FIGHT TAB ]] --
 -- 1. DROPDOWN (Otomatis menampilkan nama bersih seperti "Brute Zombie")
 local MobDropdown = AutoFightTab:Dropdown({
