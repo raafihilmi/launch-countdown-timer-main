@@ -5,9 +5,9 @@ local WindUI = loadstring(game:HttpGet("https://pastebin.com/raw/m8P8dLfd"))()
 local Window = WindUI:CreateWindow({
     Title = "TForge",
     Icon = "gamepad-2",
-    Author = "JumantaraHub v11",
+    Author = "JumantaraHub v12",
     Theme = "Plant",
-    Folder = "UniversalScript_v11"
+    Folder = "UniversalScript_v12"
 })
 
 Window:EditOpenButton({
