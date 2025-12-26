@@ -88,37 +88,7 @@ local RawEquipData = {
     ["StraightSword"] = { "Falchion", "Gladius", "Cutlass", "Rapier", "Chaos", "Candy Cane", "Hell Slayer" }
 }
 
--- [[ LOGIC: MERGE CATEGORIES ]] --
-local EquipmentDatabase = {}
-local MergedCategories = {
-    ["Light Armor"] = { "LightChestplate", "LightHelmet", "LightLeggings" },
-    ["Medium Armor"] = { "MediumChestplate", "MediumHelmet", "MediumLeggings" },
-}
-for cat, items in pairs(RawEquipData) do
-    local isMerged = false
-    for _, subCats in pairs(MergedCategories) do
-        if table.find(subCats, cat) then
-            isMerged = true
-            break
-        end
-    end
-    if not isMerged then
-        EquipmentDatabase[cat] = items
-    end
-end
 
--- 2. Masukkan kategori gabungan (Armor)
-for newName, subCats in pairs(MergedCategories) do
-    EquipmentDatabase[newName] = {}
-    for _, oldCat in pairs(subCats) do
-        if RawEquipData[oldCat] then
-            for _, item in pairs(RawEquipData[oldCat]) do
-                table.insert(EquipmentDatabase[newName], item)
-            end
-        end
-    end
-    table.sort(EquipmentDatabase[newName]) -- Urutkan abjad itemnya
-end
 -- Default Variable
 getgenv().CurrentWorld = ""
 getgenv().AutoClick = false
@@ -155,6 +125,39 @@ local TweenService = game:GetService("TweenService")
 local espHolder = Instance.new("Folder", game.CoreGui)
 espHolder.Name = "WindUI_ESP_Storage"
 
+-- [[ LOGIC: MERGE CATEGORIES ]] --
+local EquipmentDatabase = {}
+local MergedCategories = {
+    ["Light Armor"] = { "LightChestplate", "LightHelmet", "LightLeggings" },
+    ["Medium Armor"] = { "MediumChestplate", "MediumHelmet", "MediumLeggings" },
+}
+for cat, items in pairs(RawEquipData) do
+    local isMerged = false
+    for _, subCats in pairs(MergedCategories) do
+        if table.find(subCats, cat) then
+            isMerged = true
+            break
+        end
+    end
+    if not isMerged then
+        EquipmentDatabase[cat] = items
+    end
+end
+
+-- 2. Masukkan kategori gabungan (Armor)
+for newName, subCats in pairs(MergedCategories) do
+    EquipmentDatabase[newName] = {}
+    for _, oldCat in pairs(subCats) do
+        if RawEquipData[oldCat] then
+            for _, item in pairs(RawEquipData[oldCat]) do
+                table.insert(EquipmentDatabase[newName], item)
+            end
+        end
+    end
+    table.sort(EquipmentDatabase[newName]) -- Urutkan abjad itemnya
+end
+
+-- [[ ESP LOGIC ]] --
 local function ClearESP()
     espHolder:ClearAllChildren()
 end
@@ -525,6 +528,37 @@ local function GetMobOptions()
     end
 end
 
+-- [[ FUNCTION: GET EQUIPMENT GUIDs ]] --
+local function GetEquipmentsToSell(targetNames)
+    local guids = {}
+    local Knit = require(game:GetService("ReplicatedStorage").Shared.Packages.Knit)
+
+    -- Coba akses Data Pemain
+    local success, PlayerController = pcall(function() return Knit.GetController("PlayerController") end)
+    if success and PlayerController and PlayerController.Replica then
+        local Data = PlayerController.Replica.Data
+
+        -- Kita cari di Data.Equipments (Sesuai temuan debug)
+        -- Jika kosong, fallback ke Data.Inventory.Equipments (Sesuai temuan decompiler)
+        local EquipSource = Data.Equipments or (Data.Inventory and Data.Inventory.Equipments)
+
+        if EquipSource then
+            for _, itemData in pairs(EquipSource) do
+                if type(itemData) == "table" then
+                    -- Cek Nama Item
+                    if table.find(targetNames, itemData.Name) then
+                        -- AMBIL GUID (Ini kunci utama penjualan!)
+                        if itemData.GUID then
+                            table.insert(guids, itemData.GUID)
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return guids
+end
+
 -- [[ TABS ]] --
 local MainSection = Window:Section({ Title = "Main", Icon = "swords" })
 local SetupTab = MainSection:Tab({ Title = "Setup", Icon = "wrench" })
@@ -781,6 +815,37 @@ ShopTab:Button({
     end
 })
 
+ShopTab:Button({
+    Title = "Init: Weapon Merchant",
+    Desc = "Walk & Talk to Marbles (REQUIRED for Weapons)",
+    Callback = function()
+        task.spawn(function()
+            local npc = workspace:FindFirstChild("Proximity") and workspace.Proximity:FindFirstChild("Marbles")
+            -- Cari Toko Weapon (Biasanya dekat spawn/Ore Seller, atau kita pake posisi NPC)
+
+            if npc then
+                SetAnchor(false)
+                WindUI:Notify({ Title = "Weapon Shop", Content = "Walking...", Duration = 1 })
+
+                -- Tween ke NPC Marbles
+                local npcPos = npc:GetPivot()
+                local targetPos = npcPos * CFrame.new(0, 0, 5)
+                TweenTo(CFrame.lookAt(targetPos.Position, npcPos.Position))
+
+                task.wait(0.5)
+                -- Force Dialogue (Sesuai Request Anda)
+                pcall(function()
+                    local args = { npc, "SellConfirm" }
+                    game:GetService("ReplicatedStorage").Shared.Packages.Knit.Services.ProximityService.RF.ForceDialogue
+                        :InvokeServer(unpack(args))
+                end)
+                WindUI:Notify({ Title = "Weapon Shop", Content = "Ready!", Duration = 2 })
+            else
+                WindUI:Notify({ Title = "Error", Content = "Marbles NPC not found!", Duration = 2 })
+            end
+        end)
+    end
+})
 ShopTab:Section({ Title = "Bulk Selling" })
 
 -- 2. MULTI DROPDOWN ITEM (LENGKAP)
@@ -877,18 +942,30 @@ for _, categoryName in ipairs(sortedCats) do
             if Value then
                 task.spawn(function()
                     while getgenv().CategoryConfig[categoryName].Auto do
-                        local sellList = getgenv().CategoryConfig[categoryName].Items
-                        if #sellList > 0 then
-                            local basket = {}
-                            for _, name in pairs(sellList) do
-                                basket[name] = 1
+                        local targetNames = getgenv().CategoryConfig[categoryName].Items
+                        if #targetNames > 0 then
+                            -- 1. Cari GUID item di Inventory
+                            local guidsToSell = GetEquipmentsToSell(targetNames)
+
+                            if #guidsToSell > 0 then
+                                -- 2. Masukkan ke Basket
+                                local basket = {}
+                                for _, guid in pairs(guidsToSell) do
+                                    basket[guid] = true -- Format Basket Equipment: [GUID] = true
+                                end
+
+                                -- 3. Jual!
+                                pcall(function()
+                                    local args = { "SellConfirm", { ["Basket"] = basket } }
+                                    game:GetService("ReplicatedStorage").Shared.Packages.Knit.Services.DialogueService
+                                        .RF.RunCommand:InvokeServer(unpack(args))
+                                end)
+
+                                -- Notif kecil (opsional, matikan jika spam)
+                                -- WindUI:Notify({Title = "Sold", Content = #guidsToSell .. " items from " .. categoryName, Duration = 1})
                             end
-                            pcall(function()
-                                game:GetService("ReplicatedStorage").Shared.Packages.Knit.Services.DialogueService.RF
-                                    .RunCommand:InvokeServer("SellConfirm", { ["Basket"] = basket })
-                            end)
                         end
-                        task.wait(2)
+                        task.wait(3) -- Delay agak lama karena scan inventory berat
                     end
                 end)
             end
