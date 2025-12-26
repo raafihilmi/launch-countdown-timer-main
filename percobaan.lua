@@ -5,9 +5,9 @@ local WindUI = loadstring(game:HttpGet("https://pastebin.com/raw/m8P8dLfd"))()
 local Window = WindUI:CreateWindow({
     Title = "TForge",
     Icon = "gamepad-2",
-    Author = "JumantaraHub v10",
+    Author = "JumantaraHub v11",
     Theme = "Plant",
-    Folder = "UniversalScript_v10"
+    Folder = "UniversalScript_v11"
 })
 
 Window:EditOpenButton({
@@ -281,6 +281,12 @@ local function FindNearestRockInSelectedAreas()
 
     return nearestRock
 end
+local function SetAnchor(state)
+    local char = LocalPlayer.Character
+    if char and char:FindFirstChild("HumanoidRootPart") then
+        char.HumanoidRootPart.Anchored = state
+    end
+end
 -- [[ TABS ]] --
 local MainSection = Window:Section({ Title = "Main", Icon = "swords" })
 local AutoMineTab = MainSection:Tab({ Title = "Auto Mine", Icon = "pickaxe" })
@@ -334,12 +340,18 @@ AutoMineTab:Button({
         WindUI:Notify({ Title = "Info", Content = "Please re-execute script to refresh list if needed.", Duration = 2 })
     end
 })
-AutoMineTab:Toggle({
+MainTab:Toggle({
     Title = "Auto Mine",
-    Desc = "Tween to Area -> Equip -> Mine",
+    Desc = "Tween -> Anchor -> LookAt -> Mine",
     Value = false,
     Callback = function(Value)
         getgenv().AutoMine = Value
+
+        -- Jika dimatikan, pastikan player jatuh kembali (Unanchor)
+        if not Value then
+            SetAnchor(false)
+            WindUI:Notify({ Title = "Auto Mine", Content = "Stopped.", Duration = 1 })
+        end
 
         if Value then
             task.spawn(function()
@@ -347,14 +359,43 @@ AutoMineTab:Toggle({
                     local targetCFrame = FindNearestRockInSelectedAreas()
 
                     if targetCFrame then
-                        -- [[ UPDATE DI SINI ]] --
-                        -- Menggunakan Height (Y) dan Distance (Z) dari Slider
-                        local finalPosition = targetCFrame * CFrame.new(0, getgenv().MineHeight, getgenv().MineDistance)
+                        local rockPos = targetCFrame.Position
 
-                        TweenTo(finalPosition)
+                        -- [[ LOGIKA POSISI BARU ]] --
+                        -- Kita gunakan Vector3 biasa agar "Height" selalu ke atas langit (World Space),
+                        -- bukan ke atas kepala rock (Object Space) yang mungkin miring.
+                        -- Distance kita asumsikan mundur sedikit dari batu.
 
+                        -- Posisi tujuan: Posisi Batu + Tinggi (Y) + Jarak (Z/Mundur)
+                        -- Catatan: Logika jarak sederhana disini saya buat random dikit disekitar batu atau fix offset
+                        -- Tapi agar simple dan pasti, kita taruh player di atas batu persis + tinggi
+
+                        local targetPos = rockPos + Vector3.new(0, getgenv().MineHeight, 0)
+
+                        -- [[ LOGIKA ROTASI (SOLUSI MASALAH 1) ]] --
+                        -- CFrame.lookAt(PosisiKita, PosisiTarget)
+                        -- Ini memaksa player menatap langsung ke pusat batu
+                        local finalCFrame = CFrame.lookAt(targetPos, rockPos)
+
+                        -- Cek jarak dulu, kalau jauh baru Tween, kalau sudah dekat langsung teleport/diam
+                        local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                        if hrp then
+                            local dist = (hrp.Position - targetPos).Magnitude
+                            if dist > 2 then
+                                SetAnchor(false) -- Lepas anchor biar bisa jalan/tween
+                                TweenTo(finalCFrame)
+                            else
+                                -- Kalau sudah dekat, paksa set posisi biar akurat menatap batu
+                                hrp.CFrame = finalCFrame
+                            end
+
+                            -- [[ SOLUSI MASALAH 2 (JITTER) ]] --
+                            -- Bekukan player di udara
+                            SetAnchor(true)
+                        end
+
+                        -- Equip & Attack
                         local isReady = EquipToolByName(getgenv().TargetMineName)
-
                         if isReady then
                             pcall(function()
                                 local args = { getgenv().TargetMineName }
@@ -363,12 +404,17 @@ AutoMineTab:Toggle({
                             end)
                         end
                     else
-                        WindUI:Notify({ Title = "Warning", Content = "No rocks found in selected area!", Duration = 1 })
+                        -- Jika tidak ada target
+                        SetAnchor(false)
+                        WindUI:Notify({ Title = "Warning", Content = "No rocks found!", Duration = 1 })
                         task.wait(2)
                     end
 
-                    task.wait(0.2)
+                    task.wait(0.1) -- Loop speed lebih cepat agar responsif
                 end
+
+                -- Jaga-jaga jika loop pecah, unanchor
+                SetAnchor(false)
             end)
         end
     end
@@ -377,7 +423,7 @@ AutoMineTab:Slider({
     Title = "Tween Speed",
     Desc = "Movement Speed (Higher = Faster)",
     Value = { Min = 10, Max = 300, Default = 50 },
-    Step = 10,
+    Step = 5,
     Callback = function(Value)
         getgenv().TweenSpeed = Value
     end
@@ -387,7 +433,7 @@ AutoMineTab:Slider({
     Title = "Mine Height (Y Offset)",
     Desc = "Position height above/below target",
     Value = { Min = -10, Max = 20, Default = 5 },
-    Step = 1,
+    Step = 0.5,
     Callback = function(Value)
         getgenv().MineHeight = Value
     end
@@ -397,7 +443,7 @@ AutoMineTab:Slider({
     Title = "Mine Distance (Z Offset)",
     Desc = "Distance from center of the rock",
     Value = { Min = -10, Max = 20, Default = 0 },
-    Step = 1,
+    Step = 0.5,
     Callback = function(Value)
         getgenv().MineDistance = Value
     end
