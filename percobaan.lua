@@ -5,9 +5,9 @@ local WindUI = loadstring(game:HttpGet("https://pastebin.com/raw/m8P8dLfd"))()
 local Window = WindUI:CreateWindow({
     Title = "TForge",
     Icon = "gamepad-2",
-    Author = "JumantaraHub v15",
+    Author = "JumantaraHub v16",
     Theme = "Plant",
-    Folder = "UniversalScript_v15s"
+    Folder = "UniversalScript_v16s"
 })
 
 Window:EditOpenButton({
@@ -33,12 +33,11 @@ getgenv().AutoMine = false
 getgenv().TargetWeaponName = "Weapon"
 getgenv().TargetMineName = "Pickaxe"
 getgenv().SelectedAreas = {}
-getgenv().MineHeight = 5
-getgenv().MineDistance = 0
 getgenv().TweenSpeed = 50
+getgenv().GlobalHeight = 5
+getgenv().GlobalDistance = 0
 getgenv().AutoFarmMobs = false
-getgenv().SelectedMobs = {} -- Menampung nama mob yang dipilih
-getgenv().MobDistance = 4
+getgenv().SelectedMobs = {} --
 
 -- [[ SERVICES ]] --
 local Players = game:GetService("Players")
@@ -375,14 +374,44 @@ end
 
 -- [[ TABS ]] --
 local MainSection = Window:Section({ Title = "Main", Icon = "swords" })
+local SetupTab = MainSection:Tab({ Title = "Setup", Icon = "sliders" })
 local AutoMineTab = MainSection:Tab({ Title = "Auto Mine", Icon = "pickaxe" })
 local AutoFightTab = MainSection:Tab({ Title = "Auto Fight", Icon = "swords" })
 local PlayerTab = Window:Tab({ Title = "Player", Icon = "user" })
 local SettingTab = Window:Tab({ Title = "Settings", Icon = "settings" })
 
 -- [[ MAIN TAB ]] --
+-- [[ SETUP TAB CONTENT ]] --
+SetupTab:Slider({
+    Title = "Tween Speed",
+    Desc = "Movement Speed (Auto Mine & Fight)",
+    Value = { Min = 10, Max = 300, Default = 50 },
+    Step = 5,
+    Callback = function(Value)
+        getgenv().TweenSpeed = Value
+    end
+})
+
+SetupTab:Slider({
+    Title = "Height Offset (Y)",
+    Desc = "Height above target (Mob/Rock)",
+    Value = { Min = -10, Max = 20, Default = 5 },
+    Step = 0.5,
+    Callback = function(Value)
+        getgenv().GlobalHeight = Value
+    end
+})
+
+SetupTab:Slider({
+    Title = "Distance Offset (Z)",
+    Desc = "Distance offset from target center",
+    Value = { Min = -10, Max = 20, Default = 0 },
+    Step = 0.5,
+    Callback = function(Value)
+        getgenv().GlobalDistance = Value
+    end
+})
 -- [[ AUTO FIGHT TAB ]] --
--- 1. DROPDOWN (Otomatis menampilkan nama bersih seperti "Brute Zombie")
 local MobDropdown = AutoFightTab:Dropdown({
     Title = "Select Mobs",
     Values = GetMobList(),
@@ -428,15 +457,15 @@ AutoFightTab:Toggle({
                         local mobPos = targetPart.Position
 
                         -- Logika Posisi & Attack (Sama seperti sebelumnya)
-                        local myPos = Vector3.new(mobPos.X, mobPos.Y, mobPos.Z)
-                        local attackPos = myPos + Vector3.new(0, 0, getgenv().MobDistance)
-                        local finalCFrame = CFrame.lookAt(attackPos, mobPos)
+                        local targetPos = mobPos + Vector3.new(0, getgenv().GlobalHeight, getgenv().GlobalDistance)
+
+                        local finalCFrame = CFrame.lookAt(targetPos, mobPos)
 
                         local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
                         if hrp then
                             local dist = (hrp.Position - attackPos).Magnitude
 
-                            if dist > 4 then
+                            if dist > 3 then
                                 SetAnchor(false)
                                 TweenTo(finalCFrame)
                             else
@@ -456,7 +485,6 @@ AutoFightTab:Toggle({
                     else
                         SetAnchor(false)
                     end
-                    task.wait(0.1)
                 end
                 SetAnchor(false)
             end)
@@ -509,7 +537,7 @@ AutoMineTab:Toggle({
                         -- [[ PERBAIKAN DI SINI ]] --
                         -- Menambahkan getgenv().MineDistance ke sumbu Z
                         -- Posisi = Pusat Batu + Tinggi (Y) + Jarak Mundur/Maju (Z)
-                        local targetPos = rockPos + Vector3.new(0, getgenv().MineHeight, getgenv().MineDistance)
+                        local targetPos = rockPos + Vector3.new(0, getgenv().GlobalHeight, getgenv().GlobalDistance)
 
                         -- Memaksa player menatap ke arah batu (Aim Fix)
                         local finalCFrame = CFrame.lookAt(targetPos, rockPos)
