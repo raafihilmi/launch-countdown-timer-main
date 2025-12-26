@@ -304,6 +304,7 @@ local function TweenTo(targetCFrame)
 end
 
 -- Fungsi Mencari Rock di dalam Area yang dipilih
+-- [[ UPDATED LOGIC: SMART AREA SCAN ]] --
 local function FindNearestRockInSelectedAreas()
     local char = LocalPlayer.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
@@ -315,23 +316,41 @@ local function FindNearestRockInSelectedAreas()
     local rocksFolder = workspace:FindFirstChild("Rocks")
     if not rocksFolder then return nil end
 
-    -- Loop area yang dipilih user
-    for _, areaName in pairs(getgenv().SelectedAreas) do
-        local area = rocksFolder:FindFirstChild(areaName)
-        if area then
+    -- 1. TENTUKAN AREA MANA YANG AKAN DI-SCAN
+    local areasToScan = {}
+
+    if #getgenv().SelectedAreas > 0 then
+        -- KONDISI A: User memilih Area spesifik
+        -- Kita hanya masukkan folder area yang dipilih ke daftar scan
+        for _, areaName in pairs(getgenv().SelectedAreas) do
+            local folder = rocksFolder:FindFirstChild(areaName)
+            if folder then
+                table.insert(areasToScan, folder)
+            end
+        end
+    else
+        -- KONDISI B: User TIDAK memilih Area (Kosong)
+        -- Kita masukkan SEMUA folder yang ada di Rocks ke daftar scan (Global Scan)
+        areasToScan = rocksFolder:GetChildren()
+    end
+
+    -- 2. MULAI SCANNING PADA AREA YANG DITENTUKAN
+    for _, area in pairs(areasToScan) do
+        -- Pastikan itu Folder/Model area valid
+        if area:IsA("Folder") or area:IsA("Model") then
             for _, spawnLoc in pairs(area:GetChildren()) do
                 if spawnLoc.Name == "SpawnLocation" then
                     local rockModel = spawnLoc:FindFirstChildWhichIsA("Model")
 
                     if rockModel then
-                        -- [[ LOGIKA FILTER BARU ]] --
+                        -- 3. LOGIKA FILTER BATU (TARGET ROCKS)
                         local isTarget = false
 
-                        -- Jika User TIDAK memilih filter apapun (kosong), anggap semua target
+                        -- Jika User TIDAK memilih filter batu (kosong), anggap semua target
                         if #getgenv().SelectedRocks == 0 then
                             isTarget = true
                         else
-                            -- Jika User memilih spesifik, cek apakah nama batu ini ada di daftar
+                            -- Jika User memilih batu spesifik, cek apakah nama batu ini cocok
                             if table.find(getgenv().SelectedRocks, rockModel.Name) then
                                 isTarget = true
                             end
@@ -339,8 +358,9 @@ local function FindNearestRockInSelectedAreas()
 
                         -- Lanjutkan jika Target Valid & Belum Mati
                         if isTarget then
-                            -- Cek Health (Logika Lama)
+                            -- Cek Health (Atribut/Value/Humanoid)
                             local isDead = false
+
                             local hpAttr = rockModel:GetAttribute("Health")
                             if hpAttr and hpAttr <= 0 then isDead = true end
 
@@ -367,7 +387,6 @@ local function FindNearestRockInSelectedAreas()
 
     return nearestRock
 end
-
 local function GetCleanName(name)
     -- Menghapus semua angka (%d+) dari nama
     local clean = string.gsub(name, "%d+", "")
