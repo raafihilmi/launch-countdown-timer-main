@@ -1,7 +1,7 @@
 local WindUI = loadstring(game:HttpGet("https://pastebin.com/raw/m8P8dLfd"))()
 
 
--- [[ MAIN WINDOW CREATION ]] --
+-- [[ MAIN WINDOW CREATIONS ]] --
 local Window = WindUI:CreateWindow({
     Title = "TForge",
     Icon = "gamepad-2",
@@ -56,6 +56,96 @@ local OreList = {
     "Uranium", "Vanegos", "Velchire", "Voidfractal", "Voidstar", "Volcanic Rock",
     "Vooite", "Zephyte"
 }
+-- [[ RARITY DATA (FROM ACTUAL GAME DUMP) ]] --
+local OreRarityDatabaseAuto = {
+    ["Sapphire"] = "Rare",
+    ["Rivalite"] = "Epic",
+    ["Obsidian"] = "Epic",
+    ["Sanctis"] = "Legendary",
+    ["Ruby"] = "Epic",
+    ["Darkryte"] = "Mythic",
+    ["Marblite"] = "Exotic",
+    ["Tungsten"] = "Common",
+    ["Cuprite"] = "Epic",
+    ["Volcanic Rock"] = "Rare",
+    ["Magmaite"] = "Legendary",
+    ["Neurotite"] = "Epic",
+    ["Crimson Crystal"] = "Epic",
+    ["Dark Boneite"] = "Rare",
+    ["Graphite"] = "Rare",
+    ["Fireite"] = "Legendary",
+    ["Green Crystal"] = "Epic",
+    ["Emerald"] = "Epic",
+    ["Slimite"] = "Epic",
+    ["Magenta Crystal"] = "Epic",
+    ["Moltenfrost"] = "Epic",
+    ["Crimsonite"] = "Epic",
+    ["Lgarite"] = "Rare",
+    ["Amethyst"] = "Rare",
+    ["Malachite"] = "Epic",
+    ["Sand Stone"] = "Common",
+    ["Quartz"] = "Rare",
+    ["Diamond"] = "Rare",
+    ["Gargantuan"] = "Divine",
+    ["Lightite"] = "Legendary",
+    ["Galestor"] = "Epic",
+    ["Snowite"] = "Legendary",
+    ["Blue Crystal"] = "Epic",
+    ["Coinite"] = "Epic",
+    ["Cardboardite"] = "Common",
+    ["Bananite"] = "Uncommon",
+    ["Heavenite"] = "Divine",
+    ["Fichillium"] = "Relic",
+    ["Tin"] = "Uncommon",
+    ["Mistvein"] = "Rare",
+    ["Gold"] = "Uncommon",
+    ["Galaxite"] = "Divine",
+    ["Suryafal"] = "Relic",
+    ["Rainbow Crystal"] = "Legendary",
+    ["Boneite"] = "Rare",
+    ["Aqujade"] = "Epic",
+    ["Lapis Lazuli"] = "Uncommon",
+    ["Mosasaursit"] = "Exotic",
+    ["Platinum"] = "Rare",
+    ["Iceite"] = "Mythic",
+    ["Vooite"] = "Exotic",
+    ["Ceyite"] = "Exotic",
+    ["Sulfur"] = "Uncommon",
+    ["Starite"] = "Mythic",
+    ["Grass"] = "Common",
+    ["Eye Ore"] = "Legendary",
+    ["Titanium"] = "Uncommon",
+    ["Iron"] = "Common",
+    ["Aether Lotus"] = "Rare",
+    ["Vanegos"] = "Rare",
+    ["Zephyte"] = "Rare",
+    ["Etherealite"] = "Mythic",
+    ["Voidstar"] = "Legendary",
+    ["Demonite"] = "Mythic",
+    ["Uranium"] = "Legendary",
+    ["Aite"] = "Epic",
+    ["Frost Fossil"] = "Epic",
+    ["Fichilliumorite"] = "Unobtainable",
+    ["Cryptex"] = "Epic",
+    ["Mythril"] = "Legendary",
+    ["Mushroomite"] = "Rare",
+    ["Voidfractal"] = "Rare",
+    ["Copper"] = "Common",
+    ["Aetherit"] = "Rare",
+    ["Stone"] = "Common",
+    ["Silver"] = "Uncommon",
+    ["Poopite"] = "Epic",
+    ["Topaz"] = "Rare",
+    ["Velchire"] = "Legendary",
+    ["Tide Carve"] = "Epic",
+    ["Pumice"] = "Rare",
+    ["Orange Crystal"] = "Epic",
+    ["Larimar"] = "Epic",
+    ["Scheelite"] = "Rare",
+    ["Cobalt"] = "Uncommon",
+    ["Arcane Crystal"] = "Mythic",
+}
+
 -- [[ ROCK DATABASE (HASIL DUMP) ]] --
 local RockList = {
     "Basalt Core", "Basalt Rock", "Basalt Vein", "Boulder",
@@ -113,7 +203,9 @@ getgenv().AutoSell = false
 getgenv().SelectedRocks = {}
 getgenv().SelectedSellEquips = {}
 getgenv().CategoryConfig = {}
-
+getgenv().SelectedRarityToSell = "Common"
+getgenv().AutoSellByRarity = false
+getgenv().RarityOreSelection = {}
 -- [[ SERVICES ]] --
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -156,7 +248,54 @@ for newName, subCats in pairs(MergedCategories) do
     end
     table.sort(EquipmentDatabase[newName]) -- Urutkan abjad itemnya
 end
+-- [[ UTILITY: GET ORES BY RARITY ]] --
+local function GetOresByRarity(rarity)
+    local result = {}
+    for oreName, orRarity in pairs(OreRarityDatabaseAuto) do
+        if orRarity == rarity then
+            table.insert(result, oreName)
+        end
+    end
+    table.sort(result)
+    return result
+end
 
+-- [[ UTILITY: GET ALL RARITIES ]] --
+local function GetAllRarities()
+    local rarities = {}
+    for _, rarity in pairs(OreRarityDatabaseAuto) do
+        if not table.find(rarities, rarity) then
+            table.insert(rarities, rarity)
+        end
+    end
+    table.sort(rarities)
+    return rarities
+end
+
+-- [[ GET INVENTORY ORES BY RARITY ]] --
+local function GetInventoryOresByRarity(rarity)
+    local ores = {}
+    local Knit = require(game:GetService("ReplicatedStorage").Shared.Packages.Knit)
+
+    local success, PlayerController = pcall(function()
+        return Knit.GetController("PlayerController")
+    end)
+
+    if success and PlayerController and PlayerController.Replica then
+        local Inventory = PlayerController.Replica.Data.Inventory
+
+        for oreName, quantity in pairs(Inventory) do
+            if type(quantity) == "number" and quantity > 0 then
+                -- Cek apakah ore ini ada di database dan rarity cocok
+                if OreRarityDatabaseAuto[oreName] and OreRarityDatabaseAuto[oreName] == rarity then
+                    table.insert(ores, oreName)
+                end
+            end
+        end
+    end
+
+    return ores
+end
 -- [[ ESP LOGIC ]] --
 local function ClearESP()
     espHolder:ClearAllChildren()
@@ -872,7 +1011,6 @@ ShopTab:Dropdown({
         getgenv().SelectedSellItems = Value
     end
 })
-
 -- 4. AUTO SELL (SPAM BULK)
 ShopTab:Toggle({
     Title = "Auto Sell Selected",
@@ -904,6 +1042,99 @@ ShopTab:Toggle({
                         end)
                     end
                     task.wait(1.5) -- Delay aman agar tidak dianggap spammer
+                end
+            end)
+        end
+    end
+})
+
+-- Create rarity dropdown
+local RarityDropdown = ShopTab:Dropdown({
+    Title = "Select Rarity to Sell",
+    Values = GetAllRarities(),
+    Value = "Common",
+    Desc = "Choose ore rarity to sell",
+    Callback = function(Value)
+        getgenv().SelectedRarityToSell = Value
+
+        -- Get ores for this rarity
+        local oresForRarity = GetOresByRarity(Value)
+        getgenv().RarityOreSelection = oresForRarity
+
+        -- Notify user
+        local oreCount = #oresForRarity
+        WindUI:Notify({
+            Title = "Rarity Filter",
+            Content = "Found " .. oreCount .. " ores with rarity: " .. Value,
+            Duration = 2
+        })
+
+        print("[RARITY SELL] Selected Rarity: " .. Value)
+        print("[RARITY SELL] Available Ores (" .. oreCount .. "): " .. table.concat(oresForRarity, ", "))
+    end
+})
+
+ShopTab:Toggle({
+    Title = "Auto Sell by Rarity",
+    Desc = "Automatically sell ores of selected rarity",
+    Value = false,
+    Callback = function(Value)
+        getgenv().AutoSellByRarity = Value
+
+        if not Value then
+            WindUI:Notify({
+                Title = "Auto Sell",
+                Content = "Stopped selling by rarity.",
+                Duration = 1
+            })
+            return
+        end
+
+        if Value then
+            task.spawn(function()
+                while getgenv().AutoSellByRarity do
+                    local selectedRarity = getgenv().SelectedRarityToSell
+                    local oresToSell = getgenv().RarityOreSelection
+
+                    if #oresToSell > 0 then
+                        -- Create basket with selected ores
+                        local basket = {}
+                        for _, oreName in pairs(oresToSell) do
+                            basket[oreName] = SellAmount
+                        end
+
+                        print("\n[AUTO SELL BY RARITY] " .. string.rep("=", 50))
+                        print("Rarity: " .. selectedRarity)
+                        print("Selling " .. #oresToSell .. " ore types")
+                        print("Ores: " .. table.concat(oresToSell, ", "))
+                        print(string.rep("=", 50))
+
+                        local success, err = pcall(function()
+                            local args = {
+                                [1] = "SellConfirm",
+                                [2] = {
+                                    ["Basket"] = basket
+                                }
+                            }
+                            game:GetService("ReplicatedStorage").Shared.Packages.Knit.Services.DialogueService.RF
+                                .RunCommand:InvokeServer(unpack(args))
+                        end)
+
+                        if success then
+                            print("✅ [SUCCESS] Sold " .. #oresToSell .. " types of " .. selectedRarity .. " ores")
+                            WindUI:Notify({
+                                Title = "Sold",
+                                Content = "Sold " .. #oresToSell .. " types of " .. selectedRarity,
+                                Duration = 1
+                            })
+                        else
+                            warn("❌ [FAILED] Error selling: " .. tostring(err))
+                        end
+                    else
+                        print("⚠️ [WARNING] No ores selected for rarity: " .. selectedRarity)
+                    end
+
+                    task.wait(2) -- Delay between sales
                 end
             end)
         end
