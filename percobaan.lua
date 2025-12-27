@@ -5,9 +5,9 @@ local WindUI = loadstring(game:HttpGet("https://pastebin.com/raw/m8P8dLfd"))()
 local Window = WindUI:CreateWindow({
     Title = "TForge",
     Icon = "gamepad-2",
-    Author = "JumantaraHub v18",
+    Author = "JumantaraHub v19",
     Theme = "Plant",
-    Folder = "UniversalScript_v18s"
+    Folder = "UniversalScript_v19s"
 })
 
 Window:EditOpenButton({
@@ -206,6 +206,20 @@ getgenv().CategoryConfig = {}
 getgenv().SelectedRarityToSell = "Common"
 getgenv().AutoSellByRarity = false
 getgenv().RarityOreSelection = {}
+-- [[ MERCHANT STATE TRACKING ]] --
+getgenv().MerchantInitInProgress = false
+getgenv().LastMerchantInitTime = 0
+getgenv().MerchantInitCooldown = 3
+-- [[ QUEUE MANAGEMENT SYSTEM ]] --
+getgenv().SellQueue = {} -- {type: "Ore" atau "Equipment", data: {...}}
+getgenv().IsProcessingQueue = false
+getgenv().CurrentMerchantDialog = nil
+getgenv().AutoSellOreActive = false
+getgenv().AutoSellEquipActive = false
+getgenv().CurrentMerchantInit = nil -- "Ore" atau "Equipment"
+getgenv().OreNPCReference = nil     -- Reference ke Ore NPC untuk re-init
+getgenv().LastOreDialogTime = 0
+
 -- [[ SERVICES ]] --
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -271,7 +285,111 @@ local function GetAllRarities()
     table.sort(rarities)
     return rarities
 end
+-- [[ HELPER: Add to Queue ]] --
+local function AddToSellQueue(queueItem)
+    table.insert(getgenv().SellQueue, queueItem)
+    print("[QUEUE] Added: " .. queueItem.type .. " | Queue size: " .. #getgenv().SellQueue)
+end
 
+-- [[ HELPER: Process Queue Sequential ]] --
+local function ProcessSellQueue()
+    if getgenv().IsProcessingQueue then
+        print("[QUEUE] Already processing, skipping...")
+        return
+    end
+
+    getgenv().IsProcessingQueue = true
+
+    task.spawn(function()
+        while #getgenv().SellQueue > 0 and (getgenv().AutoSellOreActive or getgenv().AutoSellEquipActive) do
+            local queueItem = getgenv().SellQueue[1]
+
+            print("\n[QUEUE] Processing: " .. queueItem.type)
+
+            if queueItem.type == "Ore" then
+                -- Proses Ore Sell
+                local oresToSell = queueItem.data.ores
+                local selectedRarity = queueItem.data.rarity
+                local sellAmount = queueItem.data.amount
+
+                if #oresToSell > 0 then
+                    local basket = {}
+                    for _, oreName in pairs(oresToSell) do
+                        basket[oreName] = sellAmount
+                    end
+
+                    print("[QUEUE] Selling " .. #oresToSell .. " ore types (" .. selectedRarity .. ")")
+
+                    local success, err = pcall(function()
+                        local args = {
+                            [1] = "SellConfirm",
+                            [2] = { ["Basket"] = basket }
+                        }
+                        game:GetService("ReplicatedStorage").Shared.Packages.Knit.Services.DialogueService.RF
+                            .RunCommand:InvokeServer(unpack(args))
+                    end)
+
+                    if success then
+                        print("✅ [QUEUE] Ore sold successfully!")
+                        WindUI:Notify({
+                            Title = "Ore Sold",
+                            Content = "Sold " .. #oresToSell .. " types",
+                            Duration = 0.8
+                        })
+                    else
+                        warn("❌ [QUEUE] Ore sell failed: " .. tostring(err))
+                    end
+                end
+            elseif queueItem.type == "Equipment" then
+                -- Proses Equipment Sell
+                local categoryName = queueItem.data.category
+                local targetNames = queueItem.data.items
+
+                if #targetNames > 0 then
+                    print("[QUEUE] Scanning " .. categoryName)
+
+                    local guidsToSell = GetEquipmentsToSell(targetNames)
+
+                    if #guidsToSell > 0 then
+                        local basket = {}
+                        for _, guid in pairs(guidsToSell) do
+                            basket[guid] = true
+                        end
+
+                        print("[QUEUE] Selling " .. #guidsToSell .. " items from " .. categoryName)
+
+                        local success, err = pcall(function()
+                            local args = { "SellConfirm", { ["Basket"] = basket } }
+                            game:GetService("ReplicatedStorage").Shared.Packages.Knit.Services.DialogueService
+                                .RF.RunCommand:InvokeServer(unpack(args))
+                        end)
+
+                        if success then
+                            print("✅ [QUEUE] Equipment sold successfully!")
+                            WindUI:Notify({
+                                Title = "Equipment Sold",
+                                Content = "Sold " .. #guidsToSell .. " items",
+                                Duration = 0.8
+                            })
+                        else
+                            warn("❌ [QUEUE] Equipment sell failed: " .. tostring(err))
+                        end
+                    else
+                        print("💤 [QUEUE] No items found in " .. categoryName)
+                    end
+                end
+            end
+
+            -- Hapus dari queue setelah diproses
+            table.remove(getgenv().SellQueue, 1)
+
+            task.wait(1) -- Delay kecil antara item
+        end
+
+        print("[QUEUE] Processing completed")
+        getgenv().IsProcessingQueue = false
+    end)
+end
 -- [[ GET INVENTORY ORES BY RARITY ]] --
 local function GetInventoryOresByRarity(rarity)
     local ores = {}
@@ -501,6 +619,395 @@ local function TweenTo(targetCFrame)
     end
 end
 
+-- [[ HELPER: TWEEN TO LOCATION ]] --
+local function TweenToNPC(npcPos, distance)
+    local char = LocalPlayer.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return false end
+
+    local targetPos = npcPos * CFrame.new(0, 0, distance)
+    local finalCFrame = CFrame.lookAt(targetPos.Position, npcPos.Position)
+
+    SetAnchor(false)
+    TweenTo(finalCFrame)
+    return true
+end
+-- [[ FUNCTION: INIT MERCHANT ORE ]] --
+local function InitMerchantOre()
+    print("\n[MERCHANT INIT] Starting Ore Merchant initialization...")
+
+    return task.spawn(function()
+        local success = false
+
+        -- Cari Toko & NPC
+        local shop = workspace:FindFirstChild("Shops") and workspace.Shops:FindFirstChild("Ore Seller")
+        local npc = workspace:FindFirstChild("Proximity") and workspace.Proximity:FindFirstChild("Greedy Cey")
+
+        if shop and npc then
+            print("✅ [MERCHANT INIT] Found Ore Seller and Greedy Cey NPC")
+
+            -- Tween ke Toko
+            print("[MERCHANT INIT] Walking to merchant...")
+            if TweenToNPC(shop.WorldPivot, 5) then
+                task.wait(0.5)
+
+                -- Buka Dialog
+                print("[MERCHANT INIT] Opening dialogue...")
+                local dialogSuccess, dialogErr = pcall(function()
+                    local args = { npc }
+                    game:GetService("ReplicatedStorage").Shared.Packages.Knit.Services.ProximityService.RF.Dialogue
+                        :InvokeServer(unpack(args))
+                end)
+
+                if dialogSuccess then
+                    print("✅ [MERCHANT INIT] Ore Merchant ready for selling!")
+                    getgenv().CurrentMerchantInit = "Ore"
+                    getgenv().LastMerchantInitTime = tick()
+                    success = true
+                else
+                    warn("❌ [MERCHANT INIT] Failed to open dialogue: " .. tostring(dialogErr))
+                end
+            else
+                warn("❌ [MERCHANT INIT] Failed to tween to merchant")
+            end
+        else
+            warn("❌ [MERCHANT INIT] Ore Seller or Greedy Cey not found!")
+        end
+
+        return success
+    end)
+end
+-- [[ FUNCTION: INIT MERCHANT EQUIPMENT ]] --
+local function InitMerchantEquipment()
+    print("\n[MERCHANT INIT] Starting Equipment Merchant initialization...")
+
+    return task.spawn(function()
+        local success = false
+
+        local npc = workspace:FindFirstChild("Proximity") and workspace.Proximity:FindFirstChild("Marbles")
+
+        if npc then
+            print("✅ [MERCHANT INIT] Found Marbles NPC")
+
+            -- Tween ke NPC Marbles
+            print("[MERCHANT INIT] Walking to equipment merchant...")
+            local npcPos = npc:GetPivot()
+            if TweenToNPC(npcPos, 5) then
+                task.wait(0.5)
+
+                -- Force Dialogue
+                print("[MERCHANT INIT] Opening dialogue...")
+                local dialogSuccess, dialogErr = pcall(function()
+                    local args = { npc }
+                    game:GetService("ReplicatedStorage").Shared.Packages.Knit.Services.ProximityService.RF.Dialogue
+                        :InvokeServer(unpack(args))
+                end)
+
+                if dialogSuccess then
+                    print("✅ [MERCHANT INIT] Equipment Merchant ready for selling!")
+                    getgenv().CurrentMerchantInit = "Equipment"
+                    getgenv().LastMerchantInitTime = tick()
+                    success = true
+                else
+                    warn("❌ [MERCHANT INIT] Failed to open dialogue: " .. tostring(dialogErr))
+                end
+            else
+                warn("❌ [MERCHANT INIT] Failed to tween to merchant")
+            end
+        else
+            warn("❌ [MERCHANT INIT] Marbles NPC not found!")
+        end
+
+        return success
+    end)
+end
+-- [[ FUNCTION: CHECK IF MERCHANT NEEDS RE-INIT ]] --
+local function NeedsMerchantReinit(requiredMerchant)
+    local timeSinceInit = tick() - getgenv().LastMerchantInitTime
+    local needsReinit = getgenv().CurrentMerchantInit ~= requiredMerchant or
+        timeSinceInit > getgenv().MerchantInitCooldown
+
+    return needsReinit
+end
+-- [[ FUNCTION: AUTO INIT AND SELL ORES ]] --
+local function AutoSellOresWithMerchant()
+    task.spawn(function()
+        while getgenv().AutoSellOreActive do
+            -- 1. CHECK IF MERCHANT INIT NEEDED
+            if NeedsMerchantReinit("Ore") then
+                print("\n[AUTO SELL ORE] Merchant re-initialization required...")
+                print("[AUTO SELL ORE] Current merchant: " .. tostring(getgenv().CurrentMerchantInit))
+                print("[AUTO SELL ORE] Initializing Ore Merchant...")
+
+                InitMerchantOre()
+                task.wait(2) -- Wait for init to complete
+            end
+
+            -- 2. SELL ORES
+            local selectedRarity = getgenv().SelectedRarityToSell
+            local oresToSell = getgenv().RarityOreSelection
+
+            if #oresToSell > 0 then
+                local basket = {}
+                for _, oreName in pairs(oresToSell) do
+                    basket[oreName] = SellAmount
+                end
+
+                print("\n[AUTO SELL ORE] " .. string.rep("=", 60))
+                print("Rarity: " .. selectedRarity)
+                print("Selling " .. #oresToSell .. " ore types")
+                print(string.rep("=", 60))
+
+                local success, err = pcall(function()
+                    local args = {
+                        [1] = "SellConfirm",
+                        [2] = {
+                            ["Basket"] = basket
+                        }
+                    }
+                    game:GetService("ReplicatedStorage").Shared.Packages.Knit.Services.DialogueService.RF
+                        .RunCommand:InvokeServer(unpack(args))
+                end)
+
+                if success then
+                    print("✅ [AUTO SELL ORE] Successfully sold " .. #oresToSell .. " ore types")
+                    WindUI:Notify({
+                        Title = "Ore Sold",
+                        Content = "Sold " .. #oresToSell .. " types of " .. selectedRarity,
+                        Duration = 1
+                    })
+                else
+                    warn("❌ [AUTO SELL ORE] Failed: " .. tostring(err))
+                    getgenv().CurrentMerchantInit = nil -- Reset merchant state on error
+                end
+            else
+                print("⚠️ [AUTO SELL ORE] No ores selected")
+            end
+
+            task.wait(2.5) -- Wait before next sell cycle
+        end
+
+        print("[AUTO SELL ORE] Stopped")
+    end)
+end
+
+-- [[ FUNCTION: AUTO INIT AND SELL EQUIPMENT ]] --
+local function AutoSellEquipmentWithMerchant()
+    task.spawn(function()
+        while getgenv().AutoSellEquipActive do
+            -- 1. CHECK IF MERCHANT INIT NEEDED
+            if NeedsMerchantReinit("Equipment") then
+                print("\n[AUTO SELL EQUIP] Merchant re-initialization required...")
+                print("[AUTO SELL EQUIP] Current merchant: " .. tostring(getgenv().CurrentMerchantInit))
+                print("[AUTO SELL EQUIP] Initializing Equipment Merchant...")
+
+                InitMerchantEquipment()
+                task.wait(2) -- Wait for init to complete
+            end
+
+            -- 2. SELL EQUIPMENT
+            for categoryName, config in pairs(getgenv().CategoryConfig) do
+                if config.Auto and #config.Items > 0 then
+                    local targetNames = config.Items
+
+                    print("\n[AUTO SELL EQUIP] Scanning category: " .. categoryName)
+
+                    -- Find equipment to sell
+                    local guidsToSell = GetEquipmentsToSell(targetNames)
+
+                    if #guidsToSell > 0 then
+                        local basket = {}
+                        for _, guid in pairs(guidsToSell) do
+                            basket[guid] = true
+                        end
+
+                        print("[AUTO SELL EQUIP] Found " .. #guidsToSell .. " items in " .. categoryName)
+
+                        local success, err = pcall(function()
+                            local args = { "SellConfirm", { ["Basket"] = basket } }
+                            game:GetService("ReplicatedStorage").Shared.Packages.Knit.Services.DialogueService
+                                .RF.RunCommand:InvokeServer(unpack(args))
+                        end)
+
+                        if success then
+                            print("✅ [AUTO SELL EQUIP] Sold " .. #guidsToSell .. " from " .. categoryName)
+                            WindUI:Notify({
+                                Title = "Equipment Sold",
+                                Content = "Sold " .. #guidsToSell .. " " .. categoryName,
+                                Duration = 1
+                            })
+                        else
+                            warn("❌ [AUTO SELL EQUIP] Failed: " .. tostring(err))
+                            getgenv().CurrentMerchantInit = nil -- Reset on error
+                            break                               -- Exit category loop and reinit
+                        end
+                    end
+
+                    task.wait(1.5) -- Small delay between categories
+                end
+            end
+
+            task.wait(2) -- Wait before next cycle
+        end
+
+        print("[AUTO SELL EQUIP] Stopped")
+    end)
+end
+
+-- [[ SMART SELL COORDINATOR (Handle both active simultaneously) ]] --
+local function SmartSellCoordinator()
+    print("\n[SMART COORDINATOR] Starting intelligent sell system...")
+
+    task.spawn(function()
+        while getgenv().AutoSellOreActive or getgenv().AutoSellEquipActive do
+            local bothActive = getgenv().AutoSellOreActive and getgenv().AutoSellEquipActive
+
+            if bothActive then
+                print("[SMART COORDINATOR] Both Ore and Equipment selling active - optimizing merchant usage...")
+
+                -- Prioritize based on which one needs sell first
+                -- This could be expanded with more sophisticated logic
+
+                -- If current merchant is Ore, sell ore then switch
+                if getgenv().CurrentMerchantInit == "Ore" and getgenv().AutoSellOreActive then
+                    print("[SMART COORDINATOR] Selling ores first...")
+                    local selectedRarity = getgenv().SelectedRarityToSell
+                    local oresToSell = getgenv().RarityOreSelection
+
+                    if #oresToSell > 0 then
+                        local basket = {}
+                        for _, oreName in pairs(oresToSell) do
+                            basket[oreName] = SellAmount
+                        end
+
+                        pcall(function()
+                            local args = {
+                                [1] = "SellConfirm",
+                                [2] = { ["Basket"] = basket }
+                            }
+                            game:GetService("ReplicatedStorage").Shared.Packages.Knit.Services.DialogueService.RF
+                                .RunCommand:InvokeServer(unpack(args))
+                        end)
+                    end
+
+                    task.wait(1.5)
+
+                    -- Now switch to equipment
+                    print("[SMART COORDINATOR] Switching to equipment merchant...")
+                    getgenv().CurrentMerchantInit = nil
+                    InitMerchantEquipment()
+                    task.wait(2)
+
+                    -- Sell equipment
+                    for categoryName, config in pairs(getgenv().CategoryConfig) do
+                        if config.Auto and #config.Items > 0 then
+                            local guidsToSell = GetEquipmentsToSell(config.Items)
+                            if #guidsToSell > 0 then
+                                local basket = {}
+                                for _, guid in pairs(guidsToSell) do
+                                    basket[guid] = true
+                                end
+
+                                pcall(function()
+                                    local args = { "SellConfirm", { ["Basket"] = basket } }
+                                    game:GetService("ReplicatedStorage").Shared.Packages.Knit.Services.DialogueService
+                                        .RF.RunCommand:InvokeServer(unpack(args))
+                                end)
+                            end
+                            task.wait(1.5)
+                        end
+                    end
+
+                    -- Reset for next cycle
+                    getgenv().CurrentMerchantInit = nil
+                    task.wait(1)
+                else
+                    -- Just wait a bit and let individual loops handle it
+                    task.wait(2)
+                end
+            else
+                task.wait(1)
+            end
+        end
+
+        print("[SMART COORDINATOR] Stopped")
+    end)
+end
+
+-- [[ UPDATE AUTO SELL ORE TOGGLE ]] --
+-- Ganti callback untuk Auto Sell by Rarity toggle dengan ini:
+local function UpdateAutoSellOreToggle(Value)
+    getgenv().AutoSellOreActive = Value
+
+    if not Value then
+        WindUI:Notify({
+            Title = "Auto Sell Ore",
+            Content = "Stopped selling ore by rarity.",
+            Duration = 1
+        })
+    else
+        print("🟢 [AUTO SELL ORE] STARTED")
+        if not getgenv().AutoSellEquipActive then
+            -- Only run if equipment selling not active
+            AutoSellOresWithMerchant()
+        else
+            print("[AUTO SELL ORE] Equipment selling also active - using smart coordinator")
+            SmartSellCoordinator()
+        end
+    end
+end
+
+-- [[ UPDATE AUTO SELL EQUIPMENT TOGGLE ]] --
+-- Ganti callback untuk Auto Sell Equipment toggles dengan ini:
+local function UpdateAutoSellEquipmentToggle(categoryName, Value)
+    getgenv().CategoryConfig[categoryName].Auto = Value
+
+    -- Check if any equipment category is enabled
+    local anyEquipActive = false
+    for _, config in pairs(getgenv().CategoryConfig) do
+        if config.Auto then
+            anyEquipActive = true
+            break
+        end
+    end
+
+    getgenv().AutoSellEquipActive = anyEquipActive
+
+    if not Value then
+        print("[AUTO SELL EQUIP] Disabled for category: " .. categoryName)
+    else
+        print("🟢 [AUTO SELL EQUIP] STARTED for category: " .. categoryName)
+        if not getgenv().AutoSellOreActive then
+            -- Only run if ore selling not active
+            AutoSellEquipmentWithMerchant()
+        else
+            print("[AUTO SELL EQUIP] Ore selling also active - using smart coordinator")
+            SmartSellCoordinator()
+        end
+    end
+end
+-- [[ EXPORT FUNCTIONS ]] --
+_G.AutoMerchantSystem = {
+    InitOre = InitMerchantOre,
+    InitEquipment = InitMerchantEquipment,
+    AutoSellOres = AutoSellOresWithMerchant,
+    AutoSellEquipment = AutoSellEquipmentWithMerchant,
+    UpdateOreToggle = UpdateAutoSellOreToggle,
+    UpdateEquipToggle = UpdateAutoSellEquipmentToggle,
+    GetCurrentMerchant = function() return getgenv().CurrentMerchantInit end,
+    GetOreStatus = function() return getgenv().AutoSellOreActive end,
+    GetEquipStatus = function() return getgenv().AutoSellEquipActive end,
+}
+
+print("\n✅ [AUTO MERCHANT SYSTEM] Loaded successfully!")
+print("Features:")
+print("  • Auto-initialize merchants when needed")
+print("  • Intelligent re-initialization with cooldown")
+print("  • Support simultaneous ore + equipment selling")
+print("  • Smart coordinator to manage both merchants")
+print("\nDebug Commands:")
+print("  _G.AutoMerchantSystem.GetCurrentMerchant()")
+print("  _G.AutoMerchantSystem.GetOreStatus()")
+print("  _G.AutoMerchantSystem.GetEquipStatus()")
 -- Fungsi Mencari Rock di dalam Area yang dipilih
 -- [[ UPDATED LOGIC: SMART AREA SCAN ]] --
 local function FindNearestRockInSelectedAreas()
@@ -712,7 +1219,9 @@ local MainSection = Window:Section({ Title = "Main", Icon = "swords" })
 local SetupTab = MainSection:Tab({ Title = "Setup", Icon = "wrench" })
 local AutoMineTab = MainSection:Tab({ Title = "Auto Mine", Icon = "pickaxe" })
 local AutoFightTab = MainSection:Tab({ Title = "Auto Fight", Icon = "swords" })
-local ShopTab = Window:Tab({ Title = "Shop & Sell", Icon = "shopping-cart" })
+local ShopSection = Window:Section({ Title = "Shop & Sell", Icon = "shopping-cart" })
+local AutoSellOreTab = ShopSection:Tab({ Title = "Auto Sell Ore", Icon = "dollar-sign" })
+local AutoSellEquipTab = ShopSection:Tab({ Title = "Auto Sell Equipment", Icon = "armor" })
 local PlayerTab = Window:Tab({ Title = "Player", Icon = "user" })
 local SettingTab = Window:Tab({ Title = "Settings", Icon = "settings" })
 
@@ -931,7 +1440,7 @@ AutoMineTab:Toggle({
     end
 })
 -- AUTO SELL TAB
-ShopTab:Button({
+AutoSellOreTab:Button({
     Title = "Initialize Merchant",
     Desc = "Walk & Talk to Greedy Cey (Once)",
     Callback = function()
@@ -964,7 +1473,7 @@ ShopTab:Button({
     end
 })
 
-ShopTab:Button({
+AutoSellEquipTab:Button({
     Title = "Init: Weapon Merchant",
     Desc = "Walk & Talk to Marbles (REQUIRED for Weapons)",
     Callback = function()
@@ -998,10 +1507,10 @@ ShopTab:Button({
         end)
     end
 })
-ShopTab:Section({ Title = "Bulk Selling" })
+AutoSellOreTab:Section({ Title = "Bulk Selling" })
 
 -- 2. MULTI DROPDOWN ITEM (LENGKAP)
-ShopTab:Dropdown({
+AutoSellOreTab:Dropdown({
     Title = "Select Items to Sell",
     Values = OreList, -- Database Ore 86 item
     Multi = true,     -- BISA PILIH BANYAK
@@ -1012,7 +1521,7 @@ ShopTab:Dropdown({
     end
 })
 -- 4. AUTO SELL (SPAM BULK)
-ShopTab:Toggle({
+AutoSellOreTab:Toggle({
     Title = "Auto Sell Selected",
     Desc = "Loop sell selected items",
     Value = false,
@@ -1047,9 +1556,7 @@ ShopTab:Toggle({
         end
     end
 })
-
--- Create rarity dropdown
-local RarityDropdown = ShopTab:Dropdown({
+AutoSellOreTab:Dropdown({
     Title = "Select Rarity to Sell",
     Values = GetAllRarities(),
     Value = "Common",
@@ -1073,75 +1580,247 @@ local RarityDropdown = ShopTab:Dropdown({
         print("[RARITY SELL] Available Ores (" .. oreCount .. "): " .. table.concat(oresForRarity, ", "))
     end
 })
-
-ShopTab:Toggle({
+AutoSellOreTab:Toggle({
     Title = "Auto Sell by Rarity",
-    Desc = "Automatically sell ores of selected rarity",
+    Desc = "Main selling loop with equipment helper",
     Value = false,
     Callback = function(Value)
-        getgenv().AutoSellByRarity = Value
+        getgenv().AutoSellOreActive = Value
 
         if not Value then
             WindUI:Notify({
-                Title = "Auto Sell",
-                Content = "Stopped selling by rarity.",
+                Title = "Auto Sell Ore",
+                Content = "Stopped.",
                 Duration = 1
             })
             return
         end
 
-        if Value then
-            task.spawn(function()
-                while getgenv().AutoSellByRarity do
-                    local selectedRarity = getgenv().SelectedRarityToSell
-                    local oresToSell = getgenv().RarityOreSelection
+        print("\n🟢 [AUTO SELL ORE] STARTED - Main Loop")
 
-                    if #oresToSell > 0 then
-                        -- Create basket with selected ores
-                        local basket = {}
-                        for _, oreName in pairs(oresToSell) do
-                            basket[oreName] = SellAmount
+        task.spawn(function()
+            -- STEP 1: INIT ORE MERCHANT (ONCE)
+            print("[AUTO SELL ORE] Initializing Ore Merchant...")
+
+            local shop = workspace:FindFirstChild("Shops") and workspace.Shops:FindFirstChild("Ore Seller")
+            local npc = workspace:FindFirstChild("Proximity") and workspace.Proximity:FindFirstChild("Greedy Cey")
+
+            if not shop or not npc then
+                warn("❌ Ore Merchant not found!")
+                getgenv().AutoSellOreActive = false
+                return
+            end
+
+            getgenv().OreNPCReference = npc -- Store reference
+
+            -- Tween ke Ore Merchant
+            print("[AUTO SELL ORE] Walking to Ore Merchant...")
+            local targetPos = shop.WorldPivot * CFrame.new(0, 0, 5)
+            local finalCFrame = CFrame.lookAt(targetPos.Position, shop.WorldPivot.Position)
+            SetAnchor(false)
+            TweenTo(finalCFrame)
+
+            task.wait(0.5)
+
+            -- Buka Dialog Ore
+            print("[AUTO SELL ORE] Opening Ore Merchant dialog...")
+            local initSuccess = pcall(function()
+                local args = { npc }
+                game:GetService("ReplicatedStorage").Shared.Packages.Knit.Services.ProximityService.RF.Dialogue
+                    :InvokeServer(unpack(args))
+            end)
+
+            if not initSuccess then
+                warn("❌ Failed to open Ore Merchant dialog!")
+                getgenv().AutoSellOreActive = false
+                return
+            end
+
+            print("✅ [AUTO SELL ORE] Ore Merchant initialized! Starting main loop...")
+            getgenv().CurrentMerchantInit = "Ore"
+            getgenv().LastOreDialogTime = tick()
+            task.wait(1)
+
+            -- STEP 2: MAIN LOOP
+            while getgenv().AutoSellOreActive do
+                -- ========== CHECK EQUIPMENT FIRST (HELPER) ==========
+                if getgenv().AutoSellEquipActive then
+                    print("\n[AUTO SELL] Checking for equipment to sell...")
+
+                    local hasEquipToSell = false
+                    local equipsToProcess = {}
+
+                    -- Scan semua kategori equipment
+                    for categoryName, config in pairs(getgenv().CategoryConfig) do
+                        if config.Auto and #config.Items > 0 then
+                            local targetNames = config.Items
+                            local guidsToSell = GetEquipmentsToSell(targetNames)
+
+                            if #guidsToSell > 0 then
+                                hasEquipToSell = true
+                                table.insert(equipsToProcess, {
+                                    category = categoryName,
+                                    guids = guidsToSell
+                                })
+                            end
                         end
-
-                        print("\n[AUTO SELL BY RARITY] " .. string.rep("=", 50))
-                        print("Rarity: " .. selectedRarity)
-                        print("Selling " .. #oresToSell .. " ore types")
-                        print("Ores: " .. table.concat(oresToSell, ", "))
-                        print(string.rep("=", 50))
-
-                        local success, err = pcall(function()
-                            local args = {
-                                [1] = "SellConfirm",
-                                [2] = {
-                                    ["Basket"] = basket
-                                }
-                            }
-                            game:GetService("ReplicatedStorage").Shared.Packages.Knit.Services.DialogueService.RF
-                                .RunCommand:InvokeServer(unpack(args))
-                        end)
-
-                        if success then
-                            print("✅ [SUCCESS] Sold " .. #oresToSell .. " types of " .. selectedRarity .. " ores")
-                            WindUI:Notify({
-                                Title = "Sold",
-                                Content = "Sold " .. #oresToSell .. " types of " .. selectedRarity,
-                                Duration = 1
-                            })
-                        else
-                            warn("❌ [FAILED] Error selling: " .. tostring(err))
-                        end
-                    else
-                        print("⚠️ [WARNING] No ores selected for rarity: " .. selectedRarity)
                     end
 
-                    task.wait(2) -- Delay between sales
+                    -- Jika ada equipment yang bisa dijual
+                    if hasEquipToSell then
+                        print("[AUTO SELL] Found equipment to sell! Switching to Equipment Merchant...")
+
+                        -- Switch ke Equipment Merchant
+                        local equipNpc = workspace:FindFirstChild("Proximity") and
+                            workspace.Proximity:FindFirstChild("Marbles")
+
+                        if equipNpc then
+                            -- Tween ke Equipment NPC
+                            local npcPos = equipNpc:GetPivot()
+                            local targetPos = npcPos * CFrame.new(0, 0, 5)
+                            SetAnchor(false)
+                            TweenTo(CFrame.lookAt(targetPos.Position, npcPos.Position))
+
+                            task.wait(0.5)
+
+                            -- Open Equipment Dialog
+                            local equipDialogSuccess = pcall(function()
+                                local args = { equipNpc }
+                                game:GetService("ReplicatedStorage").Shared.Packages.Knit.Services.ProximityService.RF
+                                    .Dialogue
+                                    :InvokeServer(unpack(args))
+                            end)
+
+                            if equipDialogSuccess then
+                                print("✅ [AUTO SELL] Equipment Merchant dialog opened!")
+                                task.wait(0.5)
+
+                                -- Sell semua equipment yang ada
+                                for _, equipData in ipairs(equipsToProcess) do
+                                    local basket = {}
+                                    for _, guid in pairs(equipData.guids) do
+                                        basket[guid] = true
+                                    end
+
+                                    print("[AUTO SELL] Selling " ..
+                                        #equipData.guids .. " items from " .. equipData.category)
+
+                                    local sellSuccess, sellErr = pcall(function()
+                                        local args = { "SellConfirm", { ["Basket"] = basket } }
+                                        game:GetService("ReplicatedStorage").Shared.Packages.Knit.Services
+                                            .DialogueService
+                                            .RF.RunCommand:InvokeServer(unpack(args))
+                                    end)
+
+                                    if sellSuccess then
+                                        print("✅ [AUTO SELL] Equipment sold!")
+                                        WindUI:Notify({
+                                            Title = "Equipment Sold",
+                                            Content = "Sold " .. #equipData.guids .. " items",
+                                            Duration = 0.8
+                                        })
+                                    else
+                                        warn("❌ Equipment sell failed: " .. tostring(sellErr))
+                                    end
+
+                                    task.wait(1)
+                                end
+
+                                -- Switch back to Ore Merchant
+                                print("[AUTO SELL] Equipment done! Switching back to Ore Merchant...")
+
+                                local targetPos = shop.WorldPivot * CFrame.new(0, 0, 5)
+                                local finalCFrame = CFrame.lookAt(targetPos.Position, shop.WorldPivot.Position)
+                                SetAnchor(false)
+                                TweenTo(finalCFrame)
+
+                                task.wait(0.5)
+
+                                -- Re-init Ore Dialog
+                                local oreReInitSuccess = pcall(function()
+                                    local args = { getgenv().OreNPCReference }
+                                    game:GetService("ReplicatedStorage").Shared.Packages.Knit.Services.ProximityService
+                                        .RF.Dialogue
+                                        :InvokeServer(unpack(args))
+                                end)
+
+                                if oreReInitSuccess then
+                                    print("✅ [AUTO SELL] Ore Merchant dialog re-opened!")
+                                    getgenv().LastOreDialogTime = tick()
+                                else
+                                    warn("❌ Failed to re-init Ore Merchant dialog")
+                                end
+                            else
+                                warn("❌ Failed to open Equipment Merchant dialog")
+                            end
+                        else
+                            print("⚠️ Equipment NPC (Marbles) not found")
+                        end
+                    end
                 end
-            end)
-        end
+
+                -- ========== SELL ORES (MAIN) ==========
+                local selectedRarity = getgenv().SelectedRarityToSell
+                local oresToSell = getgenv().RarityOreSelection
+
+                if #oresToSell > 0 then
+                    local basket = {}
+                    for _, oreName in pairs(oresToSell) do
+                        basket[oreName] = SellAmount
+                    end
+
+                    print("\n[AUTO SELL ORE] Selling " .. #oresToSell .. " ore types (" .. selectedRarity .. ")")
+
+                    local success, err = pcall(function()
+                        local args = {
+                            [1] = "SellConfirm",
+                            [2] = { ["Basket"] = basket }
+                        }
+                        game:GetService("ReplicatedStorage").Shared.Packages.Knit.Services.DialogueService.RF
+                            .RunCommand:InvokeServer(unpack(args))
+                    end)
+
+                    if success then
+                        print("✅ [AUTO SELL ORE] Ore sold!")
+                        WindUI:Notify({
+                            Title = "Ore Sold",
+                            Content = "Sold " .. #oresToSell .. " types",
+                            Duration = 0.8
+                        })
+                    else
+                        warn("❌ Ore sell failed: " .. tostring(err))
+
+                        -- Re-init dialog jika failed
+                        print("[AUTO SELL ORE] Re-initializing Ore Merchant dialog...")
+                        local reInitSuccess = pcall(function()
+                            local args = { getgenv().OreNPCReference }
+                            game:GetService("ReplicatedStorage").Shared.Packages.Knit.Services.ProximityService.RF
+                                .Dialogue
+                                :InvokeServer(unpack(args))
+                        end)
+
+                        if reInitSuccess then
+                            print("✅ [AUTO SELL ORE] Dialog re-initialized")
+                            getgenv().LastOreDialogTime = tick()
+                        else
+                            warn("❌ Failed to re-init dialog, stopping")
+                            break
+                        end
+                    end
+                else
+                    print("⚠️ No ores selected for rarity: " .. selectedRarity)
+                end
+
+                task.wait(2.5) -- Main loop delay
+            end
+
+            print("[AUTO SELL ORE] Main loop stopped")
+            getgenv().CurrentMerchantInit = nil
+        end)
     end
 })
 
-ShopTab:Space()
+
 
 -- 3. EQUIPMENT GENERATOR (Tanpa Group, Langsung Section per Kategori)
 local sortedCats = {}
@@ -1152,20 +1831,17 @@ for _, categoryName in ipairs(sortedCats) do
     local items = EquipmentDatabase[categoryName]
     local defaultValues = {}
 
-    -- Auto select untuk Armor
     if categoryName == "Medium Armor" or categoryName == "Light Armor" then
         defaultValues = items
     end
 
-    -- Setup config table
     getgenv().CategoryConfig[categoryName] = { Items = defaultValues, Auto = false }
 
-    -- LANGSUNG SECTION KE TAB
-    local section = ShopTab:Section({
+    local section = AutoSellEquipTab:Section({
         Title = categoryName,
         Box = true,
         BoxBorder = true,
-        Opened = false -- Default tertutup biar UI rapi (user expand jika butuh)
+        Opened = false
     })
 
     section:Dropdown({
@@ -1183,65 +1859,54 @@ for _, categoryName in ipairs(sortedCats) do
         Callback = function(Value)
             getgenv().CategoryConfig[categoryName].Auto = Value
 
+            -- Update AutoSellEquipActive status
+            local anyEquipActive = false
+            for _, config in pairs(getgenv().CategoryConfig) do
+                if config.Auto then
+                    anyEquipActive = true
+                    break
+                end
+            end
+            getgenv().AutoSellEquipActive = anyEquipActive
+
             if Value then
-                print("🟢 [AUTO SELL STARTED] Category: " .. categoryName)
+                print("[AUTO SELL EQUIP] Enabled for category: " .. categoryName)
+                print("⚠️  [AUTO SELL EQUIP] Note: Equipment selling requires Auto Sell Ore to be ACTIVE!")
 
-                task.spawn(function()
-                    while getgenv().CategoryConfig[categoryName].Auto do
-                        local targetNames = getgenv().CategoryConfig[categoryName].Items
-
-                        if #targetNames > 0 then
-                            print("------------------------------------------------")
-                            print("🔍 [SCAN] Mencari item untuk kategori: " .. categoryName)
-
-                            -- 1. Cari GUID item di Inventory
-                            local guidsToSell = GetEquipmentsToSell(targetNames)
-
-                            if #guidsToSell > 0 then
-                                print("💰 [FOUND] Menemukan " .. #guidsToSell .. " item untuk dijual.")
-
-                                -- 2. Masukkan ke Basket
-                                local basket = {}
-                                for _, guid in pairs(guidsToSell) do
-                                    basket[guid] = true
-                                end
-
-                                -- 3. Jual!
-                                print("📤 [SENDING] Mengirim Remote SellConfirm...")
-                                local success, err = pcall(function()
-                                    local args = { "SellConfirm", { ["Basket"] = basket } }
-                                    game:GetService("ReplicatedStorage").Shared.Packages.Knit.Services.DialogueService
-                                        .RF.RunCommand:InvokeServer(unpack(args))
-                                end)
-
-                                if success then
-                                    print("✅ [SUCCESS] Remote berhasil dikirim!")
-                                    WindUI:Notify({
-                                        Title = "Sold",
-                                        Content = "Sold " ..
-                                            #guidsToSell .. " " .. categoryName,
-                                        Duration = 2
-                                    })
-                                else
-                                    warn("❌ [FAILED] Gagal mengirim remote: " .. tostring(err))
-                                end
-                            else
-                                print("💤 [IDLE] Tidak ada item " .. categoryName .. " yang cocok di tas.")
-                            end
-                        else
-                            warn("⚠️ [CONFIG ERROR] Anda belum memilih item apapun di dropdown " .. categoryName)
-                        end
-
-                        task.wait(3) -- Delay scan
-                    end
-                    print("🔴 [AUTO SELL STOPPED] Category: " .. categoryName)
-                end)
+                if not getgenv().AutoSellOreActive then
+                    WindUI:Notify({
+                        Title = "Info",
+                        Content = "Enable Auto Sell Ore first for equipment selling to work",
+                        Duration = 3
+                    })
+                end
+            else
+                print("[AUTO SELL EQUIP] Disabled for category: " .. categoryName)
             end
         end
     })
-
-    ShopTab:Space()
 end
+
+-- ========================================
+-- DEBUG COMMANDS
+-- ========================================
+
+_G.DebugAutoMerchant = function()
+    print("\n" .. string.rep("=", 60))
+    print("AUTO SELL SYSTEM DEBUG")
+    print(string.rep("=", 60))
+    print("Auto Sell Ore Active: " .. tostring(getgenv().AutoSellOreActive))
+    print("Auto Sell Equip Active: " .. tostring(getgenv().AutoSellEquipActive))
+    print("Current Merchant: " .. tostring(getgenv().CurrentMerchantInit))
+    print("Last Ore Dialog Time: " .. string.format("%.1f", tick() - getgenv().LastOreDialogTime) .. "s ago")
+    print(string.rep("=", 60) .. "\n")
+end
+
+print("✅ [AUTO SELL] Simplified system loaded!")
+print("Priority: ORE (Main) > EQUIPMENT (Helper)")
+print("Commands: _G.DebugAutoMerchant()")
+
+
 -- [[ PLAYER TAB ]] --
 local SectionMove = PlayerTab:Section({ Title = "Movement" })
 
