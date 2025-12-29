@@ -226,6 +226,11 @@ getgenv().ForgeSlots = {
     [4] = { Ore = nil, Amount = 0 }
 }
 getgenv().ForgeItemType = "Weapon"
+getgenv().DesyncX = "0"
+getgenv().DesyncY = "0"
+getgenv().DesyncZ = "0"
+getgenv().DesyncActive = false
+getgenv().LoopOnJoin = false
 
 -- [[ SERVICES ]] --
 local Players = game:GetService("Players")
@@ -1406,11 +1411,142 @@ local function RunAutoForge()
     end
     task.wait(1)
 end
+-- [[ FUNGSI SET REPLICATION FLAG DESYNC]] --
+local function SetReplicationFlag(isDesync)
+    -- Cek support executor
+    if not setfflag then
+        WindUI:Notify({ Title = "Error", Content = "Executor tidak support 'setfflag'", Duration = 3 })
+        return
+    end
+
+    if isDesync then
+        task.wait(1)
+        setfflag("NextGenReplicatorEnabledWrite4", "true")
+    else
+        task.wait(1)
+        setfflag("NextGenReplicatorEnabledWrite4", "false")
+    end
+end
+
+-- [[ FUNGSI TWEEN ]] --
+local function TweenToPos(targetPos)
+    local char = LocalPlayer.Character
+    if char and char:FindFirstChild("HumanoidRootPart") then
+        local hrp = char.HumanoidRootPart
+        local dist = (hrp.Position - targetPos).Magnitude
+        local speed = getgenv().TweenSpeed or 50
+        local time = dist / speed
+
+        local info = TweenInfo.new(time, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
+        local tween = TweenService:Create(hrp, info, { CFrame = CFrame.new(targetPos) })
+
+        -- Matikan Anchor sementara biar bisa tween
+        local wasAnchored = hrp.Anchored
+        hrp.Anchored = false
+        tween:Play()
+        tween.Completed:Wait()
+        hrp.Anchored = wasAnchored
+    end
+end
+
+-- [[ LOGIKA AKTIVASI DESYNC ]] --
+local function ActivateDesyncRoutine()
+    local tx = tonumber(getgenv().DesyncX) or 0
+    local ty = tonumber(getgenv().DesyncY) or 0
+    local tz = tonumber(getgenv().DesyncZ) or 0
+    local targetPos = Vector3.new(tx, ty, tz)
+
+    WindUI:Notify({ Title = "Desync", Content = "Moving to Freeze Point...", Duration = 1 })
+
+    -- 1. Tween ke Posisi
+    TweenToPos(targetPos)
+    task.wait(0.2)
+
+    -- 2. Aktifkan Flag (Freeze Server)
+    SetReplicationFlag(true)
+
+    WindUI:Notify({ Title = "Desync Active", Content = "Server frozen at location.", Duration = 3 })
+
+    -- Visual Indicator
+    local char = LocalPlayer.Character
+    if char then
+        local hl = Instance.new("Highlight")
+        hl.Name = "DesyncGlow"
+        hl.FillColor = Color3.fromRGB(0, 255, 255)
+        hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+        hl.Parent = char
+    end
+end
+
+local function DeactivateDesyncRoutine()
+    -- Matikan Flag (Normal)
+    SetReplicationFlag(false)
+    WindUI:Notify({ Title = "Desync Off", Content = "Back to normal.", Duration = 2 })
+
+    local char = LocalPlayer.Character
+    if char and char:FindFirstChild("DesyncGlow") then
+        char.DesyncGlow:Destroy()
+    end
+end
+
+-- [[ REFRESH LOGIC (LOOP ON JOIN) ]] --
+local function RefreshDesyncForNewPlayer()
+    if not getgenv().DesyncActive then return end
+
+    print("[DESYNC] New player joined! Refreshing ghost position...")
+    WindUI:Notify({ Title = "New Player", Content = "Refreshing Ghost Position...", Duration = 2 })
+
+    -- 1. Simpan Status Auto Farm saat ini
+    local wasMining = getgenv().AutoMine
+    local wasFarming = getgenv().AutoFarmMobs
+    local wasSellingOre = getgenv().AutoSellOreActive
+    local wasSellingEquip = getgenv().AutoSellEquipActive
+
+    -- 2. Pause Semua Aktivitas (Biar gak konflik Tween)
+    getgenv().AutoMine = false
+    getgenv().AutoFarmMobs = false
+    -- (Auto Sell gak perlu dipause karena dia pakai remote, bukan tween fisik, tapi aman dipause)
+
+    -- 3. Lakukan Prosedur Refresh
+    local tx = tonumber(getgenv().DesyncX) or 0
+    local ty = tonumber(getgenv().DesyncY) or 0
+    local tz = tonumber(getgenv().DesyncZ) or 0
+    local targetPos = Vector3.new(tx, ty, tz)
+
+    -- A. Matikan Flag dulu (Biar bisa gerak di server)
+    -- Sesuai request: "set flag false" (Normal/Sync)
+    SetReplicationFlag(false)
+
+    -- B. Tween Balik ke Posisi Ghost (Agar server lihat kita disana)
+    TweenToPos(targetPos)
+
+    -- C. Tunggu 1 Detik (Sesuai request: "wait 1s")
+    task.wait(1)
+
+    -- D. Nyalakan Flag Lagi (Desync/Freeze)
+    -- Sesuai request: "set flag on"
+    SetReplicationFlag(true)
+
+    print("[DESYNC] Ghost refreshed! Resuming activities...")
+
+    -- 4. Resume Aktivitas
+    getgenv().AutoMine = wasMining
+    getgenv().AutoFarmMobs = wasFarming
+
+    -- Pancing ulang loop jika mati
+    if wasMining then
+        -- Trigger ulang fungsi AutoMine jika perlu, atau biarkan loop utama menangkap perubahan variabel
+        -- Karena loop Anda pakai `while getgenv().AutoMine do`, mengubah jadi true akan otomatis jalan lagi di spawn baru jika loop lama mati,
+        -- TAPI loop lama Anda mungkin masih hidup dan cuma menunggu.
+        -- Mari kita pastikan toggle UI nya update atau biarkan variabel global bekerja.
+    end
+end
 -- [[ TABS ]] --
 local MainSection = Window:Section({ Title = "Main", Icon = "swords" })
 local SetupTab = MainSection:Tab({ Title = "Setup", Icon = "wrench" })
 local AutoMineTab = MainSection:Tab({ Title = "Auto Mine", Icon = "pickaxe" })
 local AutoFightTab = MainSection:Tab({ Title = "Auto Fight", Icon = "swords" })
+local DesyncTab = MainSection:Tab({ Title = "Desync", Icon = "ghost" })
 local ForgeTab = Window:Tab({ Title = "Forge", Icon = "hammer" })
 local ShopSection = Window:Section({ Title = "Shop & Sell", Icon = "shopping-cart" })
 local AutoSellOreTab = ShopSection:Tab({ Title = "Auto Sell Ore", Icon = "dollar-sign" })
@@ -2244,5 +2380,173 @@ ActionSection:Button({
     Desc = "Make sure you are close to the Anvil!",
     Callback = function()
         task.spawn(RunAutoForge)
+    end
+})
+
+-- DESYNC
+local DesyncSection = DesyncTab:Section({ Title = "Coordinates Desync" })
+
+local InputX = DesyncSection:Input({
+    Title = "X",
+    Value = getgenv().DesyncX,
+    Callback = function(Text) getgenv().DesyncX = Text end
+})
+
+local InputY = DesyncSection:Input({
+    Title = "Y",
+    Value = getgenv().DesyncY,
+    Callback = function(Text) getgenv().DesyncY = Text end
+})
+
+local InputZ = DesyncSection:Input({
+    Title = "Z",
+    Value = getgenv().DesyncZ,
+    Callback = function(Text) getgenv().DesyncZ = Text end
+})
+
+DesyncSection:Button({
+    Title = "Save Current Position",
+    Desc = "Capture where you stand now",
+    Callback = function()
+        local char = LocalPlayer.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            local pos = hrp.Position
+            -- Update Global Vars
+            getgenv().DesyncX = tostring(math.floor(pos.X))
+            getgenv().DesyncY = tostring(math.floor(pos.Y))
+            getgenv().DesyncZ = tostring(math.floor(pos.Z))
+
+            -- Update UI
+            InputX:Set(getgenv().DesyncX)
+            InputY:Set(getgenv().DesyncY)
+            InputZ:Set(getgenv().DesyncZ)
+
+            WindUI:Notify({ Title = "Saved", Content = "Position captured!", Duration = 1 })
+        end
+    end
+})
+
+DesyncSection:Space()
+
+DesyncSection:Toggle({
+    Title = "Enable Desync (FFlag)",
+    Desc = "Tween -> Toggle Flag",
+    Value = false,
+    Callback = function(Value)
+        getgenv().DesyncActive = Value
+        if Value then
+            task.spawn(ActivateDesyncRoutine)
+        else
+            task.spawn(DeactivateDesyncRoutine)
+        end
+    end
+})
+
+-- Toggle Loop on Join
+DesyncSection:Toggle({
+    Title = "Loop When New Player Join",
+    Desc = "Refresh ghost pos when someone joins",
+    Value = false,
+    Callback = function(Value)
+        getgenv().LoopOnJoin = Value
+    end
+})
+
+-- Listener Player Added
+Players.PlayerAdded:Connect(function(player)
+    if getgenv().LoopOnJoin and getgenv().DesyncActive then
+        task.spawn(RefreshDesyncForNewPlayer)
+    end
+end)
+
+-- END OF DESYNC TAB --
+local SectionPhysics = PlayerTab:Section({ Title = "Physics & Support" })
+
+-- [[ 1. ANTI GRAVITY ]] --
+SectionPhysics:Toggle({
+    Title = "Anti Gravity",
+    Desc = "Keep Y position stable (Float)",
+    Value = false,
+    Callback = function(Value)
+        local char = LocalPlayer.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+
+        if Value then
+            if hrp then
+                -- Hapus BodyVelocity lama jika ada (biar gak numpuk)
+                for _, v in pairs(hrp:GetChildren()) do
+                    if v.Name == "WindUI_AntiGravity" then v:Destroy() end
+                end
+
+                -- Buat BodyVelocity baru
+                local bv = Instance.new("BodyVelocity")
+                bv.Name = "WindUI_AntiGravity"
+                bv.Velocity = Vector3.new(0, 0, 0)
+                -- MaxForce Y sangat besar, X dan Z nol agar bisa tetap jalan
+                bv.MaxForce = Vector3.new(0, math.huge, 0)
+                bv.P = 9000
+                bv.Parent = hrp
+
+                WindUI:Notify({ Title = "Anti Gravity", Content = "Enabled. You will not fall.", Duration = 2 })
+            end
+        else
+            if hrp then
+                for _, v in pairs(hrp:GetChildren()) do
+                    if v.Name == "WindUI_AntiGravity" then v:Destroy() end
+                end
+            end
+            WindUI:Notify({ Title = "Anti Gravity", Content = "Disabled.", Duration = 1 })
+        end
+    end
+})
+
+-- [[ 2. PLATFORM WALKING (TANAH DI UDARA) ]] --
+getgenv().PlatformLoop = nil
+
+SectionPhysics:Toggle({
+    Title = "Sky Platform",
+    Desc = "Spawn glass floor under your feet",
+    Value = false,
+    Callback = function(Value)
+        if Value then
+            -- Buat Part Platform
+            local plat = Instance.new("Part")
+            plat.Name = "WindUI_SkyPlatform"
+            plat.Size = Vector3.new(10, 1, 10) -- Ukuran 10x10
+            plat.Anchored = true
+            plat.Transparency = 0.6
+            plat.Material = Enum.Material.Glass
+            plat.Color = Color3.fromRGB(0, 255, 255) -- Warna Cyan
+            plat.CanCollide = true
+            plat.Parent = workspace
+
+            -- Loop agar platform mengikuti pemain
+            if getgenv().PlatformLoop then getgenv().PlatformLoop:Disconnect() end
+
+            getgenv().PlatformLoop = RunService.Heartbeat:Connect(function()
+                local char = LocalPlayer.Character
+                local hrp = char and char:FindFirstChild("HumanoidRootPart")
+
+                if char and hrp and plat.Parent then
+                    -- Set posisi tepat di bawah kaki (Offset -3.5 studs)
+                    plat.CFrame = CFrame.new(hrp.Position.X, hrp.Position.Y - 3.5, hrp.Position.Z)
+                else
+                    -- Cleanup otomatis jika karakter hilang
+                    if getgenv().PlatformLoop then getgenv().PlatformLoop:Disconnect() end
+                    if plat then plat:Destroy() end
+                end
+            end)
+
+            WindUI:Notify({ Title = "Platform", Content = "Created.", Duration = 1 })
+        else
+            -- Matikan Loop dan Hapus Part
+            if getgenv().PlatformLoop then getgenv().PlatformLoop:Disconnect() end
+
+            local p = workspace:FindFirstChild("WindUI_SkyPlatform")
+            if p then p:Destroy() end
+
+            WindUI:Notify({ Title = "Platform", Content = "Removed.", Duration = 1 })
+        end
     end
 })
