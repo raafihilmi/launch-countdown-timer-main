@@ -219,6 +219,13 @@ getgenv().AutoSellEquipActive = false
 getgenv().CurrentMerchantInit = nil -- "Ore" atau "Equipment"
 getgenv().OreNPCReference = nil     -- Reference ke Ore NPC untuk re-init
 getgenv().LastOreDialogTime = 0
+getgenv().ForgeSlots = {
+    [1] = { Ore = nil, Amount = 0 },
+    [2] = { Ore = nil, Amount = 0 },
+    [3] = { Ore = nil, Amount = 0 },
+    [4] = { Ore = nil, Amount = 0 }
+}
+getgenv().ForgeItemType = "Weapon"
 
 -- [[ SERVICES ]] --
 local Players = game:GetService("Players")
@@ -1214,11 +1221,197 @@ local function GetEquipmentsToSell(targetNames)
     end
     return guids
 end
+
+-- [[ HELPER: CEK INVENTORY (FIXED) ]] --
+local function GetPlayerOreAmount(oreName)
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    local Knit = require(ReplicatedStorage.Shared.Packages.Knit)
+
+    local hasController, PlayerController = pcall(function()
+        return Knit.GetController("PlayerController")
+    end)
+
+    if hasController and PlayerController and PlayerController.Replica then
+        local Data = PlayerController.Replica.Data
+
+        -- [[ LOGIKA PENCARIAN ]] --
+        local targetData = nil
+
+        -- 1. Cek Data.Inventory (Prioritas Utama)
+        if Data.Inventory then
+            -- Cek Data.Inventory.Ores
+            if Data.Inventory.Ores and Data.Inventory.Ores[oreName] then
+                targetData = Data.Inventory.Ores[oreName]
+
+                -- Cek Data.Inventory.Misc (Kadang ore masuk sini)
+            elseif Data.Inventory.Misc and Data.Inventory.Misc[oreName] then
+                targetData = Data.Inventory.Misc[oreName]
+
+                -- Cek Langsung di Inventory (Rare case)
+            elseif Data.Inventory[oreName] then
+                targetData = Data.Inventory[oreName]
+            end
+        end
+
+        -- 2. Cek Data.Ores (Backup)
+        if not targetData and Data.Ores and Data.Ores[oreName] then
+            targetData = Data.Ores[oreName]
+        end
+
+        -- [[ PENGAMBILAN NILAI ]] --
+        if targetData then
+            if type(targetData) == "number" then
+                return targetData
+            elseif type(targetData) == "table" then
+                -- Cek field Amount atau Value
+                return targetData.Amount or targetData.Value or targetData.Count or 0
+            end
+        end
+    end
+
+    return 0 -- Tidak ketemu / Kosong
+end
+-- [[ FUNGSI AUTO FORGE (UPDATED) ]] --
+local function RunAutoForge()
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    local Workspace = game:GetService("Workspace")
+
+    -- 1. Susun Resep & Validasi Bahan
+    local finalRecipe = {}
+    local totalMaterials = 0
+    local missingMaterials = false
+
+    print("🔍 [Check] Memeriksa ketersediaan bahan...")
+
+    for i = 1, 4 do
+        local data = getgenv().ForgeSlots[i]
+        if data.Ore and data.Amount > 0 then
+            -- Cek Inventory Dulu!
+            local ownedAmount = GetPlayerOreAmount(data.Ore)
+
+            -- Jika kita butuh lebih dari yang dimiliki
+            -- (Perlu dihitung akumulasi jika ada slot kembar)
+            local currentNeed = data.Amount
+            if finalRecipe[data.Ore] then currentNeed = currentNeed + finalRecipe[data.Ore] end
+
+            if ownedAmount < currentNeed then
+                WindUI:Notify({
+                    Title = "Missing Materials!",
+                    Content = "Need " .. currentNeed .. " " .. data.Ore .. ", but you have " .. ownedAmount,
+                    Duration = 4
+                })
+                warn("❌ Kurang bahan: " .. data.Ore .. " (Punya: " .. ownedAmount .. ", Butuh: " .. currentNeed .. ")")
+                missingMaterials = true
+                break -- Stop loop
+            end
+
+            -- Masukkan ke resep jika aman
+            if finalRecipe[data.Ore] then
+                finalRecipe[data.Ore] = finalRecipe[data.Ore] + data.Amount
+            else
+                finalRecipe[data.Ore] = data.Amount
+            end
+            totalMaterials = totalMaterials + data.Amount
+        end
+    end
+
+    -- Batalkan jika bahan kurang atau kosong
+    if missingMaterials then return end
+    if totalMaterials == 0 then
+        WindUI:Notify({ Title = "Forge Failed", Content = "Please select materials first!", Duration = 3 })
+        return
+    end
+
+    -- 2. Definisi Remote
+    local KnitServices = ReplicatedStorage.Shared.Packages.Knit.Services
+    local ProximityService = KnitServices.ProximityService.RF.Forge
+    local ForgeService = KnitServices.ForgeService.RF.StartForge
+    local ForgeEndService = KnitServices.ForgeService.RF.EndForge
+
+    local ChangeSequence = KnitServices.ForgeService.RF.ChangeSequence
+    local ForgeModel = Workspace.Proximity.Forge
+
+    local function GetTime() return Workspace:GetServerTimeNow() end
+
+    -- 3. Eksekusi Sequence
+    print("🔨 [Auto Forge] Starting...")
+    WindUI:Notify({ Title = "Forge", Content = "Starting process...", Duration = 2 })
+
+    -- Step 1: Open & Start
+    ProximityService:InvokeServer(ForgeModel)
+    task.wait(0.5)
+    ForgeService:InvokeServer(ForgeModel)
+    task.wait(0.5)
+
+    -- Step 2: Melt (CRITICAL CHECK)
+    -- Kita gunakan pcall untuk menangkap jika server menolak (error)
+    -- Dan kita cek return valuenya
+    local meltSuccess, meltResult = pcall(function()
+        return ChangeSequence:InvokeServer("Melt", {
+            FastForge = false,
+            ItemType = getgenv().ForgeItemType,
+            Ores = finalRecipe
+        })
+    end)
+
+    -- VALIDASI SERVER: Jika Melt gagal/nil, hentikan proses!
+    if not meltSuccess or not meltResult then
+        warn("❌ Server menolak Melt! Kemungkinan bug inventory atau cooldown.")
+        WindUI:Notify({ Title = "Forge Error", Content = "Server rejected the recipe!", Duration = 4 })
+
+        -- Reset/End Forge Paksa supaya tidak stuck
+        pcall(function() KnitServices.ForgeService.RF.EndForge:InvokeServer() end)
+        return
+    end
+
+    print("✅ [Melt] Diterima server. Lanjut...")
+    task.wait(4) -- Tunggu animasi melt
+
+    -- Step 3: Pour
+    ChangeSequence:InvokeServer("Pour", { ClientTime = GetTime(), InContact = true })
+    print("✅ [Pour] Diterima server. Lanjut...")
+    task.wait(2)
+
+    -- Step 4: Hammer (5x Pukulan)
+    for i = 1, 10 do
+        ChangeSequence:InvokeServer("Hammer", { ClientTime = GetTime() })
+        task.wait(0.35)
+    end
+    print("✅ [Hammer] Diterima server. Lanjut...")
+    task.wait(1)
+
+    -- Step 5: Water & Showcase
+    -- ChangeSequence:InvokeServer("Water", { ClientTime = GetTime() })
+    --print("✅ [Water] Diterima server. Lanjut...")
+    print("🌊 [Water] Mengirim sinyal pendinginan...")
+
+    -- Bungkus dalam task.spawn agar berjalan di thread terpisah (Parallel)
+    -- Script utama TIDAK akan menunggu baris ini selesai
+    task.spawn(function()
+        pcall(function()
+            -- Gunakan waktu server saat ini agar valid
+            ChangeSequence:InvokeServer("Water", { ClientTime = GetTime() })
+        end)
+    end)
+    task.wait(4)
+
+    local claimSuccess = pcall(function()
+        ChangeSequence:InvokeServer("Showcase", {})
+    end)
+
+    if claimSuccess then
+        WindUI:Notify({ Title = "Success", Content = "Item Forged Successfully!", Duration = 3 })
+        print("✅ Forge Selesai!")
+    end
+    task.wait(1)
+    ForgeEndService:InvokeServer()
+end
 -- [[ TABS ]] --
 local MainSection = Window:Section({ Title = "Main", Icon = "swords" })
 local SetupTab = MainSection:Tab({ Title = "Setup", Icon = "wrench" })
 local AutoMineTab = MainSection:Tab({ Title = "Auto Mine", Icon = "pickaxe" })
 local AutoFightTab = MainSection:Tab({ Title = "Auto Fight", Icon = "swords" })
+local ForgeTab = Window:Tab({ Title = "Forge", Icon = "hammer" })
 local ShopSection = Window:Section({ Title = "Shop & Sell", Icon = "shopping-cart" })
 local AutoSellOreTab = ShopSection:Tab({ Title = "Auto Sell Ore", Icon = "dollar-sign" })
 local AutoSellEquipTab = ShopSection:Tab({ Title = "Auto Sell Equipment", Icon = "armor" })
@@ -2006,3 +2199,50 @@ task.spawn(function()
         end
     end
 end)
+
+local ConfigSection = ForgeTab:Section({ Title = "1. Configuration" })
+ConfigSection:Dropdown({
+    Title = "Target Item Type",
+    Values = { "Weapon", "Armor" },
+    Value = "Weapon",
+    Callback = function(v)
+        getgenv().ForgeItemType = v
+    end
+})
+
+-- Bagian Resep (4 Slot)
+local RecipeSection = ForgeTab:Section({ Title = "2. Recipe Mixer" })
+
+-- Loop untuk membuat 4 Slot secara otomatis agar code rapi
+for i = 1, 4 do
+    RecipeSection:Dropdown({
+        Title = "Select Ore",
+        Values = OreList, -- Mengambil dari OreList di script utama Anda
+        Multi = false,    -- Single Select sesuai request
+        Value = nil,
+        Desc = "Choose material for Slot " .. i,
+        Callback = function(v)
+            getgenv().ForgeSlots[i].Ore = v
+        end
+    })
+
+    RecipeSection:Slider({
+        Title = "Amount",
+        Desc = "Quantity for this slot",
+        Value = { Min = 0, Max = 10, Default = 0 }, -- Default 0 sesuai request
+        Step = 1,
+        Callback = function(v)
+            getgenv().ForgeSlots[i].Amount = v
+        end
+    })
+end
+
+-- Tombol Eksekusi
+local ActionSection = ForgeTab:Section({ Title = "3. Action" })
+ActionSection:Button({
+    Title = "START FORGE",
+    Desc = "Make sure you are close to the Anvil!",
+    Callback = function()
+        task.spawn(RunAutoForge)
+    end
+})
