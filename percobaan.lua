@@ -1338,8 +1338,8 @@ local function RunAutoForge()
     WindUI:Notify({ Title = "Forge", Content = "Starting process...", Duration = 2 })
 
     -- Step 1: Open & Start
-    ProximityService:InvokeServer(ForgeModel)
-    task.wait(0.5)
+    -- ProximityService:InvokeServer(ForgeModel)
+    -- task.wait(0.5)
     ForgeService:InvokeServer(ForgeModel)
     task.wait(0.5)
 
@@ -1402,9 +1402,9 @@ local function RunAutoForge()
     if claimSuccess then
         WindUI:Notify({ Title = "Success", Content = "Item Forged Successfully!", Duration = 3 })
         print("✅ Forge Selesai!")
+        task.wait(1)
     end
     task.wait(1)
-    ForgeEndService:InvokeServer()
 end
 -- [[ TABS ]] --
 local MainSection = Window:Section({ Title = "Main", Icon = "swords" })
