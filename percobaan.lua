@@ -7,9 +7,9 @@ local Config = {
     Window = {
         Title = "TForge",
         Icon = "gamepad-2",
-        Author = "JumantaraHub v21",
+        Author = "JumantaraHub v22",
         Theme = "Plant",
-        Folder = "UniversalScript_v21s"
+        Folder = "UniversalScript_v22s"
     },
 
     OpenButton = {
@@ -289,6 +289,12 @@ local State = {
     IgnoredRocks = {},
     CurrentTargetRock = nil,
     AvoidStealing = false,
+    Priority1 = {},
+    Priority2 = {},
+    Priority3 = {},
+    MineOthers = false,
+
+    FilterSpecificRocks = {},
 }
 -- ============================================
 -- REPLICATE SIGNAL FUNCTION (UNTUK DESYNC)
@@ -706,12 +712,15 @@ function Farming.FindNearestRockInSelectedAreas()
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
     if not hrp then return nil end
 
-    local nearestRock = nil
-    local minDist = math.huge
-    local foundModel = nil
-
     local rocksFolder = Services.Workspace:FindFirstChild("Rocks")
     if not rocksFolder then return nil end
+
+    local candidates = {
+        P1 = {},
+        P2 = {},
+        P3 = {},
+        Other = {}
+    }
 
     local areasToScan = {}
     if #State.SelectedAreas > 0 then
@@ -729,41 +738,30 @@ function Farming.FindNearestRockInSelectedAreas()
                 if spawnLoc.Name == "SpawnLocation" then
                     local rockModel = spawnLoc:FindFirstChildWhichIsA("Model")
 
-                    -- LOGIKA BARU: Cek apakah rock ini ada di daftar ignore
-                    local isIgnored = false
-                    if rockModel and State.IgnoredRocks[rockModel] then
-                        isIgnored = true
-                    end
+                    if rockModel and not State.IgnoredRocks[rockModel] then
+                        local isDead = false
+                        local hp = 0
+                        local hpAttr = rockModel:GetAttribute("Health")
+                        if hpAttr then hp = hpAttr end
+                        local hpVal = rockModel:FindFirstChild("Health")
+                        if hpVal and hpVal:IsA("ValueBase") then hp = hpVal.Value end
 
-                    if rockModel and not isIgnored then
-                        local isTarget = false
-                        if #State.SelectedRocks == 0 then
-                            isTarget = true
-                        else
-                            if table.find(State.SelectedRocks, rockModel.Name) then
-                                isTarget = true
-                            end
-                        end
+                        if hp <= 0 then isDead = true end
 
-                        if isTarget then
-                            local isDead = false
-                            local hpAttr = rockModel:GetAttribute("Health")
-                            if hpAttr and hpAttr <= 0 then isDead = true end
+                        if not isDead then
+                            local rockName = rockModel.Name
+                            local tPos = rockModel:GetPivot().Position
+                            local dist = (hrp.Position - tPos).Magnitude
+                            local data = { Model = rockModel, CFrame = rockModel:GetPivot(), Dist = dist }
 
-                            local hpVal = rockModel:FindFirstChild("Health")
-                            if hpVal and hpVal:IsA("ValueBase") and hpVal.Value <= 0 then isDead = true end
-
-                            local hum = rockModel:FindFirstChild("Humanoid")
-                            if hum and hum.Health <= 0 then isDead = true end
-
-                            if not isDead then
-                                local targetCFrame = rockModel:GetPivot()
-                                local dist = (hrp.Position - targetCFrame.Position).Magnitude
-                                if dist < minDist then
-                                    minDist = dist
-                                    nearestRock = targetCFrame
-                                    foundModel = rockModel -- Simpan modelnya juga
-                                end
+                            if table.find(State.Priority1, rockName) then
+                                table.insert(candidates.P1, data)
+                            elseif table.find(State.Priority2, rockName) then
+                                table.insert(candidates.P2, data)
+                            elseif table.find(State.Priority3, rockName) then
+                                table.insert(candidates.P3, data)
+                            elseif State.MineOthers then
+                                table.insert(candidates.Other, data)
                             end
                         end
                     end
@@ -772,7 +770,31 @@ function Farming.FindNearestRockInSelectedAreas()
         end
     end
 
-    return nearestRock, foundModel
+    local function GetClosest(list)
+        local closest = nil
+        local minDist = math.huge
+        for _, data in pairs(list) do
+            if data.Dist < minDist then
+                minDist = data.Dist
+                closest = data
+            end
+        end
+        return closest
+    end
+
+    local winner = GetClosest(candidates.P1)
+    if winner then return winner.CFrame, winner.Model end
+
+    winner = GetClosest(candidates.P2)
+    if winner then return winner.CFrame, winner.Model end
+
+    winner = GetClosest(candidates.P3)
+    if winner then return winner.CFrame, winner.Model end
+
+    winner = GetClosest(candidates.Other)
+    if winner then return winner.CFrame, winner.Model end
+
+    return nil, nil
 end
 
 function Farming.GetOreInRock(rockModel)
@@ -1351,7 +1373,7 @@ AutoFightTab:Toggle({
     end
 })
 -- ============================================
--- AUTO MINE TAB (UPDATED)
+-- AUTO MINE TAB (FINAL)
 -- ============================================
 
 AutoMineTab:Dropdown({
@@ -1360,28 +1382,54 @@ AutoMineTab:Dropdown({
     Multi = true,
     Value = {},
     AllowNone = true,
-    Desc = "Where to look for rocks",
     Callback = function(Value) State.SelectedAreas = Value end
 })
 
 AutoMineTab:Button({
     Title = "Refresh Area List",
-    Desc = "Click if new areas loaded",
     Callback = function()
         WindUI:Notify({ Title = "Success", Content = "Area list updated!", Duration = 1 })
     end
 })
 
+-- SECTION PRIORITAS
+AutoMineTab:Section({ Title = "Target Priority System" })
+
 AutoMineTab:Dropdown({
-    Title = "Filter Target Rocks",
+    Title = "1st Priority (High)",
     Values = Database.Rocks,
     Multi = true,
     Value = {},
-    Desc = "Which ROCKS to hit",
-    Callback = function(Value) State.SelectedRocks = Value end
+    Desc = "Bot will search these FIRST.",
+    Callback = function(Value) State.Priority1 = Value end
 })
 
-AutoMineTab:Section({ Title = "Smart Filters" })
+AutoMineTab:Dropdown({
+    Title = "2nd Priority (Medium)",
+    Values = Database.Rocks,
+    Multi = true,
+    Value = {},
+    Desc = "Search these if Prio 1 not found.",
+    Callback = function(Value) State.Priority2 = Value end
+})
+
+AutoMineTab:Dropdown({
+    Title = "3rd Priority (Low)",
+    Values = Database.Rocks,
+    Multi = true,
+    Value = {},
+    Desc = "Search these if Prio 1 & 2 not found.",
+    Callback = function(Value) State.Priority3 = Value end
+})
+
+AutoMineTab:Toggle({
+    Title = "Mine Others (Fallback)",
+    Desc = "If no Priority rocks found, mine anything?",
+    Value = false,
+    Callback = function(Value) State.MineOthers = Value end
+})
+
+AutoMineTab:Section({ Title = "Smart Filters & Logic" })
 
 AutoMineTab:Toggle({
     Title = "Avoid Stealing (Anti-KS)",
@@ -1392,9 +1440,18 @@ AutoMineTab:Toggle({
 
 AutoMineTab:Toggle({
     Title = "Enable Smart Mine",
-    Desc = "Scan contents inside 'Ore' model",
+    Desc = "Read ore content inside rock",
     Value = false,
     Callback = function(Value) State.SmartMine = Value end
+})
+
+AutoMineTab:Dropdown({
+    Title = "Apply Filter To Rocks...",
+    Values = Database.Rocks,
+    Multi = true,
+    Value = {},
+    Desc = "ONLY check ore content for THESE rocks. Others are auto-mined.",
+    Callback = function(Value) State.FilterSpecificRocks = Value end
 })
 
 AutoMineTab:Dropdown({
@@ -1402,7 +1459,7 @@ AutoMineTab:Dropdown({
     Values = Database.Ores,
     Multi = true,
     Value = {},
-    Desc = "Only mine these ores. Skip others.",
+    Desc = "If filter applies, only keep these.",
     Callback = function(Value) State.KeepOres = Value end
 })
 
@@ -1430,7 +1487,6 @@ AutoMineTab:Toggle({
 
                         local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
                         if hrp then
-                            -- Gerak ke target
                             local dist = (hrp.Position - targetPos).Magnitude
                             if dist > 4 then
                                 Utilities.SetAnchor(false)
@@ -1440,57 +1496,51 @@ AutoMineTab:Toggle({
                                 Utilities.SetAnchor(true)
 
                                 -- =============================================
-                                -- MINING LOOP
+                                -- LOGIKA MINING
                                 -- =============================================
                                 local shouldSkip = false
-
-                                -- Equip Pickaxe
                                 Utilities.EquipToolByName(State.TargetMineName)
 
                                 while rockModel and rockModel.Parent and State.AutoMine do
-                                    -- A. CEK KONDISI BATU (HANCUR/MATI)
                                     local hp = 0
                                     local hpAttr = rockModel:GetAttribute("Health")
                                     if hpAttr then hp = hpAttr end
                                     local hpVal = rockModel:FindFirstChild("Health")
                                     if hpVal and hpVal:IsA("ValueBase") then hp = hpVal.Value end
-                                    local hum = rockModel:FindFirstChild("Humanoid")
-                                    if hum then hp = hum.Health end
-
                                     if hp <= 0 then break end
 
-                                    -- B. FITUR AUTO AVOID (LastHitPlayer)
                                     if State.AvoidStealing then
                                         local lastHit = rockModel:GetAttribute("LastHitPlayer")
-                                        -- Jika ada yang pukul DAN bukan kita
                                         if lastHit and lastHit ~= LocalPlayer.Name and lastHit ~= "" then
-                                            print("⚠️ [Avoid] Rock owned by: " .. tostring(lastHit))
                                             shouldSkip = true
-                                            break -- Keluar loop mining, cari batu lain
+                                            break
                                         end
                                     end
 
-                                    -- C. SMART MINE CHECK (Ore Filter)
                                     if State.SmartMine then
-                                        local scanResult = Farming.GetOreInRock(rockModel)
+                                        local isRestrictedRock = table.find(State.FilterSpecificRocks, rockModel.Name)
 
-                                        if scanResult and scanResult ~= "Unknown Ore" then
-                                            -- Jika ore ditemukan di dalam Keep List, lanjut mining
-                                            if #State.KeepOres > 0 and not table.find(State.KeepOres, scanResult) then
-                                                print("❌ [Filter] Skipping: " .. scanResult)
-                                                shouldSkip = true
-                                                break
-                                            else
-                                                -- Visual ESP (Opsional)
-                                                if not rockModel:FindFirstChild("SmartMineESP") then
-                                                    print("💎 [Mining] Found: " .. scanResult)
-                                                    Farming.ShowOreESP(rockModel, scanResult)
+                                        if isRestrictedRock then
+                                            local scanResult = Farming.GetOreInRock(rockModel)
+
+                                            if scanResult and scanResult ~= "Unknown Ore" then
+                                                if #State.KeepOres > 0 and not table.find(State.KeepOres, scanResult) then
+                                                    print("❌ [Filter] Skipping " ..
+                                                        rockModel.Name .. " contains " .. scanResult)
+                                                    shouldSkip = true
+                                                    break
+                                                else
+                                                    -- Visual
+                                                    if not rockModel:FindFirstChild("SmartMineESP") then
+                                                        Farming.ShowOreESP(rockModel, scanResult)
+                                                    end
                                                 end
                                             end
+                                        else
                                         end
                                     end
 
-                                    -- D. ACTION (HIT)
+                                    -- Hit
                                     pcall(function()
                                         local args = { State.TargetMineName }
                                         Services.ReplicatedStorage.Shared.Packages.Knit.Services.ToolService.RF
@@ -1508,13 +1558,10 @@ AutoMineTab:Toggle({
                             end
                         end
                     else
-                        -- Idle / Reset Ignored List kalau sudah bersih
                         Utilities.SetAnchor(false)
                         if next(State.IgnoredRocks) ~= nil then
                             for model, _ in pairs(State.IgnoredRocks) do
-                                if not model.Parent then
-                                    State.IgnoredRocks[model] = nil
-                                end
+                                if not model.Parent then State.IgnoredRocks[model] = nil end
                             end
                         end
                     end
