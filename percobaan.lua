@@ -7,9 +7,9 @@ local Config = {
     Window = {
         Title = "TForge",
         Icon = "gamepad-2",
-        Author = "JumantaraHub v19",
+        Author = "JumantaraHub v20",
         Theme = "Plant",
-        Folder = "UniversalScript_v19s"
+        Folder = "UniversalScript_v20s"
     },
 
     OpenButton = {
@@ -1279,6 +1279,55 @@ local MobDropdown = AutoFightTab:Dropdown({
     Callback = function(Value) State.SelectedMobs = Value end
 })
 
+AutoFightTab:Toggle({
+    Title = "Auto Farm Mobs",
+    Value = false,
+    Callback = function(Value)
+        State.AutoFarmMobs = Value
+        if not Value then
+            Utilities.SetAnchor(false)
+            WindUI:Notify({ Title = "Auto Farm", Content = "Stopped.", Duration = 1 })
+        end
+
+        if Value then
+            task.spawn(function()
+                while State.AutoFarmMobs do
+                    local targetPart = Farming.FindNearestMob()
+                    if targetPart then
+                        local mobPos = targetPart.Position
+                        local targetPos = mobPos + Vector3.new(0, State.GlobalHeight, State.GlobalDistance)
+                        local finalCFrame = CFrame.lookAt(targetPos, mobPos)
+
+                        local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                        if hrp then
+                            local dist = (hrp.Position - targetPos).Magnitude
+                            if dist > 8 then
+                                Utilities.SetAnchor(false)
+                                Movement.TweenTo(finalCFrame)
+                            else
+                                Utilities.SetAnchor(true)
+                                hrp.CFrame = hrp.CFrame:Lerp(finalCFrame, 0.5)
+                            end
+
+                            local isReady = Utilities.EquipToolByName(State.TargetWeaponName)
+                            if isReady then
+                                pcall(function()
+                                    local args = { State.TargetWeaponName }
+                                    Services.ReplicatedStorage.Shared.Packages.Knit.Services.ToolService.RF
+                                        .ToolActivated:InvokeServer(unpack(args))
+                                end)
+                            end
+                        end
+                    else
+                        Utilities.SetAnchor(false)
+                    end
+                    task.wait()
+                end
+                Utilities.SetAnchor(false)
+            end)
+        end
+    end
+})
 -- Auto Mine Tab
 AutoMineTab:Dropdown({
     Title = "Select Mining Area",
