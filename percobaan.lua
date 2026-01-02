@@ -7,9 +7,9 @@ local Config = {
     Window = {
         Title = "TForge",
         Icon = "gamepad-2",
-        Author = "JumantaraHub v22",
+        Author = "JumantaraHub v23",
         Theme = "Plant",
-        Folder = "UniversalScript_v22s"
+        Folder = "UniversalScript_v23s"
     },
 
     OpenButton = {
@@ -1485,10 +1485,13 @@ AutoMineTab:Toggle({
                         local targetPos = rockPos + Vector3.new(0, State.GlobalHeight, State.GlobalDistance)
                         local finalCFrame = CFrame.lookAt(targetPos, rockPos)
 
-                        local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                        if hrp then
+                        local char = LocalPlayer.Character
+                        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                        local hum = char and char:FindFirstChild("Humanoid")
+
+                        if hrp and hum and hum.Health > 0 then
                             local dist = (hrp.Position - targetPos).Magnitude
-                            if dist > 4 then
+                            if dist > 6 then
                                 Utilities.SetAnchor(false)
                                 Movement.TweenTo(finalCFrame)
                             else
@@ -1502,6 +1505,21 @@ AutoMineTab:Toggle({
                                 Utilities.EquipToolByName(State.TargetMineName)
 
                                 while rockModel and rockModel.Parent and State.AutoMine do
+                                    local currChar = LocalPlayer.Character
+                                    local currHrp = currChar and currChar:FindFirstChild("HumanoidRootPart")
+                                    local currHum = currChar and currChar:FindFirstChild("Humanoid")
+
+                                    if not currHrp or not currHum or currHum.Health <= 0 then
+                                        break
+                                    end
+
+                                    local currentDist = (currHrp.Position - rockPos).Magnitude
+
+                                    if currentDist > 15 then
+                                        Utilities.SetAnchor(false)
+                                        break
+                                    end
+
                                     local hp = 0
                                     local hpAttr = rockModel:GetAttribute("Health")
                                     if hpAttr then hp = hpAttr end
@@ -1519,10 +1537,8 @@ AutoMineTab:Toggle({
 
                                     if State.SmartMine then
                                         local isRestrictedRock = table.find(State.FilterSpecificRocks, rockModel.Name)
-
                                         if isRestrictedRock then
                                             local scanResult = Farming.GetOreInRock(rockModel)
-
                                             if scanResult and scanResult ~= "Unknown Ore" then
                                                 if #State.KeepOres > 0 and not table.find(State.KeepOres, scanResult) then
                                                     print("❌ [Filter] Skipping " ..
@@ -1530,17 +1546,15 @@ AutoMineTab:Toggle({
                                                     shouldSkip = true
                                                     break
                                                 else
-                                                    -- Visual
                                                     if not rockModel:FindFirstChild("SmartMineESP") then
                                                         Farming.ShowOreESP(rockModel, scanResult)
                                                     end
                                                 end
                                             end
-                                        else
                                         end
                                     end
 
-                                    -- Hit
+                                    -- Hit Action
                                     pcall(function()
                                         local args = { State.TargetMineName }
                                         Services.ReplicatedStorage.Shared.Packages.Knit.Services.ToolService.RF
@@ -1573,7 +1587,6 @@ AutoMineTab:Toggle({
         end
     end
 })
-
 -- Auto Sell Ore Tab
 AutoSellOreTab:Button({
     Title = "Initialize Merchant",
