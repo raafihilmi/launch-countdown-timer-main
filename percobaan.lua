@@ -60,7 +60,13 @@ local State = {
     },
     TargetTools = {
         "Big Shovel", "Trowel", "Spatula", "Toy Shovel", "Spoon"
-    }
+    },
+    WalkSpeed = 16,
+    FlyEnabled = false,
+    FlySpeed = 50,
+    EspPlayer = false,
+    EspItem = false,
+    AutoUseFood = false
 }
 -- ============================================
 -- VISUALS MODULE
@@ -135,6 +141,14 @@ function Utilities.GetEquippedTool()
     return nil
 end
 
+Utilities.RarityColors = {
+    ["Common"] = Color3.fromRGB(255, 255, 255),
+    ["Uncommon"] = Color3.fromRGB(30, 200, 60),
+    ["Rare"] = Color3.fromRGB(0, 190, 255),
+    ["Epic"] = Color3.fromRGB(180, 70, 255),
+    ["Legendary"] = Color3.fromRGB(255, 170, 0),
+    ["Mythic"] = Color3.fromRGB(255, 0, 0)
+}
 -- ============================================
 -- FARMING FUNCTIONS
 -- ============================================
@@ -305,17 +319,31 @@ function Farming.DoPickup()
     local char = LocalPlayer.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
 
-    -- Cek kapasitas tas (Optional, tapi bagus untuk debug)
+    -- ==========================================
+    -- LOGIKA AUTO SELL SAAT TAS PENUH
+    -- ==========================================
     local hiddenStats = LocalPlayer:FindFirstChild("hiddenstats")
     if hiddenStats then
         local current = hiddenStats:FindFirstChild("CurrentSackSize")
         local max = hiddenStats:FindFirstChild("MaxSackSize")
+
+        -- Cek apakah value ada dan apakah tas sudah penuh/lebih
         if current and max and current.Value >= max.Value then
-            -- Jika tas penuh, jangan coba pickup (hemat resource/anti-kick)
-            -- Pastikan Auto Sell aktif!
+            WindUI:Notify({
+                Title = "Sack Full!",
+                Content = "Auto Selling items...",
+                Duration = 3,
+                Type = "Warning"
+            })
+
+            -- Panggil fungsi jual secara langsung
+            Farming.ProcessSelling()
+
+            -- Hentikan proses pickup saat ini agar tidak error/spam
             return
         end
     end
+    -- ==========================================
 
     if not hrp then return end
 
@@ -341,19 +369,18 @@ function Farming.DoPickup()
                             hrp.CFrame = itemRoot.CFrame
                             task.wait(0.15) -- Delay ping
 
-                            -- FIRE REMOTE (FIXED ORDER BASED ON DECOMPILER)
-                            -- Sumber: v_u_events.GameEvent:FireServer("PickupDigItem", arg1:GetAttribute("UID"), arg1:GetAttribute("DigzoneUID"))
+                            -- FIRE REMOTE (Urutan Benar: UID, DigzoneUID)
                             local args = {
                                 "PickupDigItem",
-                                uid,       -- ARG 1: UID Item
-                                digzoneUid -- ARG 2: UID Zone
+                                uid,
+                                digzoneUid
                             }
                             Services.ReplicatedStorage.Events.GameEvent:FireServer(unpack(args))
 
-                            -- DESTROY CLIENT SIDE (Agar tidak spam pickup item yg sama)
+                            -- DESTROY CLIENT SIDE
                             itemModel:Destroy()
 
-                            task.wait(0.1)
+                            task.wait(0.75)
                             if not State.AutoPickup then return end
                         end
                     end
@@ -412,6 +439,192 @@ function Farming.ProcessSelling()
 end
 
 -- ============================================
+-- PLAYER & VISUAL LOGIC
+-- ============================================
+local PlayerLogic = {}
+local FlyBody = nil
+local FlyGyro = nil
+
+-- --- LOGIKA FLY ---
+function PlayerLogic.ToggleFly(state)
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    local hum = char and char:FindFirstChild("Humanoid")
+
+    if state and hrp and hum then
+        -- Mulai Terbang
+        FlyBody = Instance.new("BodyVelocity")
+        FlyBody.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+        FlyBody.Velocity = Vector3.zero
+        FlyBody.Parent = hrp
+
+        FlyGyro = Instance.new("BodyGyro")
+        FlyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+        FlyGyro.P = 10000
+        FlyGyro.D = 100
+        FlyGyro.CFrame = hrp.CFrame
+        FlyGyro.Parent = hrp
+
+        hum.PlatformStand = true
+
+        -- Loop Terbang
+        task.spawn(function()
+            while State.FlyEnabled and char and char.Parent do
+                local cam = Services.Workspace.CurrentCamera
+                local moveDir = Vector3.zero
+
+                -- Kontrol (WASD)
+                local isMoving = false
+                local userInput = game:GetService("UserInputService")
+
+                if userInput:IsKeyDown(Enum.KeyCode.W) then
+                    moveDir = moveDir + cam.CFrame.LookVector
+                    isMoving = true
+                end
+                if userInput:IsKeyDown(Enum.KeyCode.S) then
+                    moveDir = moveDir - cam.CFrame.LookVector
+                    isMoving = true
+                end
+                if userInput:IsKeyDown(Enum.KeyCode.A) then
+                    moveDir = moveDir - cam.CFrame.RightVector
+                    isMoving = true
+                end
+                if userInput:IsKeyDown(Enum.KeyCode.D) then
+                    moveDir = moveDir + cam.CFrame.RightVector
+                    isMoving = true
+                end
+                if userInput:IsKeyDown(Enum.KeyCode.Space) then
+                    moveDir = moveDir + Vector3.new(0, 1, 0)
+                    isMoving = true
+                end
+                if userInput:IsKeyDown(Enum.KeyCode.LeftControl) then
+                    moveDir = moveDir - Vector3.new(0, 1, 0)
+                    isMoving = true
+                end
+
+                if isMoving then
+                    FlyBody.Velocity = moveDir * State.FlySpeed
+                    FlyGyro.CFrame = cam.CFrame
+                else
+                    FlyBody.Velocity = Vector3.zero
+                    FlyGyro.CFrame = cam.CFrame
+                end
+                task.wait()
+            end
+        end)
+    else
+        -- Matikan Terbang
+        if FlyBody then
+            FlyBody:Destroy()
+            FlyBody = nil
+        end
+        if FlyGyro then
+            FlyGyro:Destroy()
+            FlyGyro = nil
+        end
+        if hum then hum.PlatformStand = false end
+    end
+end
+
+-- --- LOGIKA ESP PLAYER ---
+function PlayerLogic.UpdatePlayerESP()
+    local folder = Services.Workspace:FindFirstChild("JumantaraESP_Players") or
+        Instance.new("Folder", Services.Workspace)
+    folder.Name = "JumantaraESP_Players"
+    folder:ClearAllChildren()
+
+    if not State.EspPlayer then return end
+
+    for _, plr in pairs(Services.Players:GetPlayers()) do
+        if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+            local char = plr.Character
+
+            -- Highlight (Kotak di badan)
+            local hl = Instance.new("Highlight")
+            hl.Name = plr.Name
+            hl.FillColor = Color3.fromRGB(255, 0, 0)
+            hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+            hl.FillTransparency = 0.5
+            hl.OutlineTransparency = 0
+            hl.Adornee = char
+            hl.Parent = folder
+
+            -- Text (Nama di atas kepala)
+            local head = char:FindFirstChild("Head")
+            if head then
+                local bg = Instance.new("BillboardGui")
+                bg.Size = UDim2.new(0, 200, 0, 50)
+                bg.StudsOffset = Vector3.new(0, 3, 0)
+                bg.AlwaysOnTop = true
+                bg.Adornee = head
+                bg.Parent = folder
+
+                local lbl = Instance.new("TextLabel", bg)
+                lbl.Size = UDim2.new(1, 0, 1, 0)
+                lbl.BackgroundTransparency = 1
+                lbl.Text = plr.Name
+                lbl.TextColor3 = Color3.new(1, 1, 1)
+                lbl.TextStrokeTransparency = 0
+                lbl.TextSize = 14
+            end
+        end
+    end
+end
+
+-- --- LOGIKA ESP ITEM ---
+function PlayerLogic.UpdateItemESP()
+    local folder = Services.Workspace:FindFirstChild("JumantaraESP_Items") or Instance.new("Folder", Services.Workspace)
+    folder.Name = "JumantaraESP_Items"
+    folder:ClearAllChildren()
+
+    if not State.EspItem then return end
+
+    local map = Services.Workspace:FindFirstChild("Map")
+    local functional = map and map:FindFirstChild("Functional")
+    local spawnedItems = functional and functional:FindFirstChild("SpawnedItems")
+
+    if not spawnedItems then return end
+
+    -- Loop folder Rarity (Common, Rare, dll)
+    for _, rarityFolder in pairs(spawnedItems:GetChildren()) do
+        if rarityFolder:IsA("Folder") then
+            local color = Utilities.RarityColors[rarityFolder.Name] or Color3.new(1, 1, 1)
+
+            for _, item in pairs(rarityFolder:GetChildren()) do
+                if item:IsA("Model") then
+                    local root = item:FindFirstChild("Root") or item.PrimaryPart
+                    if root then
+                        local bg = Instance.new("BillboardGui")
+                        bg.Size = UDim2.new(0, 100, 0, 40)
+                        bg.StudsOffset = Vector3.new(0, 2, 0)
+                        bg.AlwaysOnTop = true
+                        bg.Adornee = root
+                        bg.Parent = folder
+
+                        local lbl = Instance.new("TextLabel", bg)
+                        lbl.Size = UDim2.new(1, 0, 1, 0)
+                        lbl.BackgroundTransparency = 1
+                        lbl.Text = item.Name
+                        lbl.TextColor3 = color
+                        lbl.TextStrokeTransparency = 0
+                        lbl.Font = Enum.Font.Bold
+                        lbl.TextSize = 12
+                    end
+                end
+            end
+        end
+    end
+end
+
+-- Loop Update ESP (Setiap 2 detik agar tidak lag)
+task.spawn(function()
+    while true do
+        if State.EspPlayer then PlayerLogic.UpdatePlayerESP() end
+        if State.EspItem then PlayerLogic.UpdateItemESP() end
+        task.wait(2) -- Refresh rate 2 detik
+    end
+end)
+-- ============================================
 -- MAIN UI CREATION
 -- ============================================
 local Window = WindUI:CreateWindow(Config.Window)
@@ -420,7 +633,9 @@ Window:EditOpenButton(Config.OpenButton)
 local MainTab = Window:Tab({ Title = "Main Farm", Icon = "pickaxe" })
 local SettingsTab = Window:Tab({ Title = "Settings", Icon = "settings" })
 
--- SECTION: AUTO DIG
+-- ============================================
+-- AUTO DIG SECTION (UPDATED)
+-- ============================================
 local DigSection = MainTab:Section({ Title = "Digging" })
 
 DigSection:Toggle({
@@ -433,12 +648,37 @@ DigSection:Toggle({
             task.spawn(function()
                 while State.AutoDig do
                     if not State.IsSelling then
+                        -- === LOGIKA SMART AUTO EAT ===
+                        if State.AutoUseFood then
+                            local hiddenStats = LocalPlayer:FindFirstChild("hiddenstats")
+                            local energy = hiddenStats and hiddenStats:FindFirstChild("NormalizedEnergy")
+
+                            -- Cek jika energi habis (0)
+                            if energy and energy.Value <= 0 then
+                                -- Panggil fungsi makan yang sudah dibuat sebelumnya
+                                Farming.DoEat()
+                                -- Beri sedikit jeda agar server memproses makanan sebelum lanjut gali
+                                task.wait(0.5)
+                            end
+                        end
+                        -- =============================
+
+                        -- Lanjut Digging
                         Farming.DoDig()
                     end
                     task.wait(State.DigSpeed)
                 end
             end)
         end
+    end
+})
+
+DigSection:Toggle({
+    Title = "Smart Auto Eat",
+    Desc = "Auto eat when Energy is 0",
+    Value = false,
+    Callback = function(Value)
+        State.AutoUseFood = Value
     end
 })
 
@@ -464,18 +704,18 @@ DigSection:Toggle({
 DigSection:Slider({
     Title = "Dig Speed",
     Desc = "Delay between digs (Seconds)",
-    Value = { Min = 0.01, Max = 1, Default = 0.05 }, -- Saya percepat sedikit defaultnya
-    Step = 0.01,
+    Value = { Min = 0.15, Max = 1, Default = 0.25 },
+    Step = 0.05,
     Callback = function(Value)
         State.DigSpeed = Value
     end
 })
 -- SECTION: AUTO PICKUP (UPDATED)
-local PickupSection = MainTab:Section({ Title = "Collection (Remote)" })
+local PickupSection = MainTab:Section({ Title = "Auto Pickup Item" })
 
 PickupSection:Toggle({
     Title = "Auto Pickup",
-    Desc = "Scans SpawnedItems & Fires Remote",
+    Desc = "Scans & Pickup Item",
     Value = false,
     Callback = function(Value)
         State.AutoPickup = Value
@@ -688,5 +928,90 @@ FoodSection:Slider({
         State.AutoEatDelay = Value
     end
 })
+-- ============================================
+-- PLAYER TAB
+-- ============================================
+local PlayerTab = Window:Tab({ Title = "Player", Icon = "user" })
 
+-- SECTION: MOVEMENT
+local MoveSection = PlayerTab:Section({ Title = "Movement" })
+
+MoveSection:Slider({
+    Title = "WalkSpeed",
+    Desc = "Set character running speed",
+    Value = { Min = 16, Max = 100, Default = 16 },
+    Step = 1,
+    Callback = function(Value)
+        State.WalkSpeed = Value
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+            LocalPlayer.Character.Humanoid.WalkSpeed = Value
+        end
+    end
+})
+
+-- Loop untuk memaksa WalkSpeed (Anti-Reset)
+task.spawn(function()
+    while true do
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+            if LocalPlayer.Character.Humanoid.WalkSpeed ~= State.WalkSpeed then
+                LocalPlayer.Character.Humanoid.WalkSpeed = State.WalkSpeed
+            end
+        end
+        task.wait(0.5)
+    end
+end)
+
+MoveSection:Toggle({
+    Title = "Enable Fly",
+    Desc = "Use WASD + Space/Ctrl to fly",
+    Value = false,
+    Callback = function(Value)
+        State.FlyEnabled = Value
+        PlayerLogic.ToggleFly(Value)
+    end
+})
+
+MoveSection:Slider({
+    Title = "Fly Speed",
+    Value = { Min = 10, Max = 200, Default = 50 },
+    Step = 5,
+    Callback = function(Value)
+        State.FlySpeed = Value
+    end
+})
+
+-- SECTION: VISUALS (ESP)
+local VisualSection = PlayerTab:Section({ Title = "ESP (Visuals)" })
+
+VisualSection:Toggle({
+    Title = "ESP Players",
+    Desc = "See other players through walls",
+    Value = false,
+    Callback = function(Value)
+        State.EspPlayer = Value
+        if not Value then
+            -- Langsung hapus jika dimatikan
+            local folder = Services.Workspace:FindFirstChild("JumantaraESP_Players")
+            if folder then folder:ClearAllChildren() end
+        else
+            PlayerLogic.UpdatePlayerESP()
+        end
+    end
+})
+
+VisualSection:Toggle({
+    Title = "ESP Items",
+    Desc = "See items by Rarity color",
+    Value = false,
+    Callback = function(Value)
+        State.EspItem = Value
+        if not Value then
+            -- Langsung hapus jika dimatikan
+            local folder = Services.Workspace:FindFirstChild("JumantaraESP_Items")
+            if folder then folder:ClearAllChildren() end
+        else
+            PlayerLogic.UpdateItemESP()
+        end
+    end
+})
 print("✅ [JumantaraHub] DTE Loaded!")
