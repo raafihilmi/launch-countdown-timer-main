@@ -7,9 +7,9 @@ local Config = {
     Window = {
         Title = "TForge",
         Icon = "gamepad-2",
-        Author = "JumantaraHub v20",
+        Author = "JumantaraHub v21",
         Theme = "Plant",
-        Folder = "UniversalScript_v20s"
+        Folder = "UniversalScript_v21s"
     },
 
     OpenButton = {
@@ -288,6 +288,7 @@ local State = {
     KeepOres = {},
     IgnoredRocks = {},
     CurrentTargetRock = nil,
+    AvoidStealing = false,
 }
 -- ============================================
 -- REPLICATE SIGNAL FUNCTION (UNTUK DESYNC)
@@ -774,20 +775,41 @@ function Farming.FindNearestRockInSelectedAreas()
     return nearestRock, foundModel
 end
 
--- FUNGSI BARU: Deteksi Ore di dalam Rock
 function Farming.GetOreInRock(rockModel)
     if not rockModel then return nil end
 
-    -- Biasanya Ore adalah Model/Part di dalam Rock yang namanya ada di Database.Ores
-    for _, child in pairs(rockModel:GetChildren()) do
-        if table.find(Database.Ores, child.Name) then
-            return child.Name
+    local oreModel = rockModel:FindFirstChild("Ore")
+    if oreModel then
+        for _, child in pairs(oreModel:GetChildren()) do
+            if table.find(Database.Ores, child.Name) then
+                return child.Name
+            end
+
+            for _, dbOre in pairs(Database.Ores) do
+                if string.find(child.Name, dbOre) then
+                    return dbOre
+                end
+            end
+        end
+        return "Unknown Ore"
+    end
+
+    local attributes = rockModel:GetAttributes()
+    for attName, attValue in pairs(attributes) do
+        if type(attValue) == "string" and table.find(Database.Ores, attValue) then
+            return attValue
         end
     end
+
+    for _, child in pairs(rockModel:GetDescendants()) do
+        if child:IsA("StringValue") and table.find(Database.Ores, child.Value) then
+            return child.Value
+        end
+    end
+
     return nil
 end
 
--- FUNGSI BARU: Tampilkan ESP Text pada Ore (Opsional, visual saja)
 function Farming.ShowOreESP(rockModel, oreName)
     if not rockModel or not oreName then return end
     if rockModel:FindFirstChild("SmartMineESP") then return end
@@ -1328,7 +1350,10 @@ AutoFightTab:Toggle({
         end
     end
 })
--- Auto Mine Tab
+-- ============================================
+-- AUTO MINE TAB (UPDATED)
+-- ============================================
+
 AutoMineTab:Dropdown({
     Title = "Select Mining Area",
     Values = Utilities.GetAreaList(),
@@ -1352,45 +1377,50 @@ AutoMineTab:Dropdown({
     Values = Database.Rocks,
     Multi = true,
     Value = {},
-    Desc = "Which ROCKS to hit (e.g., Geode)",
+    Desc = "Which ROCKS to hit",
     Callback = function(Value) State.SelectedRocks = Value end
 })
 
--- UI BARU: Smart Mine
-AutoMineTab:Section({ Title = "Smart Mine (Filter Ore)" })
+AutoMineTab:Section({ Title = "Smart Filters" })
+
+AutoMineTab:Toggle({
+    Title = "Avoid Stealing (Anti-KS)",
+    Desc = "Skip rock if someone else hit it first",
+    Value = false,
+    Callback = function(Value) State.AvoidStealing = Value end
+})
 
 AutoMineTab:Toggle({
     Title = "Enable Smart Mine",
-    Desc = "Check ore at 50% HP and skip if bad",
+    Desc = "Scan contents inside 'Ore' model",
     Value = false,
     Callback = function(Value) State.SmartMine = Value end
 })
 
 AutoMineTab:Dropdown({
     Title = "Keep Selected Ores",
-    Values = Database.Ores, -- Mengambil list ore dari database
+    Values = Database.Ores,
     Multi = true,
     Value = {},
-    Desc = "If ore is NOT in this list, stop mining it.",
+    Desc = "Only mine these ores. Skip others.",
     Callback = function(Value) State.KeepOres = Value end
 })
 
 AutoMineTab:Toggle({
     Title = "Auto Mine",
-    Desc = "Tween -> Anchor -> LookAt -> Mine",
+    Desc = "Start Mining Loop",
     Value = false,
     Callback = function(Value)
         State.AutoMine = Value
         if not Value then
             Utilities.SetAnchor(false)
-            State.IgnoredRocks = {} -- Reset ignore list saat stop
+            State.IgnoredRocks = {}
             WindUI:Notify({ Title = "Auto Mine", Content = "Stopped.", Duration = 1 })
         end
 
         if Value then
             task.spawn(function()
                 while State.AutoMine do
-                    -- Cari rock terdekat (logic baru dengan ignore list)
                     local targetCFrame, rockModel = Farming.FindNearestRockInSelectedAreas()
 
                     if targetCFrame and rockModel then
@@ -1409,69 +1439,78 @@ AutoMineTab:Toggle({
                                 hrp.CFrame = finalCFrame
                                 Utilities.SetAnchor(true)
 
-                                -- LOGIKA SMART MINE (Check HP & Ore)
+                                -- =============================================
+                                -- MINING LOOP
+                                -- =============================================
                                 local shouldSkip = false
 
-                                if State.SmartMine then
-                                    -- Cek Health
-                                    local currentHP = 100
-                                    local maxHP = 100
+                                -- Equip Pickaxe
+                                Utilities.EquipToolByName(State.TargetMineName)
 
-                                    -- Coba ambil health dari Attribute atau Value
-                                    if rockModel:GetAttribute("Health") then
-                                        currentHP = rockModel:GetAttribute("Health")
-                                        maxHP = rockModel:GetAttribute("MaxHealth") or 100 -- Asumsi max 100 jika nil
-                                    elseif rockModel:FindFirstChild("Health") then
-                                        currentHP = rockModel.Health.Value
-                                        maxHP = rockModel.Health:GetAttribute("MaxHealth") or 100
+                                while rockModel and rockModel.Parent and State.AutoMine do
+                                    -- A. CEK KONDISI BATU (HANCUR/MATI)
+                                    local hp = 0
+                                    local hpAttr = rockModel:GetAttribute("Health")
+                                    if hpAttr then hp = hpAttr end
+                                    local hpVal = rockModel:FindFirstChild("Health")
+                                    if hpVal and hpVal:IsA("ValueBase") then hp = hpVal.Value end
+                                    local hum = rockModel:FindFirstChild("Humanoid")
+                                    if hum then hp = hum.Health end
+
+                                    if hp <= 0 then break end
+
+                                    -- B. FITUR AUTO AVOID (LastHitPlayer)
+                                    if State.AvoidStealing then
+                                        local lastHit = rockModel:GetAttribute("LastHitPlayer")
+                                        -- Jika ada yang pukul DAN bukan kita
+                                        if lastHit and lastHit ~= LocalPlayer.Name and lastHit ~= "" then
+                                            print("⚠️ [Avoid] Rock owned by: " .. tostring(lastHit))
+                                            shouldSkip = true
+                                            break -- Keluar loop mining, cari batu lain
+                                        end
                                     end
 
-                                    -- Jika HP <= 50% (setengah)
-                                    if currentHP <= (maxHP / 2) then
-                                        local detectedOre = Farming.GetOreInRock(rockModel)
+                                    -- C. SMART MINE CHECK (Ore Filter)
+                                    if State.SmartMine then
+                                        local scanResult = Farming.GetOreInRock(rockModel)
 
-                                        if detectedOre then
-                                            -- Tampilkan Visual Text (ESP)
-                                            Farming.ShowOreESP(rockModel, detectedOre)
-
-                                            -- Cek apakah Ore ini ada di daftar KeepOres
-                                            if #State.KeepOres > 0 and not table.find(State.KeepOres, detectedOre) then
-                                                print("❌ Skipping Rock! Contains: " .. detectedOre)
+                                        if scanResult and scanResult ~= "Unknown Ore" then
+                                            -- Jika ore ditemukan di dalam Keep List, lanjut mining
+                                            if #State.KeepOres > 0 and not table.find(State.KeepOres, scanResult) then
+                                                print("❌ [Filter] Skipping: " .. scanResult)
                                                 shouldSkip = true
+                                                break
                                             else
-                                                -- Ore bagus, lanjut mining
+                                                -- Visual ESP (Opsional)
+                                                if not rockModel:FindFirstChild("SmartMineESP") then
+                                                    print("💎 [Mining] Found: " .. scanResult)
+                                                    Farming.ShowOreESP(rockModel, scanResult)
+                                                end
                                             end
                                         end
                                     end
+
+                                    -- D. ACTION (HIT)
+                                    pcall(function()
+                                        local args = { State.TargetMineName }
+                                        Services.ReplicatedStorage.Shared.Packages.Knit.Services.ToolService.RF
+                                            .ToolActivated:InvokeServer(unpack(args))
+                                    end)
+
+                                    task.wait(0.1)
                                 end
 
                                 if shouldSkip then
-                                    -- Masukkan ke ignore list agar tidak ditarget lagi
                                     State.IgnoredRocks[rockModel] = true
                                     Utilities.SetAnchor(false)
-                                    task.wait(0.5) -- Delay sedikit biar ga glitch
-                                else
-                                    -- Lanjut pukul kalau tidak di-skip
-                                    local isReady = Utilities.EquipToolByName(State.TargetMineName)
-                                    if isReady then
-                                        pcall(function()
-                                            local args = { State.TargetMineName }
-                                            Services.ReplicatedStorage.Shared.Packages.Knit.Services.ToolService.RF
-                                                .ToolActivated:InvokeServer(unpack(args))
-                                        end)
-                                    end
+                                    task.wait(0.3)
                                 end
                             end
                         end
                     else
-                        -- Kalau tidak ada rock, mungkin semua sudah di-ignore? Reset ignore list jika perlu
-                        -- Atau sekedar idle
+                        -- Idle / Reset Ignored List kalau sudah bersih
                         Utilities.SetAnchor(false)
-
-                        -- Opsional: Reset ignore list jika tidak menemukan rock apapun dalam waktu lama
-                        -- agar rock baru yang spawn bisa terdeteksi.
                         if next(State.IgnoredRocks) ~= nil then
-                            -- Cek apakah rock di ignore list sudah hancur/hilang
                             for model, _ in pairs(State.IgnoredRocks) do
                                 if not model.Parent then
                                     State.IgnoredRocks[model] = nil
@@ -1482,7 +1521,7 @@ AutoMineTab:Toggle({
                     task.wait(0.1)
                 end
                 Utilities.SetAnchor(false)
-                State.IgnoredRocks = {} -- Bersihkan saat loop berhenti
+                State.IgnoredRocks = {}
             end)
         end
     end
@@ -1601,7 +1640,6 @@ AutoSellOreTab:Toggle({
             return
         end
 
-        print("\n🟢 [AUTO SELL ORE] STARTED - Main Loop")
         task.spawn(function()
             local shop = Services.Workspace:FindFirstChild("Shops") and
                 Services.Workspace.Shops:FindFirstChild("Ore Seller")
@@ -1615,7 +1653,6 @@ AutoSellOreTab:Toggle({
             end
 
             State.OreNPCReference = npc
-            print("[AUTO SELL ORE] Walking to Ore Merchant...")
 
             local targetPos = shop.WorldPivot * CFrame.new(0, 0, 5)
             local finalCFrame = CFrame.lookAt(targetPos.Position, shop.WorldPivot.Position)
@@ -1623,7 +1660,6 @@ AutoSellOreTab:Toggle({
             Movement.TweenTo(finalCFrame)
 
             task.wait(0.5)
-            print("[AUTO SELL ORE] Opening Ore Merchant dialog...")
 
             local initSuccess = pcall(function()
                 local args = { npc }
@@ -1637,7 +1673,6 @@ AutoSellOreTab:Toggle({
                 return
             end
 
-            print("✅ [AUTO SELL ORE] Ore Merchant initialized! Starting main loop...")
             State.CurrentMerchantInit = "Ore"
             State.LastOreDialogTime = tick()
             task.wait(1)
@@ -1764,8 +1799,6 @@ AutoSellOreTab:Toggle({
                         rarityDisplay = tostring(selectedRarities)
                     end
 
-                    print("\n[AUTO SELL ORE] Selling " .. #oresToSell .. " items. Rarities: [" .. rarityDisplay .. "]")
-
                     local success = pcall(function()
                         local args = {
                             [1] = "SellConfirm",
@@ -1776,7 +1809,6 @@ AutoSellOreTab:Toggle({
                     end)
 
                     if success then
-                        print("✅ [AUTO SELL ORE] Ore sold!")
                         WindUI:Notify({
                             Title = "Ore Sold",
                             Content = "Sold " .. #oresToSell .. " types",
