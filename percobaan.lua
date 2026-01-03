@@ -801,7 +801,7 @@ local SafetySection = SafetyTab:Section({ Title = "Night Guard Safety" })
 
 SafetySection:Toggle({
     Title = "Anti-Guard (Auto Exit)",
-    Desc = "Press F & Stop Digging if Guard is near",
+    Desc = "Stop Digging if Guard is near",
     Value = false,
     Callback = function(Value)
         State.AntiGuard = Value
@@ -854,7 +854,6 @@ local MainEndingSection = EndingTab:Section({ Title = "Main Ending" })
 
 MainEndingSection:Button({
     Title = "Start Ending Sequence",
-    Desc = "Auto path -> Walk -> End Trigger",
     Callback = function()
         task.spawn(function()
             local char = LocalPlayer.Character
@@ -1066,7 +1065,7 @@ local cursorFree = true
 
 local CursorToggle = CursorSection:Toggle({
     Title = "Unlock Cursor (Anti-Lock)",
-    Desc = "Force mouse visible & free",
+    Desc = "Right Shift to toggle",
     Value = true,
     Callback = function(Value)
         cursorFree = Value
