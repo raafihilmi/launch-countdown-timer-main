@@ -7,9 +7,9 @@ local Config = {
     Window = {
         Title = "DTE",
         Icon = "shovel",
-        Author = "JumantaraHub DTE v1",
+        Author = "JumantaraHub DTE v2",
         Theme = "Plant",
-        Folder = "Jumantara_DTE_v1"
+        Folder = "Jumantara_DTE_v2"
     },
     OpenButton = {
         Title = "Open Menu",
@@ -41,8 +41,8 @@ local State = {
     AutoDig = false,
     AutoSell = false,
     AutoPickup = false,
-    DigSpeed = 0.1,    -- Delay antar dig
-    PickupSpeed = 0.2, -- Delay antar pickup
+    DigSpeed = 0.1,
+    PickupSpeed = 0.5,
     TargetSellName = "Seller",
     MiningPos = CFrame.new(-56.4173355, -7.15000248, 58.1000633),
     SellerPos = CFrame.new(84.3216019, -6.86413288, -8.73450851),
@@ -56,17 +56,20 @@ local State = {
     GuardSafeDistance = 20,
     TargetConsumables = {
         "Chicken", "Chips", "Soda",
-        "Burger", "Donut", "Hot Dog"
+        "Burger", "Donut", "Hot Dog", "Energy Booster"
     },
     TargetTools = {
         "Big Shovel", "Trowel", "Spatula", "Toy Shovel", "Spoon"
     },
-    WalkSpeed = 16,
+    WalkSpeed = 30,
     FlyEnabled = false,
     FlySpeed = 50,
     EspPlayer = false,
     EspItem = false,
-    AutoUseFood = false
+    AutoUseFood = false,
+    SelectedTPNPC = nil,
+    AutoTPNPC = false,
+
 }
 -- ============================================
 -- VISUALS MODULE
@@ -658,7 +661,7 @@ DigSection:Toggle({
                                 -- Panggil fungsi makan yang sudah dibuat sebelumnya
                                 Farming.DoEat()
                                 -- Beri sedikit jeda agar server memproses makanan sebelum lanjut gali
-                                task.wait(0.5)
+                                task.wait(1)
                             end
                         end
                         -- =============================
@@ -939,7 +942,7 @@ local MoveSection = PlayerTab:Section({ Title = "Movement" })
 MoveSection:Slider({
     Title = "WalkSpeed",
     Desc = "Set character running speed",
-    Value = { Min = 16, Max = 100, Default = 16 },
+    Value = { Min = 20, Max = 100, Default = 30 },
     Step = 1,
     Callback = function(Value)
         State.WalkSpeed = Value
@@ -1000,7 +1003,7 @@ VisualSection:Toggle({
 })
 
 VisualSection:Toggle({
-    Title = "ESP Items",
+    Title = "ESP Items (Experimental)",
     Desc = "See items by Rarity color",
     Value = false,
     Callback = function(Value)
@@ -1014,4 +1017,226 @@ VisualSection:Toggle({
         end
     end
 })
+-- ============================================
+-- INSTANT ENDING TAB
+-- ============================================
+local EndingTab = Window:Tab({ Title = "Instant Ending", Icon = "fast-forward" })
+
+-- SECTION: MAIN ENDING
+local MainEndingSection = EndingTab:Section({ Title = "Main Ending" })
+
+MainEndingSection:Button({
+    Title = "Start Ending Sequence",
+    Desc = "Auto path -> Walk -> End Trigger",
+    Callback = function()
+        task.spawn(function()
+            local char = LocalPlayer.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            local hum = char and char:FindFirstChild("Humanoid")
+            local cam = Services.Workspace.CurrentCamera
+
+            if not hrp or not hum then
+                WindUI:Notify({ Title = "Error", Content = "Character not found!", Duration = 2 })
+                return
+            end
+
+            -- === KONFIGURASI ===
+            local sudutAbsolut = 180
+            local jarakJalan = 60
+            local PosisiAwal = Vector3.new(-53.50029754638672, -7.15000057220459, 56.49897384643555)
+            local Posisi1 = Vector3.new(-239.61936950683594, -444.9471130371094, 2773.282470703125)
+            local Posisi2 = Vector3.new(-241.4040985107422, -435.1486511230469, 2773.2119140625)
+            local Posisi3 = Vector3.new(-32.85221481323242, -518.545166015625, 55.57419204711914)
+
+            -- === EKSEKUSI ===
+            WindUI:Notify({ Title = "Instant Ending", Content = "Starting sequence...", Duration = 2 })
+
+            hrp.CFrame = CFrame.new(PosisiAwal)
+            task.wait(1)
+
+            hrp.CFrame = CFrame.new(Posisi1)
+            task.wait(1)
+
+            hrp.CFrame = CFrame.new(Posisi2)
+            task.wait(1)
+
+            hrp.CFrame = CFrame.new(Posisi3)
+            task.wait(2)
+
+            -- Logic Rotasi
+            WindUI:Notify({ Title = "Instant Ending", Content = "Rotating & Walking...", Duration = 2 })
+
+            -- Putar Kamera
+            if cam then
+                cam.CFrame = CFrame.new(cam.CFrame.Position) * CFrame.Angles(0, math.rad(sudutAbsolut), 0)
+            end
+            -- Putar Badan Karakter
+            hrp.CFrame = CFrame.new(hrp.Position) * CFrame.Angles(0, math.rad(sudutAbsolut), 0)
+            task.wait(0.2)
+
+            -- Logic Jalan
+            local posisiTujuan = hrp.Position + (hrp.CFrame.LookVector * jarakJalan)
+            hum:MoveTo(posisiTujuan)
+
+            WindUI:Notify({ Title = "Instant Ending", Content = "Waiting 11 seconds...", Duration = 10 })
+
+            -- Tunggu 11 Detik
+            task.wait(11)
+
+            -- Mencari Object EndTrigger dengan aman
+            local success, targetPart = pcall(function()
+                return Services.Workspace.Map.Functional.SpawnedChaseSections.EndSection.EndTrigger
+            end)
+
+            if success and targetPart then
+                hrp.CFrame = targetPart.CFrame
+                WindUI:Notify({ Title = "Success", Content = "Teleported to EndTrigger!", Duration = 3 })
+            else
+                warn("EndTrigger not found at Map.Functional.SpawnedChaseSections.EndSection.EndTrigger")
+                WindUI:Notify({ Title = "Error", Content = "EndTrigger not found!", Duration = 3 })
+            end
+        end)
+    end
+})
+-- ============================================
+-- TP NPC TAB
+-- ============================================
+local TpNpcTab = Window:Tab({ Title = "TP NPC", Icon = "map-pin" })
+local TpSection = TpNpcTab:Section({ Title = "NPC Teleport" })
+
+-- Fungsi Helper untuk mengambil list NPC
+local function GetSpawnedNPCs()
+    local list = {}
+    local map = Services.Workspace:FindFirstChild("Map")
+    local functional = map and map:FindFirstChild("Functional")
+    local npcFolder = functional and functional:FindFirstChild("SpawnedNPCs")
+
+    if npcFolder then
+        for _, npc in pairs(npcFolder:GetChildren()) do
+            if npc:IsA("Model") then
+                table.insert(list, npc.Name)
+            end
+        end
+    end
+    return list
+end
+
+-- Dropdown NPC
+local npcTpDropdown = TpSection:Dropdown({
+    Title = "Select NPC",
+    Desc = "Choose target from SpawnedNPCs",
+    Values = GetSpawnedNPCs(),
+    Value = nil,
+    Callback = function(Value)
+        State.SelectedTPNPC = Value
+    end
+})
+
+-- Tombol Refresh List
+TpSection:Button({
+    Title = "Refresh List",
+    Desc = "Update NPC list if empty",
+    Callback = function()
+        npcTpDropdown:SetValues(GetSpawnedNPCs())
+        WindUI:Notify({ Title = "Refreshed", Content = "NPC List updated!", Duration = 1 })
+    end
+})
+
+-- Tambahan: Tombol TP Sekali (Optional, untuk kemudahan)
+TpSection:Button({
+    Title = "Click to Teleport",
+    Desc = "Teleport just one time",
+    Callback = function()
+        if not State.SelectedTPNPC then
+            WindUI:Notify({ Title = "Error", Content = "Select NPC first!", Duration = 2 })
+            return
+        end
+
+        local map = Services.Workspace:FindFirstChild("Map")
+        local npcFolder = map and map.Functional.SpawnedNPCs
+        local target = npcFolder and npcFolder:FindFirstChild(State.SelectedTPNPC)
+
+        if target then
+            local targetRoot = target:FindFirstChild("HumanoidRootPart") or target.PrimaryPart
+            if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and targetRoot then
+                LocalPlayer.Character.HumanoidRootPart.CFrame = targetRoot.CFrame * CFrame.new(0, 0, 3)
+            end
+        else
+            WindUI:Notify({ Title = "Error", Content = "NPC not found!", Duration = 2 })
+        end
+    end
+})
+-- ============================================
+-- CURSOR CONTROL SECTION
+-- ============================================
+local CursorSection = PlayerTab:Section({ Title = "Cursor Control" })
+
+-- Variable status lokal untuk fitur ini
+local cursorFree = true -- Default: Langsung Aktif
+
+-- Toggle UI (Akan sync dengan keybind)
+local CursorToggle = CursorSection:Toggle({
+    Title = "Unlock Cursor (Anti-Lock)",
+    Desc = "Force mouse visible & free",
+    Value = true, -- Default ON saat load
+    Callback = function(Value)
+        cursorFree = Value
+
+        -- Update logic manual jika dimatikan lewat UI
+        if not cursorFree then
+            game:GetService("UserInputService").MouseIconEnabled = false
+            game:GetService("UserInputService").MouseBehavior = Enum.MouseBehavior.LockCenter
+        end
+    end
+})
+
+-- Logic: Keybind Listener (RightShift)
+Services.Players.LocalPlayer:GetMouse().KeyDown:Connect(function(key)
+    -- KeyDown mengembalikan string lowercase, tapi untuk special key kita pakai UserInputService saja agar lebih aman
+end)
+
+game:GetService("UserInputService").InputBegan:Connect(function(input, gameProcessed)
+    -- Cek jika tombol adalah RightShift dan tidak sedang mengetik di chatbox
+    if input.KeyCode == Enum.KeyCode.RightShift and not gameProcessed then
+        cursorFree = not cursorFree -- Balik status (Toggle)
+
+        -- Update Visual Toggle di UI (agar sinkron)
+        -- Kita panggil .Set() pada object toggle WindUI
+        if CursorToggle and CursorToggle.Set then
+            CursorToggle:Set(cursorFree)
+        end
+
+        -- Notifikasi status
+        local statusText = cursorFree and "Unlocked (Free)" or "Locked (Game Mode)"
+        WindUI:Notify({
+            Title = "Cursor Update",
+            Content = "Status: " .. statusText,
+            Duration = 1
+        })
+
+        -- Update manual jika dimatikan
+        if not cursorFree then
+            game:GetService("UserInputService").MouseIconEnabled = false
+            game:GetService("UserInputService").MouseBehavior = Enum.MouseBehavior.LockCenter
+        end
+    end
+end)
+
+-- Logic: Loop Pemaksa (Anti-Override)
+Services.RunService.RenderStepped:Connect(function()
+    if cursorFree then
+        game:GetService("UserInputService").MouseBehavior = Enum.MouseBehavior.Default
+        game:GetService("UserInputService").MouseIconEnabled = true
+    end
+end)
+
+-- NOTIFIKASI SAAT SCRIPT LOAD (Memberi tahu user)
+task.delay(1, function() -- Delay dikit biar gak numpuk sama notif "Script Loaded"
+    WindUI:Notify({
+        Title = "Cursor Unlocked!",
+        Content = "Press [Right Shift] to toggle lock mode.",
+        Duration = 6,
+        Type = "Info"
+    })
+end)
 print("✅ [JumantaraHub] DTE Loaded!")
