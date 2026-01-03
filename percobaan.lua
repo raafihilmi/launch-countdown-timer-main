@@ -7,9 +7,9 @@ local Config = {
     Window = {
         Title = "DTE",
         Icon = "shovel",
-        Author = "JumantaraHub DTE v2",
+        Author = "JumantaraHub DTE v3",
         Theme = "Plant",
-        Folder = "Jumantara_DTE_v2"
+        Folder = "Jumantara_DTE_v3"
     },
     OpenButton = {
         Title = "Open Menu",
@@ -18,7 +18,8 @@ local Config = {
         StrokeThickness = 2,
         Color = ColorSequence.new(Color3.fromHex("FF0F7B"), Color3.fromHex("F89B29")),
         Enabled = true,
-        Draggable = true
+        Draggable = true,
+        OnlyMobile = false,
     }
 }
 
@@ -1238,5 +1239,56 @@ task.delay(1, function() -- Delay dikit biar gak numpuk sama notif "Script Loade
         Duration = 6,
         Type = "Info"
     })
+end)
+-- ============================================
+-- WINDOW DESTROY HANDLER (CLEANUP)
+-- ============================================
+Window:OnDestroy(function()
+    print("⚠️ Window Closed. Stopping all features...")
+
+    -- 1. Matikan Semua Loop State
+    State.AutoDig = false
+    State.AutoPickup = false
+    State.AutoSell = false
+    State.AutoEat = false
+    State.AntiGuard = false
+    State.AutoTPNPC = false
+    State.FlyEnabled = false
+
+    -- 2. Bersihkan Visual Dig Radius
+    State.ShowDigRadius = false
+    if Visuals and Visuals.CirclePart then
+        Visuals.CirclePart:Destroy()
+        Visuals.CirclePart = nil
+    end
+
+    -- 3. Bersihkan ESP (Hapus Folder Visual)
+    State.EspPlayer = false
+    State.EspItem = false
+    local folderP = Services.Workspace:FindFirstChild("JumantaraESP_Players")
+    local folderI = Services.Workspace:FindFirstChild("JumantaraESP_Items")
+    if folderP then folderP:Destroy() end
+    if folderI then folderI:Destroy() end
+
+    -- 4. Matikan Fisika Fly
+    if PlayerLogic and PlayerLogic.ToggleFly then
+        PlayerLogic.ToggleFly(false)
+    end
+
+    -- 5. Reset WalkSpeed ke Normal
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+        LocalPlayer.Character.Humanoid.WalkSpeed = 16
+    end
+
+    -- 6. Kunci Kembali Kursor (Mode Game Normal)
+    -- Ini membatalkan fitur Unlock Cursor agar bisa main normal lagi
+    local UserInputService = game:GetService("UserInputService")
+    UserInputService.MouseIconEnabled = false
+    UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
+
+    -- Jika variabel cursorFree aksesibel, set ke false (opsional)
+    if cursorFree ~= nil then cursorFree = false end
+
+    print("✅ All features deactivated successfully.")
 end)
 print("✅ [JumantaraHub] DTE Loaded!")
