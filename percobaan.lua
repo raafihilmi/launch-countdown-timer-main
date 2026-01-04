@@ -5,11 +5,21 @@ local WindUI = loadstring(game:HttpGet("https://pastebin.com/raw/m8P8dLfd"))()
 -- ============================================
 local Config = {
     Window = {
-        Title = "DTE",
+        Title = "Dig to Escape by JumantaraHub",
         Icon = "shovel",
-        Author = "JumantaraHub DTE v2",
+        Author = "JumantaraHub",
         Theme = "Plant",
-        Folder = "Jumantara_DTE_v2"
+        Folder = "Dig to Escape by JumantaraHub",
+        KeySystem = {
+            Note = "Key System. With platoboost.",
+            API = {
+                {
+                    Type = "platoboost",
+                    ServiceId = 16361,
+                    Secret = "4485a80f-25df-4788-b082-5d3f19a932ac",
+                },
+            },
+        }
     },
     OpenButton = {
         Title = "Open Menu",
@@ -721,66 +731,6 @@ UIRefs.AutoSellToggle = SellSection:Toggle({
     end
 })
 
-local TradeSection = MainTab:Section({ Title = "Trade UI" })
-
-local function GetNPCList()
-    local list = {}
-    local map = Services.Workspace:FindFirstChild("Map")
-    local functional = map and map:FindFirstChild("Functional")
-    local npcFolder = functional and functional:FindFirstChild("SpawnedNPCs")
-
-    if npcFolder then
-        for _, npc in pairs(npcFolder:GetChildren()) do
-            if npc:IsA("Model") then
-                table.insert(list, npc.Name)
-            end
-        end
-    end
-    return list
-end
-
-local npcDropdown = TradeSection:Dropdown({
-    Title = "Select NPC",
-    Desc = "Choose NPC to open Trade UI",
-    Values = GetNPCList(),
-    Value = nil,
-    Callback = function(npcName)
-        if not npcName then return end
-
-        local map = Services.Workspace:FindFirstChild("Map")
-        local functional = map and map:FindFirstChild("Functional")
-        local npcFolder = functional and functional:FindFirstChild("SpawnedNPCs")
-        local targetNPC = npcFolder and npcFolder:FindFirstChild(npcName)
-
-        if targetNPC then
-            local Event = Services.ReplicatedStorage.Events.GameEvent
-
-            if firesignal then
-                firesignal(Event.OnClientEvent,
-                    "ShowTradeUI",
-                    targetNPC,
-                    "Energy Booster",
-                    10
-                )
-                WindUI:Notify({ Title = "Trade", Content = "UI Opened for " .. npcName, Duration = 2 })
-            else
-                WindUI:Notify({ Title = "Error", Content = "Executor tidak support 'firesignal'", Duration = 3 })
-            end
-        else
-            WindUI:Notify({ Title = "Error", Content = "NPC tidak ditemukan!", Duration = 2 })
-        end
-    end
-})
-
-TradeSection:Button({
-    Title = "Refresh NPC List",
-    Desc = "Update the dropdown list",
-    Callback = function()
-        npcDropdown:SetValues(GetNPCList())
-        WindUI:Notify({ Title = "Refreshed", Content = "NPC List updated!", Duration = 1 })
-    end
-})
-
 local ExtraSection = MainTab:Section({ Title = "Extras" })
 
 ExtraSection:Button({
@@ -907,10 +857,10 @@ MainEndingSection:Button({
 
             if success and targetPart then
                 hrp.CFrame = targetPart.CFrame
-                WindUI:Notify({ Title = "Success", Content = "Teleported to EndTrigger!", Duration = 3 })
+                WindUI:Notify({ Title = "Success", Content = "Teleported to Espace!", Duration = 3 })
             else
-                warn("EndTrigger not found at Map.Functional.SpawnedChaseSections.EndSection.EndTrigger")
-                WindUI:Notify({ Title = "Error", Content = "EndTrigger not found!", Duration = 3 })
+                warn("Escape failed")
+                WindUI:Notify({ Title = "Error", Content = "Espace failed!", Duration = 3 })
             end
         end)
     end
