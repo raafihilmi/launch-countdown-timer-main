@@ -1,5 +1,4 @@
 local WindUI = loadstring(game:HttpGet("https://pastebin.com/raw/m8P8dLfd"))()
-
 -- ============================================
 -- CONFIGURATION MODULE
 -- ============================================
@@ -32,6 +31,8 @@ local Services = {
     Workspace = game:GetService("Workspace"),
     RunService = game:GetService("RunService"),
     HttpService = game:GetService("HttpService"),
+    UserInputService = game:GetService("UserInputService"), -- NEW
+    VirtualInputManager = game:GetService("VirtualInputManager"),
 }
 
 local LocalPlayer = Services.Players.LocalPlayer
@@ -56,9 +57,12 @@ local State = {
 
     AddItemDelay = 0.5,
     BrewActionDelay = 1,
-    MinigameDuration = 10.5,
+    MinigameDuration = 9.5,
 
-    IsBrewing = {}
+    IsBrewing = {},
+    AutoSellPotion = false,
+    ReverseAttackDirection = true,
+    AttackAngleOffset = 180,
 }
 
 -- ============================================
@@ -270,7 +274,7 @@ function Brewing.ProcessCauldron(cauldronName)
         task.wait(State.MinigameDuration)
 
         -- 3. Selesaikan Minigame (Score 5)
-        Utilities.FireRemote("FinishedBrewMinigame", { cauldronName, cModel, 5 })
+        Utilities.FireRemote("FinishedBrewMinigame", { cauldronName, cModel, 2.5 })
         task.wait(1)
     end
 end
@@ -340,7 +344,6 @@ end
 function Farming.StartLoop()
     task.spawn(function()
         while State.AutoFarm do
-            -- Menggunakan variable internal untuk menandakan sedang dalam cycle
             State.IsFarming = true
 
             WindUI:Notify({ Title = "System", Content = "Starting New Cycle...", Duration = 1 })
@@ -355,11 +358,11 @@ function Farming.StartLoop()
             WindUI:Notify({ Title = "Game Start", Content = "Entering Combat Mode!", Duration = 2 })
             task.wait(1)
 
-            -- 3. Loop Combat (Combat Phase)
+            -- 3. Loop Combat
             local isDead = false
 
             while State.AutoFarm do
-                -- Cek Kematian Player via Attribute
+                -- Cek Kematian
                 if LocalPlayer:GetAttribute("Dead") == true then
                     isDead = true
                     WindUI:Notify({ Title = "Status", Content = "Player Dead. Resetting...", Duration = 2 })
@@ -372,8 +375,17 @@ function Farming.StartLoop()
                     -- Jalankan Kiting
                     Farming.KiteLogic(targetRoot)
 
-                    -- Jalankan Serangan
-                    local attackArgs = { targetRoot.CFrame }
+                    -- AUTO AIM akan handle cursor movement secara otomatis
+                    -- Remote attack akan mengikuti posisi kursor
+                    local attackCFrame = targetRoot.CFrame
+                    if State.ReverseAttackDirection then
+                        -- Balik 180 derajat
+                        local pos = targetRoot.CFrame.Position
+                        local lookVec = -targetRoot.CFrame.LookVector
+                        attackCFrame = CFrame.lookAt(pos, pos + lookVec)
+                        print("[Farming] Reversing attack direction")
+                    end
+                    local attackArgs = { attackCFrame }
                     Utilities.FireRemote("UseMove", attackArgs)
                 end
 
@@ -382,7 +394,7 @@ function Farming.StartLoop()
 
             if not State.AutoFarm then break end
 
-            -- 4. Reset Logic (Keluar dari Death Screen & Lobby)
+            -- 4. Reset Logic
             if isDead then
                 task.wait(2)
                 Utilities.FireRemote("LeaveDeathGame", nil)
@@ -390,9 +402,9 @@ function Farming.StartLoop()
                 Utilities.FireRemote("LeaveLobby", nil)
             end
 
-            -- Jeda sebelum mengulang loop
             task.wait(3)
         end
+
         State.IsFarming = false
     end)
 end
@@ -422,6 +434,7 @@ Window:EditOpenButton(Config.OpenButton)
 
 -- TAB ORDER
 local MainTab = Window:Tab({ Title = "Auto Farm", Icon = "swords" })
+local SellPotionTab = Window:Tab({ Title = "Sell Potion", Icon = "coin" })
 local PlayerTab = Window:Tab({ Title = "Player", Icon = "user" })
 local SettingsTab = Window:Tab({ Title = "Settings", Icon = "settings" })
 
@@ -530,6 +543,24 @@ MoveSection:Slider({
     Step = 1,
     Callback = function(Value)
         State.WalkSpeed = Value
+    end
+})
+
+-- ============================================
+-- SELL POTION TAB
+-- ============================================
+local SellPotionSection = SellPotionTab:Section({ Title = "Sell Potion" })
+
+SellPotionSection:Toggle({
+    Title = "Auto Sell Potion",
+    Value = false,
+    Callback = function(Value)
+        State.AutoSellPotion = Value
+        if Value then
+            Utilities.FireRemote("SellPotions", {}, Services.Workspace:GetServerTimeNow())
+        else
+            WindUI:Notify({ Title = "System", Content = "Stopping Auto Brew...", Duration = 2 })
+        end
     end
 })
 
