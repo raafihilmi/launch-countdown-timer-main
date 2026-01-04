@@ -1,1125 +1,570 @@
 local WindUI = loadstring(game:HttpGet("https://pastebin.com/raw/m8P8dLfd"))()
 
-WindUI:AddTheme(
-    {
-        Name = "Peach Glow Dominant",
-        Accent = Color3.fromHex("#474350"),
-        Background = Color3.fromHex("#FFFFFF"),
-        BackgroundTransparency = 0,
-        Outline = Color3.fromHex("#474350"),
-        Text = Color3.fromHex("#474350"),
-        Placeholder = Color3.fromHex("#474350"),
-        Button = Color3.fromHex("#474350"),
-        Icon = Color3.fromHex("#474350"),
-        Hover = Color3.fromHex("#fafac6"),
-        WindowBackground = Color3.fromHex("#FECDAA"),
-        WindowShadow = Color3.fromHex("#000000"),
-        WindowTopbarTitle = Color3.fromHex("#474350"),
-        WindowTopbarAuthor = Color3.fromHex("#474350"),
-        WindowTopbarIcon = Color3.fromHex("#474350"),
-        WindowTopbarButtonIcon = Color3.fromHex("#474350"),
-        TabBackground = Color3.fromHex("#FFFFFF"),
-        TabTitle = Color3.fromHex("#474350"),
-        TabIcon = Color3.fromHex("#474350"),
-        ElementBackground = Color3.fromHex("#f8fff4"),
-        ElementTitle = Color3.fromHex("#474350"),
-        ElementDesc = Color3.fromHex("#474350"),
-        ElementIcon = Color3.fromHex("#474350"),
-        PopupBackground = Color3.fromHex("#fcffeb"),
-        PopupBackgroundTransparency = 0,
-        PopupTitle = Color3.fromHex("#474350"),
-        PopupContent = Color3.fromHex("#474350"),
-        PopupIcon = Color3.fromHex("#474350"),
-        DialogBackground = Color3.fromHex("#fcffeb"),
-        DialogBackgroundTransparency = 0,
-        DialogTitle = Color3.fromHex("#474350"),
-        DialogContent = Color3.fromHex("#474350"),
-        DialogIcon = Color3.fromHex("#474350"),
-        Toggle = Color3.fromHex("#474350"),
-        ToggleBar = Color3.fromHex("#fafac6"),
-        Checkbox = Color3.fromHex("#474350"),
-        CheckboxIcon = Color3.fromHex("#fafac6"),
-        Slider = Color3.fromHex("#474350"),
-        SliderThumb = Color3.fromHex("#fafac6")
-    }
-)
-
-WindUI:AddTheme(
-    {
-        Name = "Material Nature Light",
-        Accent = Color3.fromHex("#4C662B"),
-        Background = Color3.fromHex("#F9FAEF"),
-        BackgroundTransparency = 0,
-        Outline = Color3.fromHex("#75796C"),
-        Text = Color3.fromHex("#1A1C16"),
-        Placeholder = Color3.fromHex("#44483D"),
-        Button = Color3.fromHex("#CDEDA3"),
-        Icon = Color3.fromHex("#44483D"),
-        Hover = Color3.fromHex("#E1E4D5"),
-        WindowBackground = Color3.fromHex("#F9FAEF"),
-        WindowShadow = Color3.fromHex("#000000"),
-        WindowTopbarTitle = Color3.fromHex("#1A1C16"),
-        WindowTopbarAuthor = Color3.fromHex("#44483D"),
-        WindowTopbarIcon = Color3.fromHex("#44483D"),
-        WindowTopbarButtonIcon = Color3.fromHex("#44483D"),
-        TabBackground = Color3.fromHex("#F9FAEF"),
-        TabTitle = Color3.fromHex("#1A1C16"),
-        TabIcon = Color3.fromHex("#44483D"),
-        ElementBackground = Color3.fromHex("#EEEFE3"),
-        ElementTitle = Color3.fromHex("#1A1C16"),
-        ElementDesc = Color3.fromHex("#44483D"),
-        ElementIcon = Color3.fromHex("#44483D"),
-        PopupBackground = Color3.fromHex("#EEEFE3"),
-        PopupBackgroundTransparency = 0,
-        PopupTitle = Color3.fromHex("#1A1C16"),
-        PopupContent = Color3.fromHex("#44483D"),
-        PopupIcon = Color3.fromHex("#44483D"),
-        DialogBackground = Color3.fromHex("#EEEFE3"),
-        DialogBackgroundTransparency = 0,
-        DialogTitle = Color3.fromHex("#1A1C16"),
-        DialogContent = Color3.fromHex("#44483D"),
-        DialogIcon = Color3.fromHex("#44483D"),
-        Toggle = Color3.fromHex("#4C662B"),
-        ToggleBar = Color3.fromHex("#FFFFFF"),
-        Checkbox = Color3.fromHex("#4C662B"),
-        CheckboxIcon = Color3.fromHex("#FFFFFF"),
-        Slider = Color3.fromHex("#4C662B"),
-        SliderThumb = Color3.fromHex("#FFFFFF")
-    }
-)
-
-WindUI:AddTheme(
-    {
-        Name = "Material Nature Dark",
-        Accent = Color3.fromHex("#B1D18A"),
-        Background = Color3.fromHex("#12140E"),
-        BackgroundTransparency = 0,
-        Outline = Color3.fromHex("#8F9285"),
-        Text = Color3.fromHex("#E2E3D8"),
-        Placeholder = Color3.fromHex("#C5C8BA"),
-        Button = Color3.fromHex("#354E16"),
-        Icon = Color3.fromHex("#C5C8BA"),
-        Hover = Color3.fromHex("#44483D"),
-        WindowBackground = Color3.fromHex("#12140E"),
-        WindowShadow = Color3.fromHex("#000000"),
-        WindowTopbarTitle = Color3.fromHex("#E2E3D8"),
-        WindowTopbarAuthor = Color3.fromHex("#C5C8BA"),
-        WindowTopbarIcon = Color3.fromHex("#C5C8BA"),
-        WindowTopbarButtonIcon = Color3.fromHex("#C5C8BA"),
-        TabBackground = Color3.fromHex("#12140E"),
-        TabTitle = Color3.fromHex("#E2E3D8"),
-        TabIcon = Color3.fromHex("#C5C8BA"),
-        ElementBackground = Color3.fromHex("#1E201A"),
-        ElementTitle = Color3.fromHex("#E2E3D8"),
-        ElementDesc = Color3.fromHex("#C5C8BA"),
-        ElementIcon = Color3.fromHex("#C5C8BA"),
-        PopupBackground = Color3.fromHex("#1E201A"),
-        PopupBackgroundTransparency = 0,
-        PopupTitle = Color3.fromHex("#E2E3D8"),
-        PopupContent = Color3.fromHex("#C5C8BA"),
-        PopupIcon = Color3.fromHex("#C5C8BA"),
-        DialogBackground = Color3.fromHex("#1E201A"),
-        DialogBackgroundTransparency = 0,
-        DialogTitle = Color3.fromHex("#E2E3D8"),
-        DialogContent = Color3.fromHex("#C5C8BA"),
-        DialogIcon = Color3.fromHex("#C5C8BA"),
-        Toggle = Color3.fromHex("#B1D18A"),
-        ToggleBar = Color3.fromHex("#1F3701"),
-        Checkbox = Color3.fromHex("#B1D18A"),
-        CheckboxIcon = Color3.fromHex("#1F3701"),
-        Slider = Color3.fromHex("#B1D18A"),
-        SliderThumb = Color3.fromHex("#FFFFFF")
-    }
-)
-
-WindUI:AddTheme(
-    {
-        Name = "Pacific Dark",
-        Accent = Color3.fromHex("#58a4b0"),
-        Background = Color3.fromHex("#2b303a"),
-        BackgroundTransparency = 0,
-        Outline = Color3.fromHex("#bac1b8"),
-        Text = Color3.fromHex("#bac1b8"),
-        Placeholder = Color3.fromHex("#bac1b8"),
-        Button = Color3.fromHex("#0c7c59"),
-        Icon = Color3.fromHex("#bac1b8"),
-        Hover = Color3.fromHex("#d64933"),
-        WindowBackground = Color3.fromHex("#2b303a"),
-        WindowShadow = Color3.fromHex("#000000"),
-        WindowTopbarTitle = Color3.fromHex("#bac1b8"),
-        WindowTopbarAuthor = Color3.fromHex("#bac1b8"),
-        WindowTopbarIcon = Color3.fromHex("#bac1b8"),
-        WindowTopbarButtonIcon = Color3.fromHex("#bac1b8"),
-        TabBackground = Color3.fromHex("#2b303a"),
-        TabTitle = Color3.fromHex("#bac1b8"),
-        TabIcon = Color3.fromHex("#bac1b8"),
-        ElementBackground = Color3.fromHex("#2b303a"),
-        ElementTitle = Color3.fromHex("#bac1b8"),
-        ElementDesc = Color3.fromHex("#bac1b8"),
-        ElementIcon = Color3.fromHex("#bac1b8"),
-        PopupBackground = Color3.fromHex("#2b303a"),
-        PopupBackgroundTransparency = 0,
-        PopupTitle = Color3.fromHex("#bac1b8"),
-        PopupContent = Color3.fromHex("#bac1b8"),
-        PopupIcon = Color3.fromHex("#bac1b8"),
-        DialogBackground = Color3.fromHex("#2b303a"),
-        DialogBackgroundTransparency = 0,
-        DialogTitle = Color3.fromHex("#bac1b8"),
-        DialogContent = Color3.fromHex("#bac1b8"),
-        DialogIcon = Color3.fromHex("#bac1b8"),
-        Toggle = Color3.fromHex("#58a4b0"),
-        ToggleBar = Color3.fromHex("#bac1b8"),
-        Checkbox = Color3.fromHex("#58a4b0"),
-        CheckboxIcon = Color3.fromHex("#2b303a"),
-        Slider = Color3.fromHex("#58a4b0"),
-        SliderThumb = Color3.fromHex("#d64933")
-    }
-)
-
-local Window =
-    WindUI:CreateWindow(
-    {
-        Title = "Catch and Tame: AUTO FARM",
-        Icon = "door-open",
-        Author = "JumantaraHub v18",
-        Theme = "Peach Glow Dominant",
-        Folder = "CatchandTame_v18",
-        KeySystem = {                                                   
-        Note = "Key System. With platoboost.",              
-        API = {                                                     
-            { -- PlatoBoost
-                Type = "platoboost",                                
-                ServiceId = 16361, -- service id
-                Secret = "4485a80f-25df-4788-b082-5d3f19a932ac", -- platoboost secret
-            },                                                      
-        },                                                          
-    },   
-    }
-)
-
-Window:EditOpenButton(
-    {
-        Title = "Open UI",
-        Icon = "monitor",
+-- ============================================
+-- CONFIGURATION MODULE
+-- ============================================
+local Config = {
+    Window = {
+        Title = "BAP by JumantaraHub",
+        Icon = "flask",
+        Author = "JumantaraHub",
+        Theme = "Plant",
+        Folder = "BAP_JumantaraHub",
+    },
+    OpenButton = {
+        Title = "Open Menu",
+        Icon = "menu",
         CornerRadius = UDim.new(0, 16),
         StrokeThickness = 2,
-        Color = ColorSequence.new(Color3.fromHex("FF0F7B"), Color3.fromHex("F89B29")),
-        OnlyMobile = false,
+        Color = ColorSequence.new(Color3.fromHex("833AB4"), Color3.fromHex("FD1D1D")),
         Enabled = true,
-        Draggable = true
+        Draggable = true,
+        OnlyMobile = false,
     }
-)
-
-Window:Tag({
-    Title = "Christmas Update",
-    Icon = "rss",
-    Color = Color3.fromHex("#30ff6a"),
-    Radius = 0, 
-})
-
-local Tab =
-    Window:Tab(
-    {
-        Title = "Main",
-        Icon = "bird",
-        Locked = false
-    }
-)
-
-local CollectTab =
-    Window:Tab(
-    {
-        Title = "Auto Collect",
-        Icon = "bird",
-        Locked = false
-    }
-)
-
-local SellTab =
-    Window:Tab(
-    {
-        Title = "Auto Sell",
-        Icon = "bird",
-        Locked = false
-    }
-)
-
-local BuyTab =
-    Window:Tab(
-    {
-        Title = "Auto Buy Food",
-        Icon = "bird",
-        Locked = false
-    }
-)
-
-local FeedTab =
-    Window:Tab(
-    {
-        Title = "Feed",
-        Icon = "bird",
-        Locked = false
-    }
-)
-
-local SettingTab =
-    Window:Tab(
-    {
-        Title = "Settings",
-        Icon = "bird",
-        Locked = false
-    }
-)
-
-getgenv().SelectRarity = "Legendary"
-
-getgenv().MutationOnly = false
-
-getgenv().AutoCatchEnabled = true
-
-getgenv().DebugMode = false
-
-getgenv().AutoCollectCash = false
-
-getgenv().AutoSell = false
-
-getgenv().SellConfig = {
-    ["Common"] = false,
-    ["Uncommon"] = false,
-    ["Rare"] = false,
-    ["Epic"] = false,
-    ["Legendary"] = false,
-    ["Mythical"] = false
 }
 
-getgenv().AutoBuyFood = false
-
-getgenv().SelectedFoodList = {}
-
-getgenv().BuyAmount = 1
-
-getgenv().AutoFeed = false
-
-getgenv().SelectedFeedFood = "Steak"
-
-getgenv().TargetPetUUID = nil
-
-local rarityList = {"Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythical"}
-
-local Remotes = game:GetService("ReplicatedStorage"):WaitForChild("Remotes")
-
-local Players = game:GetService("Players")
-
-local LocalPlayer = Players.LocalPlayer
-
-local foodList = {
-    "Farmers Feed",
-    "Enriched Feed",
-    "Prime Feed",
-    "Hay",
-    "Bone",
-    "Steak"
+-- ============================================
+-- SERVICES MODULE
+-- ============================================
+local Services = {
+    Players = game:GetService("Players"),
+    ReplicatedStorage = game:GetService("ReplicatedStorage"),
+    Workspace = game:GetService("Workspace"),
+    RunService = game:GetService("RunService"),
+    HttpService = game:GetService("HttpService"),
 }
 
-local petMap = {}
+local LocalPlayer = Services.Players.LocalPlayer
 
-local function EquipLasso()
-    local backpack = LocalPlayer:FindFirstChild("Backpack")
+-- ============================================
+-- STATE MANAGER
+-- ============================================
+local State = {
+    AutoFarm = false,
+    AttackDelay = 0.1,
+    SearchRange = 1000,
+    UseKiting = true,
+    SafeRadius = 25,
+    FaceTarget = true,
 
-    local char = LocalPlayer.Character
+    WalkSpeed = 16,
+    IsFarming = false,
+    AutoBrew = false,
+    BrewTargetCauldron = "All",
+    IngredientSource = "Backpack",
+    SelectedRarity = "All",
 
-    if backpack and char then
-        local tool = backpack:FindFirstChild("Lasso") or backpack:FindFirstChildWhichIsA("Tool")
+    AddItemDelay = 0.5,
+    BrewActionDelay = 1,
+    MinigameDuration = 10.5,
 
-        if tool and not char:FindFirstChild(tool.Name) then
-            char.Humanoid:EquipTool(tool)
+    IsBrewing = {}
+}
 
-            task.wait(0.3)
-        end
-    end
-end
+-- ============================================
+-- UI REFERENCES
+-- ============================================
+local UIRefs = {
+    AutoFarmToggle = nil
+}
 
-local function RunCatchProtocol(targetPet)
-    if not targetPet or not targetPet.Parent then
-        return
-    end
+-- ============================================
+-- GAME SPECIFIC VARIABLES
+-- ============================================
+local Remote = Services.ReplicatedStorage.Modules.Utility.Network.Events.RemoteEvent
+local EnemiesFolder = Services.Workspace:WaitForChild("World"):WaitForChild("RenderedEnemies")
+local ItemDataModule = require(Services.ReplicatedStorage.Modules.Data.Items)
+-- ============================================
+-- UTILITY FUNCTIONS
+-- ============================================
+local Utilities = {}
 
-    local char = LocalPlayer.Character
-
-    if not char then
-        return
-    end
-
-    local root = char:FindFirstChild("HumanoidRootPart")
-
-    EquipLasso()
-
-    local petPivot = targetPet:GetPivot()
-
-    local direction = (petPivot.Position - root.Position).Unit
-
-    local distance = (petPivot.Position - root.Position).Magnitude
-
-    if distance > 20 then
-        WindUI:Notify({Title = "Failed", Content = "Server distance too far, try again.", Duration = 2})
-
-        return
-    end
-
-    pcall(
-        function()
-            Remotes.ThrowLasso:FireServer(0.9, direction)
-        end
-    )
-
-    task.wait(0.5)
-
-    local success, err =
-        pcall(
-        function()
-            Remotes.minigameRequest:InvokeServer(targetPet, root.CFrame)
-        end
-    )
-
-    if not success then
-        return
-    end
-
-    task.wait(0.2)
-
-    pcall(
-        function()
-            Remotes.equipLassoVisual:InvokeServer(true)
-        end
-    )
-
-    local progressSteps = {0, 30, 60, 90, 100}
-
-    for _, prog in ipairs(progressSteps) do
-        Remotes.UpdateProgress:FireServer(prog)
-
-        task.wait(0.15)
-    end
-
-    pcall(
-        function()
-            Remotes.retrieveData:InvokeServer()
-        end
+-- Fungsi Kirim Remote dengan Timestamp Server
+function Utilities.FireRemote(actionName, args)
+    Remote:FireServer(
+        actionName,
+        args,
+        Services.Workspace:GetServerTimeNow()
     )
 end
 
-local function StartCandyFarm()
-    task.spawn(
-        function()
-            while getgenv().AutoFarmCandy do
-                local folder = workspace:FindFirstChild("RoamingPets") and workspace.RoamingPets:FindFirstChild("Pets")
+-- Fungsi Mencari Musuh Terdekat
+function Utilities.GetTarget()
+    local nearestEnemy = nil
+    local minDistance = State.SearchRange
+    local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
 
-                local foundTarget = false
+    if not myRoot then return nil end
 
-                if folder then
-                    for _, pet in pairs(folder:GetChildren()) do
-                        if not getgenv().AutoFarmCandy then
-                            break
-                        end
+    for _, enemy in pairs(EnemiesFolder:GetChildren()) do
+        local enemyRoot = enemy:FindFirstChild("HumanoidRootPart")
 
-                        local isCandyPet = pet:GetAttribute("CandyMax")
+        if enemyRoot then
+            -- Cek Attribute Health (agar tidak mengejar yang sudah mati)
+            local health = enemy:GetAttribute("Health")
+            local isAlive = true
+            if health and health <= 0 then isAlive = false end
 
-                        if isCandyPet and (pet:IsA("Model") or pet:IsA("BasePart")) then
-                            foundTarget = true
-
-                            local p = game.Players.LocalPlayer
-
-                            if p and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                                p.Character.HumanoidRootPart.CFrame = pet:GetPivot()
-
-                                task.wait(0.5)
-
-                                RunCatchProtocol(pet)
-
-                                task.wait(4)
-                            end
-                        end
-                    end
+            if isAlive then
+                local dist = (myRoot.Position - enemyRoot.Position).Magnitude
+                if dist < minDistance then
+                    minDistance = dist
+                    nearestEnemy = enemyRoot
                 end
-
-                if not foundTarget and getgenv().AutoFarmCandy then
-                    WindUI:Notify({Title = "Waiting for Spawn", Content = "Searching for Candy Pet...", Duration = 1})
-
-                    task.wait(3)
-                end
-
-                task.wait(0.5)
-            end
-        end
-    )
-end
-
-local function StartRarityFarm()
-    task.spawn(
-        function()
-            while getgenv().AutoFarmRarity do
-                local folder = workspace:FindFirstChild("RoamingPets") and workspace.RoamingPets:FindFirstChild("Pets")
-
-                local foundTarget = false
-
-                if folder then
-                    for _, pet in pairs(folder:GetChildren()) do
-                        if not getgenv().AutoFarmRarity then
-                            break
-                        end
-
-                        local r = pet:GetAttribute("Rarity")
-
-                        local m = pet:GetAttribute("Mutation")
-
-                        local isTarget = false
-
-                        if getgenv().MutationOnly then
-                            if m and m ~= "None" then
-                                isTarget = true
-                            end
-                        elseif r == getgenv().SelectRarity then
-                            isTarget = true
-                        end
-
-                        if isTarget and (pet:IsA("Model") or pet:IsA("BasePart")) then
-                            foundTarget = true
-
-                            local p = game.Players.LocalPlayer
-
-                            if p and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                                p.Character.HumanoidRootPart.CFrame = pet:GetPivot() * CFrame.new(0, 2, 0)
-
-                                task.wait(0.5)
-
-                                RunCatchProtocol(pet)
-
-                                task.wait(4.5)
-                            end
-                        end
-                    end
-                end
-
-                if not foundTarget and getgenv().AutoFarmRarity then
-                    WindUI:Notify(
-                        {Title = "Searching...", Content = "Waiting for spawn " .. getgenv().SelectRarity, Duration = 1}
-                    )
-
-                    task.wait(3)
-                end
-
-                task.wait(1)
-            end
-        end
-    )
-end
-
-local function StartAutoCollect()
-    task.spawn(
-        function()
-            while getgenv().AutoCollectCash do
-                local p = game.Players.LocalPlayer
-
-                local pensFolder = workspace:FindFirstChild("PlayerPens")
-
-                local myPen = nil
-
-                if pensFolder then
-                    for _, pen in pairs(pensFolder:GetChildren()) do
-                        local ownerName = pen:GetAttribute("Owner")
-
-                        if ownerName == p.Name then
-                            myPen = pen
-
-                            break
-                        end
-                    end
-                end
-
-                if myPen then
-                    local petsFolder = myPen:FindFirstChild("Pets")
-
-                    if petsFolder then
-                        for _, pet in pairs(petsFolder:GetChildren()) do
-                            if not getgenv().AutoCollectCash then
-                                break
-                            end
-
-                            pcall(
-                                function()
-                                    local args = {
-                                        [1] = pet.Name
-                                    }
-
-                                    game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild(
-                                        "collectPetCash"
-                                    ):FireServer(unpack(args))
-                                end
-                            )
-
-                            task.wait(0.05)
-                        end
-                    end
-                end
-
-                task.wait(2)
-            end
-        end
-    )
-end
-
-local function StartAutoSell()
-    task.spawn(
-        function()
-            while getgenv().AutoSell do
-                local RS = game:GetService("ReplicatedStorage")
-
-                local success, inventory =
-                    pcall(
-                    function()
-                        return RS.Remotes.getPetInventory:InvokeServer()
-                    end
-                )
-
-                if success and inventory then
-                    local soldCount = 0
-
-                    for uuid, data in pairs(inventory) do
-                        if not getgenv().AutoSell then
-                            break
-                        end
-
-                        if data.rarity and getgenv().SellConfig[data.rarity] then
-                            if not data.equipped and not data.isEquipped then
-                                pcall(
-                                    function()
-                                        RS.Remotes.sellPet:InvokeServer(uuid, false)
-                                    end
-                                )
-
-                                soldCount = soldCount + 1
-
-                                task.wait(0.1)
-                            end
-                        end
-                    end
-                end
-
-                task.wait(3)
-            end
-        end
-    )
-end
-
-local function StartAutoBuy()
-    task.spawn(
-        function()
-            while getgenv().AutoBuyFood do
-                local success, err =
-                    pcall(
-                    function()
-                        local RS = game:GetService("ReplicatedStorage")
-
-                        local Packages = RS:WaitForChild("Packages")
-
-                        local Index = Packages:WaitForChild("_Index")
-
-                        local KnitPkg = Index:WaitForChild("sleitnick_knit@1.7.0")
-
-                        local Services = KnitPkg:WaitForChild("knit"):WaitForChild("Services")
-
-                        local BuyRemote =
-                            Services:WaitForChild("FoodService"):WaitForChild("RE"):WaitForChild("BuyFood")
-
-                        if BuyRemote then
-                            for _, foodName in pairs(getgenv().SelectedFoodList) do
-                                if not getgenv().AutoBuyFood then
-                                    break
-                                end
-
-                                BuyRemote:FireServer(foodName, getgenv().BuyAmount)
-
-                                task.wait(0.2)
-                            end
-                        end
-                    end
-                )
-
-                task.wait(1)
-            end
-        end
-    )
-end
-
-local function GetMyPen()
-    local p = game.Players.LocalPlayer
-
-    local pensFolder = workspace:FindFirstChild("PlayerPens")
-
-    if pensFolder then
-        for _, pen in pairs(pensFolder:GetChildren()) do
-            if pen:GetAttribute("Owner") == p.Name then
-                return pen
             end
         end
     end
 
+    return nearestEnemy
+end
+
+-- Helper: Cari Prompt Cauldron
+function Utilities.GetCauldronPrompt(cauldronName)
+    local plotName = LocalPlayer:GetAttribute("Plot")
+    if not plotName then return nil end
+
+    local plot = Services.Workspace.World.Plots:FindFirstChild(plotName)
+    if not plot then return nil end
+
+    for _, descendant in pairs(plot:GetDescendants()) do
+        if descendant:IsA("ProximityPrompt") and descendant:GetAttribute("Type") == "Cauldron" then
+            if descendant.Parent.Name == cauldronName then
+                return descendant
+            end
+        end
+    end
     return nil
 end
 
-local function UpdatePetList()
-    petMap = {}
+-- Helper: Jalan ke Lokasi
+function Utilities.WalkTo(position)
+    local char = LocalPlayer.Character
+    local hum = char and char:FindFirstChild("Humanoid")
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if not (hum and root) then return end
 
-    local listForDropdown = {}
+    hum:MoveTo(position)
 
-    local myPen = GetMyPen()
+    -- Tunggu sampai dekat (Timeout 8 detik)
+    local t = 0
+    while t < 8 do
+        if (root.Position - position).Magnitude <= 6 then return true end
+        task.wait(0.1)
+        t = t + 0.1
+    end
+    return false
+end
 
-    if myPen then
-        local petsFolder = myPen:FindFirstChild("Pets")
+-- Helper: Cari Bahan (Dengan Filter Potion, Chest, DAN Rarity)
+function Utilities.GetIngredient()
+    local backpack = LocalPlayer:FindFirstChild("Backpack")
+    if not backpack then return nil end
 
-        if petsFolder then
-            for _, pet in pairs(petsFolder:GetChildren()) do
-                local pName = pet:GetAttribute("Name") or "Unknown"
-
-                local pLevel = pet:GetAttribute("Level") or 0
-
-                local displayName = pName .. " (" .. tostring(pLevel) .. ")"
-
-                if petMap[displayName] then
-                    displayName = displayName .. " [" .. string.sub(pet.Name, 1, 3) .. "]"
+    for _, tool in pairs(backpack:GetChildren()) do
+        if tool:IsA("Tool") and tool:GetAttribute("ID") then
+            -- 1. Filter Pengecualian (Jangan ambil Potion jadi atau Chest)
+            if not string.find(tool.Name, "Potion") and not string.find(tool.Name, "Chest") then
+                -- 2. Filter Rarity
+                if State.SelectedRarity == "All" then
+                    return tool -- Jika pilih All, langsung ambil
+                else
+                    -- Cek data item dari Module Game
+                    local data = ItemDataModule:GetData(tool.Name)
+                    if data and data.Data and data.Data.Rarity == State.SelectedRarity then
+                        return tool -- Ambil hanya jika Rarity cocok
+                    end
                 end
-
-                petMap[displayName] = pet.Name
-
-                table.insert(listForDropdown, displayName)
             end
         end
     end
-
-    table.sort(listForDropdown)
-
-    return listForDropdown
+    return nil
 end
 
-local function StartAutoFeed()
-    task.spawn(
-        function()
-            while getgenv().AutoFeed do
-                if getgenv().TargetPetUUID then
-                    local success, err =
-                        pcall(
-                        function()
-                            local FeedRemote =
-                                game:GetService("ReplicatedStorage").Packages._Index["sleitnick_knit@1.7.0"].knit.Services.FoodService.RF.FeedPet
-
-                            FeedRemote:InvokeServer(getgenv().SelectedFeedFood, getgenv().TargetPetUUID)
-                        end
-                    )
-                end
-
-                task.wait(0.2)
-            end
-        end
-    )
+-- Fungsi Mengambil Data Cauldron Pemain (Status, Isi, Waktu)
+function Utilities.GetCauldronData(cauldronName)
+    local mainData = LocalPlayer:WaitForChild("Data"):WaitForChild("MainData")
+    local plotData = mainData:WaitForChild("PlotData")
+    return plotData:FindFirstChild(cauldronName)
 end
 
-local Section =
-    Tab:Section(
-    {
-        Title = "Target"
-    }
-)
+-- ============================================
+-- BREWING LOGIC MODULE
+-- ============================================
+local Brewing = {}
 
-Tab:Dropdown(
-    {
-        Title = "Choose Rarity",
-        Values = rarityList,
-        Value = "Legendary",
-        Multi = false,
-        Desc = "RarityDrop",
-        Callback = function(Option)
-            getgenv().SelectRarity = Option
+function Brewing.ProcessCauldron(cauldronName)
+    if not State.AutoBrew then return end
+
+    -- 1. Ambil Data
+    local cData = Utilities.GetCauldronData(cauldronName)
+    local cPrompt = Utilities.GetCauldronPrompt(cauldronName)
+
+    if not cData or not cPrompt then return end
+    if not cData.Unlocked.Value then return end
+
+    local cModel = cPrompt.Parent
+    local isCooking = cData.Cooking.Value
+    local timeRemaining = cData.TimeRemaining.Value
+    local itemsJson = cData.Items.Value
+    local itemsTable = Services.HttpService:JSONDecode(itemsJson)
+    local count = #itemsTable
+    local capacity = 5 + cData.Boost.Value
+
+    -- KONDISI 1: SEDANG MASAK
+    if isCooking then
+        if timeRemaining <= 0 then
+            -- Claim Potion
+            -- Ganti Notify dengan Print agar tidak error font
+            print("[AutoBrew] Claiming " .. cauldronName)
+
+            -- Jalan ke Cauldron dulu biar aman
+            Utilities.WalkTo(cModel.Position)
+
+            -- Remote Claim
+            Utilities.FireRemote("ClaimPotion", { cauldronName, cModel })
+            task.wait(1.5)
         end
-    }
-)
+        return -- Keluar agar tidak lanjut ke logika isi item
+    end
 
-Tab:Toggle(
-    {
-        Title = "Mutation Only",
-        Value = false,
-        Callback = function(Val)
-            getgenv().MutationOnly = Val
-        end
-    }
-)
+    -- KONDISI 2: BELUM PENUH (Isi Bahan)
+    if count < capacity then
+        local item = Utilities.GetIngredient()
+        if item then
+            -- Jalan ke Cauldron
+            Utilities.WalkTo(cModel.Position)
 
-Tab:Toggle(
-    {
-        Title = "Auto Catch (After Teleport)",
-        Value = true,
-        Callback = function(Val)
-            getgenv().AutoCatchEnabled = Val
-        end
-    }
-)
+            -- Equip Item
+            local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
+            if hum then
+                hum:EquipTool(item)
+                task.wait(0.3) -- Animasi Equip
 
-local SectionExecution =
-    Tab:Section(
-    {
-        Title = "Execution"
-    }
-)
-
-Tab:Toggle(
-    {
-        Title = "Auto Farm Candy Event (Loop)",
-        Value = false,
-        Desc = "CandyFarmToggle",
-        Callback = function(Value)
-            getgenv().AutoFarmCandy = Value
-
-            if Value then
-                WindUI:Notify({Title = "Auto Farm Active", Content = "Started hunting Candy Pet...", Duration = 2})
-
-                StartCandyFarm()
-            else
-                WindUI:Notify({Title = "Auto Farm Stop", Content = "Stopping after current target.", Duration = 2})
-            end
-        end
-    }
-)
-
-Tab:Button(
-    {
-        Title = "Catch 1 Target (Safe Mode)",
-        Callback = function()
-            WindUI:Notify({Title = "Manual Mode", Content = "Searching for 1 target...", Duration = 2})
-
-            local folder = workspace:FindFirstChild("RoamingPets") and workspace.RoamingPets:FindFirstChild("Pets")
-
-            if not folder then
-                return
-            end
-
-            local found = false
-
-            for _, pet in pairs(folder:GetChildren()) do
-                local r = pet:GetAttribute("Rarity")
-
-                local m = pet:GetAttribute("Mutation")
-
-                local isTarget = false
-
-                if getgenv().MutationOnly then
-                    if m and m ~= "None" then
-                        isTarget = true
-                    end
-                elseif r == getgenv().SelectRarity then
-                    isTarget = true
+                -- Tekan E (Proximity Prompt)
+                if cPrompt and cPrompt.Parent then
+                    fireproximityprompt(cPrompt)
+                    -- Ganti Notify dengan Print
+                    print("[AutoBrew] Added " .. item.Name .. " to " .. cauldronName)
                 end
 
-                if isTarget and (pet:IsA("Model") or pet:IsA("BasePart")) then
-                    found = true
+                task.wait(State.AddItemDelay)
 
-                    local p = game.Players.LocalPlayer
+                -- Unequip jika item masih ada (gagal masuk)
+                if item.Parent == LocalPlayer.Character then
+                    hum:UnequipTools()
+                end
+            end
+        end
 
-                    if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                        p.Character.HumanoidRootPart.CFrame = pet:GetPivot() * CFrame.new(0, 5, 5)
+        -- KONDISI 3: SUDAH PENUH (Start Brew)
+    elseif count >= 2 then
+        -- Ganti Notify dengan Print
+        print("[AutoBrew] Starting Brew " .. cauldronName)
 
-                        task.wait(0.5)
+        -- 1. Konfirmasi Brew
+        Utilities.FireRemote("ConfirmBrew", { cauldronName, cModel })
 
-                        p.Character.HumanoidRootPart.CFrame = pet:GetPivot()
+        -- 2. Tunggu Minigame (Pura-pura main)
+        -- Kita pakai print saja biar aman
+        print("[AutoBrew] Playing minigame...")
+        task.wait(State.MinigameDuration)
 
-                        task.wait(1)
+        -- 3. Selesaikan Minigame (Score 5)
+        Utilities.FireRemote("FinishedBrewMinigame", { cauldronName, cModel, 5 })
+        task.wait(1)
+    end
+end
 
-                        RunCatchProtocol(pet)
+function Brewing.StartLoop()
+    task.spawn(function()
+        while State.AutoBrew do
+            -- Loop Cauldron satu per satu (Sequential) agar karakter tidak bingung jalan kemana
+            local plotData = LocalPlayer:WaitForChild("Data"):WaitForChild("MainData"):WaitForChild("PlotData")
 
-                        WindUI:Notify({Title = "Done", Content = "Target processed.", Duration = 2})
-                    end
+            for _, child in pairs(plotData:GetChildren()) do
+                if not State.AutoBrew then break end
 
+                if string.find(child.Name, "Cauldron") then
+                    Brewing.ProcessCauldron(child.Name)
+                    task.wait(0.5) -- Jeda antar cauldron
+                end
+            end
+
+            task.wait(1)
+        end
+    end)
+end
+
+-- ============================================
+-- FARMING LOGIC MODULE
+-- ============================================
+local Farming = {}
+
+function Farming.KiteLogic(targetRoot)
+    if not State.UseKiting then return end
+
+    local char = LocalPlayer.Character
+    if not char then return end
+
+    local myRoot = char:FindFirstChild("HumanoidRootPart")
+    local humanoid = char:FindFirstChild("Humanoid")
+
+    if myRoot and humanoid and targetRoot then
+        local enemyPos = targetRoot.Position
+        local myPos = myRoot.Position
+
+        -- Hitung jarak dan vektor
+        local distance = (myPos - enemyPos).Magnitude
+        local direction = (enemyPos - myPos).Unit
+
+        -- Logika Gerak (Mundur/Maju)
+        if distance < State.SafeRadius then
+            -- Mundur jika terlalu dekat
+            local retreatPos = myPos - (direction * 8)
+            humanoid:MoveTo(retreatPos)
+        elseif distance > (State.SafeRadius + 5) then
+            -- Maju jika terlalu jauh
+            humanoid:MoveTo(enemyPos)
+        end
+
+        -- Hadapkan karakter ke musuh
+        if State.FaceTarget then
+            myRoot.CFrame = CFrame.lookAt(
+                myRoot.Position,
+                Vector3.new(enemyPos.X, myRoot.Position.Y, enemyPos.Z)
+            )
+        end
+    end
+end
+
+function Farming.StartLoop()
+    task.spawn(function()
+        while State.AutoFarm do
+            -- Menggunakan variable internal untuk menandakan sedang dalam cycle
+            State.IsFarming = true
+
+            WindUI:Notify({ Title = "System", Content = "Starting New Cycle...", Duration = 1 })
+
+            -- 1. Masuk Lobby
+            Utilities.FireRemote("StartLobby", nil)
+            task.wait(1.5)
+            if not State.AutoFarm then break end
+
+            -- 2. Mulai Game
+            Utilities.FireRemote("StartGame", nil)
+            WindUI:Notify({ Title = "Game Start", Content = "Entering Combat Mode!", Duration = 2 })
+            task.wait(1)
+
+            -- 3. Loop Combat (Combat Phase)
+            local isDead = false
+
+            while State.AutoFarm do
+                -- Cek Kematian Player via Attribute
+                if LocalPlayer:GetAttribute("Dead") == true then
+                    isDead = true
+                    WindUI:Notify({ Title = "Status", Content = "Player Dead. Resetting...", Duration = 2 })
                     break
                 end
+
+                local targetRoot = Utilities.GetTarget()
+
+                if targetRoot then
+                    -- Jalankan Kiting
+                    Farming.KiteLogic(targetRoot)
+
+                    -- Jalankan Serangan
+                    local attackArgs = { targetRoot.CFrame }
+                    Utilities.FireRemote("UseMove", attackArgs)
+                end
+
+                task.wait(State.AttackDelay)
             end
 
-            if not found then
-                WindUI:Notify({Title = "Empty", Content = "No target found " .. getgenv().SelectRarity, Duration = 2})
+            if not State.AutoFarm then break end
+
+            -- 4. Reset Logic (Keluar dari Death Screen & Lobby)
+            if isDead then
+                task.wait(2)
+                Utilities.FireRemote("LeaveDeathGame", nil)
+                task.wait(1.5)
+                Utilities.FireRemote("LeaveLobby", nil)
             end
+
+            -- Jeda sebelum mengulang loop
+            task.wait(3)
         end
-    }
-)
-
-Tab:Toggle(
-    {
-        Title = "Auto Farm Selected Rarity (Loop)",
-        Value = false,
-        Desc = "RarityFarmToggle",
-        Callback = function(Value)
-            getgenv().AutoFarmRarity = Value
-
-            if Value then
-                WindUI:Notify(
-                    {Title = "Auto Farm ON", Content = "Searching for all " .. getgenv().SelectRarity, Duration = 2}
-                )
-
-                StartRarityFarm()
-            else
-                WindUI:Notify({Title = "Auto Farm OFF", Content = "Stopping after this target.", Duration = 2})
-            end
-        end
-    }
-)
-
-local SectionCollect =
-    CollectTab:Section(
-    {
-        Title = "Farming Features"
-    }
-)
-
-CollectTab:Toggle(
-    {
-        Title = "Auto Collect Cash (My Pen)",
-        Value = false,
-        Desc = "AutoCollectToggle",
-        Callback = function(Value)
-            getgenv().AutoCollectCash = Value
-
-            if Value then
-                WindUI:Notify({Title = "Auto Collect ON", Content = "Collecting cash from your Pen...", Duration = 2})
-
-                StartAutoCollect()
-            else
-                WindUI:Notify({Title = "Auto Collect OFF", Content = "Stopped collecting cash.", Duration = 2})
-            end
-        end
-    }
-)
-
-local SectionConfig =
-    SellTab:Section(
-    {
-        Title = "Select Rarity to Sell"
-    }
-)
-
-local rarities = {"Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythical"}
-
-for _, rarity in ipairs(rarities) do
-    SellTab:Toggle(
-        {
-            Title = "Sell " .. rarity,
-            Value = false,
-            Desc = "Sell" .. rarity,
-            Callback = function(Value)
-                getgenv().SellConfig[rarity] = Value
-            end
-        }
-    )
+        State.IsFarming = false
+    end)
 end
 
-local SectionAction =
-    SellTab:Section(
-    {
-        Title = "Execution"
-    }
-)
+-- ============================================
+-- PLAYER LOGIC MODULE
+-- ============================================
+local PlayerLogic = {}
 
-SellTab:Toggle(
-    {
-        Title = "Enable Auto Sell (Loop)",
-        Value = false,
-        Desc = "AutoSellMain",
-        Callback = function(Value)
-            getgenv().AutoSell = Value
-
-            if Value then
-                WindUI:Notify({Title = "Auto Sell ON", Content = "Started selling selected pets...", Duration = 2})
-
-                StartAutoSell()
-            else
-                WindUI:Notify({Title = "Auto Sell OFF", Content = "Stopped selling.", Duration = 2})
+-- WalkSpeed Loop
+task.spawn(function()
+    while true do
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+            if State.WalkSpeed > 16 then
+                LocalPlayer.Character.Humanoid.WalkSpeed = State.WalkSpeed
             end
         end
-    }
-)
+        task.wait(0.5)
+    end
+end)
 
-local SectionBuy =
-    BuyTab:Section(
-    {
-        Title = "Purchase Configuration"
-    }
-)
+-- ============================================
+-- MAIN UI CREATION
+-- ============================================
+local Window = WindUI:CreateWindow(Config.Window)
+Window:EditOpenButton(Config.OpenButton)
 
-BuyTab:Dropdown(
-    {
-        Title = "Select Food (Multi-select)",
-        Values = foodList,
-        Value = {"Apple"},
-        Multi = true,
-        Desc = "FoodDropdownMulti",
-        Callback = function(Option)
-            getgenv().SelectedFoodList = Option
+-- TAB ORDER
+local MainTab = Window:Tab({ Title = "Auto Farm", Icon = "swords" })
+local PlayerTab = Window:Tab({ Title = "Player", Icon = "user" })
+local SettingsTab = Window:Tab({ Title = "Settings", Icon = "settings" })
+
+-- ============================================
+-- MAIN TAB (FARM)
+-- ============================================
+local FarmSection = MainTab:Section({ Title = "Combat Loop" })
+
+UIRefs.AutoFarmToggle = FarmSection:Toggle({
+    Title = "Auto Farm",
+    Desc = "Auto Join -> Kill -> Die -> Repeat",
+    Value = false,
+    Callback = function(Value)
+        State.AutoFarm = Value
+        if Value then
+            Farming.StartLoop()
+        else
+            WindUI:Notify({ Title = "System", Content = "Stopping Farm (Wait for current loop)...", Duration = 2 })
         end
-    }
-)
+    end
+})
 
-BuyTab:Slider(
-    {
-        Title = "Amount Per Item",
-        Value = {
-            Min = 1,
-            Max = 100,
-            Default = 5
-        },
-        Step = 1,
-        Desc = "BuyAmountSlider",
-        Callback = function(Value)
-            getgenv().BuyAmount = Value
+FarmSection:Slider({
+    Title = "Attack Delay",
+    Desc = "Time between hits (Lower = Faster)",
+    Value = { Min = 0.05, Max = 1, Default = 0.1 },
+    Step = 0.05,
+    Callback = function(Value)
+        State.AttackDelay = Value
+    end
+})
+
+local KiteSection = MainTab:Section({ Title = "Kiting / Movement" })
+
+KiteSection:Toggle({
+    Title = "Enable Kiting",
+    Desc = "Keep safe distance from enemies",
+    Value = true,
+    Callback = function(Value)
+        State.UseKiting = Value
+    end
+})
+
+KiteSection:Toggle({
+    Title = "Face Target",
+    Desc = "Character always looks at enemy",
+    Value = true,
+    Callback = function(Value)
+        State.FaceTarget = Value
+    end
+})
+
+KiteSection:Slider({
+    Title = "Safe Radius",
+    Desc = "Distance to keep from enemies",
+    Value = { Min = 10, Max = 50, Default = 25 },
+    Step = 1,
+    Callback = function(Value)
+        State.SafeRadius = Value
+    end
+})
+local BrewSection = MainTab:Section({ Title = "Potion Brewing" })
+
+BrewSection:Toggle({
+    Title = "Auto Brew Potion",
+    Desc = "Auto Add Ingredients -> Brew -> Claim",
+    Value = false,
+    Callback = function(Value)
+        State.AutoBrew = Value
+        if Value then
+            Brewing.StartLoop()
+        else
+            WindUI:Notify({ Title = "System", Content = "Stopping Auto Brew...", Duration = 2 })
         end
-    }
-)
+    end
+})
+BrewSection:Dropdown({
+    Title = "Item Rarity Filter",
+    Desc = "Only brew items with this rarity",
+    Values = { "All", "Common", "Uncommon", "Rare", "Epic", "Legendary" },
+    Value = "All",
+    Callback = function(Value)
+        State.SelectedRarity = Value
+        print("[Settings] Rarity Filter set to:", Value)
+    end
+})
+BrewSection:Slider({
+    Title = "Add Item Delay",
+    Desc = "Time between adding ingredients",
+    Value = { Min = 0.1, Max = 1, Default = 0.5 },
+    Step = 0.1,
+    Callback = function(Value)
+        State.AddItemDelay = Value
+    end
+})
 
-local SectionExec = BuyTab:Section({Title = "Execution"})
+-- ============================================
+-- PLAYER TAB
+-- ============================================
+local MoveSection = PlayerTab:Section({ Title = "Movement" })
 
-BuyTab:Toggle(
-    {
-        Title = "Auto Buy Food (Loop)",
-        Value = false,
-        Desc = "AutoBuyToggle",
-        Callback = function(Value)
-            getgenv().AutoBuyFood = Value
+MoveSection:Slider({
+    Title = "Walk Speed",
+    Desc = "Character movement speed",
+    Value = { Min = 16, Max = 100, Default = 16 },
+    Step = 1,
+    Callback = function(Value)
+        State.WalkSpeed = Value
+    end
+})
 
-            if Value then
-                WindUI:Notify({Title = "Auto Buy ON", Content = "Buying food...", Duration = 2})
+-- ============================================
+-- SETTINGS TAB
+-- ============================================
+SettingsTab:Dropdown({
+    Title = "UI Theme",
+    Values = { "Plant", "Dark", "Rose", "Aqua" },
+    Value = "Plant",
+    Callback = function(Theme)
+        WindUI:SetTheme(Theme)
+    end
+})
 
-                StartAutoBuy()
-            else
-                WindUI:Notify({Title = "Auto Buy OFF", Content = "Stopped.", Duration = 2})
-            end
-        end
-    }
-)
+SettingsTab:Keybind({
+    Title = "Toggle UI",
+    Value = "RightControl",
+    Callback = function(Key)
+        Window:SetToggleKey(Enum.KeyCode[Key])
+    end
+})
 
-local SectionConfig = FeedTab:Section({Title = "1. Select Food"})
+-- ============================================
+-- CLEANUP HANDLER
+-- ============================================
+Window:OnDestroy(function()
+    print("⚠️ Window Closed. Stopping all features...")
+    State.AutoFarm = false
+    State.AutoBrew = false
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+        LocalPlayer.Character.Humanoid.WalkSpeed = 16
+    end
 
-FeedTab:Dropdown(
-    {
-        Title = "Food Type",
-        Values = foodList,
-        Value = "Steak",
-        Multi = false,
-        Desc = "FeedFoodDrop",
-        Callback = function(Option)
-            local val = (type(Option) == "table" and Option[1]) or Option
+    print("✅ [JumantaraHub] Script Unloaded!")
+end)
 
-            getgenv().SelectedFeedFood = val
-        end
-    }
-)
-
-local SectionTarget = FeedTab:Section({Title = "2. Select Target Pet"})
-
-local PetDropdown =
-    FeedTab:Dropdown(
-    {
-        Title = "Target Pet",
-        Values = {"Click Refresh First..."},
-        Value = "",
-        Multi = false,
-        Desc = "TargetPetDrop",
-        Callback = function(Option)
-            local selectedName = (type(Option) == "table" and Option[1]) or Option
-
-            if petMap[selectedName] then
-                local realUUID = petMap[selectedName]
-
-                getgenv().TargetPetUUID = realUUID
-
-                WindUI:Notify({Title = "Target Set", Content = "Pet ID saved.", Duration = 1})
-            end
-        end
-    }
-)
-
-FeedTab:Button(
-    {
-        Title = "Refresh Pet List (Click when changing pet)",
-        Callback = function()
-            local newList = UpdatePetList()
-
-            PetDropdown:Refresh(newList)
-
-            WindUI:Notify({Title = "Updated", Content = "Pet list updated!", Duration = 1})
-        end
-    }
-)
-
-local SectionExec = FeedTab:Section({Title = "Execution"})
-
-FeedTab:Toggle(
-    {
-        Title = "Auto Feed Selected Target (Loop)",
-        Value = false,
-        Desc = "AutoFeedSpecific",
-        Callback = function(Value)
-            getgenv().AutoFeed = Value
-
-            if Value then
-                if getgenv().TargetPetUUID then
-                    StartAutoFeed()
-
-                    WindUI:Notify({Title = "Auto Feed ON", Content = "Feeding started...", Duration = 2})
-                else
-                    WindUI:Notify({Title = "Error", Content = "Select a Pet above first!", Duration = 2})
-                end
-            end
-        end
-    }
-)
-
-local Keybind =
-    SettingTab:Keybind(
-    {
-        Title = "Keybind",
-        Desc = "Keybind to open ui",
-        Value = "K",
-        Callback = function(v)
-            Window:SetToggleKey(Enum.KeyCode[v])
-        end
-    }
-)
-
-local ThemeDropdown =
-    SettingTab:Dropdown(
-    {
-        Title = "Select Theme",
-        Desc = "Choose your desired interface theme",
-        Values = {
-            "Material Nature Dark",
-            "Material Nature Light",
-            "Pacific Dark",
-            "Peach Glow Dominant",
-            "Rose",
-            "Plant",
-            "Red",
-            "Indigo",
-            "Sky",
-            "Violet",
-            "Amber",
-            "Emerald",
-            "Midnight",
-            "Crimson",
-            "Monokai Pro",
-            "Cotton Candy",
-            "Rainbow"
-        },
-        Value = "Material Nature Dark",
-        Callback = function(option)
-            WindUI:SetTheme(option)
-        end
-    }
-)
-
-
-
-
+print("✅ [JumantaraHub] Brew a Potion Script Loaded!")
