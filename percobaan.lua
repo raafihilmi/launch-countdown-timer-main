@@ -67,11 +67,11 @@ local State = {
     WaitForCauldron = false,
 
     AutoSellPotion = false,
+    SellPotionDelay = 300,
     ReverseAttackDirection = true,
     AttackAngleOffset = 180,
     AutoClickMinigame = true,
     MinigameClickDelay = 0.1,
-    MinigameMaxMultiplier = 2.5,
     DebugMinigame = false,
 }
 
@@ -380,14 +380,6 @@ function MinigameClicker.PlayMinigame()
         local circle = MinigameDetector.WaitForCircle(minigameGUI, 1)
 
         if circle then
-            -- Cek apakah sudah mencapai target
-            if circle.Multiplier >= State.MinigameMaxMultiplier then
-                print("[Minigame] Target reached: x" .. circle.Multiplier)
-                MinigameDetector.ClickCircle(circle) -- Klik terakhir
-                task.wait(0.3)
-                break
-            end
-
             -- Klik circle
             local success = MinigameDetector.ClickCircle(circle)
 
@@ -1110,15 +1102,6 @@ BrewSection:Slider({
     end
 })
 
-BrewSection:Slider({
-    Title = "Target Multiplier",
-    Desc = "Stop clicking at this multiplier",
-    Value = { Min = 1.5, Max = 3.0, Default = 2.5 },
-    Step = 0.1,
-    Callback = function(Value)
-        State.MinigameMaxMultiplier = Value
-    end
-})
 
 BrewSection:Toggle({
     Title = "Debug Minigame",
@@ -1154,13 +1137,28 @@ SellPotionSection:Toggle({
     Callback = function(Value)
         State.AutoSellPotion = Value
         if Value then
-            Utilities.FireRemote("SellPotions", {}, Services.Workspace:GetServerTimeNow())
+            task.spawn(function()
+                while State.AutoSellPotion do
+                    WindUI:Notify({ Title = "System", Content = "Selling Potions...", Duration = 1 })
+                    Utilities.FireRemote("SellPotions", {}, Services.Workspace:GetServerTimeNow())
+                    task.wait(State.SellPotionDelay)
+                end
+            end)
         else
             WindUI:Notify({ Title = "System", Content = "Stopping Auto Brew...", Duration = 2 })
         end
     end
 })
-
+SellPotionSection:Slider({
+    Title = "Sell Delay",
+    Desc = "Time between each sell attempt (seconds)",
+    Value = { Min = 60, Max = 600, Default = 300 },
+    Step = 1,
+    Callback = function(Value)
+        State.SellPotionDelay = Value
+        print("[Settings] Sell Delay:", Value .. "s")
+    end
+})
 -- ============================================
 -- SETTINGS TAB
 -- ============================================
@@ -1187,7 +1185,10 @@ SettingsTab:Keybind({
 Window:OnDestroy(function()
     print("⚠️ Window Closed. Stopping all features...")
     State.AutoFarm = false
+    State.IsFarming = false
     State.AutoBrew = false
+    State.AutoSellPotion = false
+    State.AutoClickMinigame = false
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
         LocalPlayer.Character.Humanoid.WalkSpeed = 16
     end
