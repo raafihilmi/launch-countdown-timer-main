@@ -60,9 +60,19 @@ local State = {
     MinigameDuration = 9.5,
 
     IsBrewing = {},
+    UseParallelBrewing = false,
+    CauldronPriority = { "Cauldron1", "Cauldron2", "Cauldron3", "Cauldron4" },
+
+    AutoSwitchCauldron = true,
+    WaitForCauldron = false,
+
     AutoSellPotion = false,
     ReverseAttackDirection = true,
     AttackAngleOffset = 180,
+    AutoClickMinigame = true,
+    MinigameClickDelay = 0.1,
+    MinigameMaxMultiplier = 2.5,
+    DebugMinigame = false,
 }
 
 -- ============================================
@@ -192,21 +202,256 @@ function Utilities.GetCauldronData(cauldronName)
 end
 
 -- ============================================
--- BREWING LOGIC MODULE
+-- MINIGAME DETECTOR MODULE
+-- ============================================
+local MinigameDetector = {}
+
+-- Helper: Cari GUI Minigame
+function MinigameDetector.FindMinigameGUI()
+    local playerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+    -- Coba cari GUI dengan nama yang umum untuk minigame
+    local possibleNames = {
+        "BrewMinigame",
+        "Minigame",
+        "PotionMinigame",
+        "BrewingGame",
+        "CauldronMinigame"
+    }
+
+    for _, name in ipairs(possibleNames) do
+        local gui = playerGui:FindFirstChild(name)
+        if gui and gui.Enabled then
+            return gui
+        end
+    end
+
+    -- Fallback: Cari GUI yang baru muncul dengan Frame/ImageButton
+    for _, gui in pairs(playerGui:GetChildren()) do
+        if gui:IsA("ScreenGui") and gui.Enabled then
+            -- Cek ada circle button atau tidak
+            for _, descendant in pairs(gui:GetDescendants()) do
+                if (descendant:IsA("ImageButton") or descendant:IsA("TextButton")) then
+                    -- Cek apakah ada text multiplier (x1.1, x1.2, dll)
+                    local text = descendant:FindFirstChildOfClass("TextLabel")
+                    if text and string.match(text.Text, "x%d") then
+                        return gui
+                    end
+                end
+            end
+        end
+    end
+
+    return nil
+end
+
+-- Helper: Cari Circle Button yang aktif
+function MinigameDetector.FindActiveCircle(minigameGUI)
+    if not minigameGUI then return nil end
+
+    local circles = {}
+
+    -- Cari semua button dengan multiplier text
+    for _, descendant in pairs(minigameGUI:GetDescendants()) do
+        if (descendant:IsA("ImageButton") or descendant:IsA("TextButton")) and descendant.Visible then
+            -- Cek text label di dalamnya
+            local textLabel = descendant:FindFirstChildOfClass("TextLabel")
+
+            if textLabel then
+                local text = textLabel.Text
+                -- Match pattern: x1.1, x1.2, x2.5, dll
+                local multiplier = string.match(text, "x(%d+%.?%d*)")
+
+                if multiplier then
+                    table.insert(circles, {
+                        Button = descendant,
+                        Multiplier = tonumber(multiplier),
+                        Text = text,
+                        Position = descendant.AbsolutePosition,
+                        Size = descendant.AbsoluteSize
+                    })
+                end
+            end
+        end
+    end
+
+    -- Return circle dengan multiplier terkecil (yang harus diklik pertama)
+    if #circles > 0 then
+        table.sort(circles, function(a, b)
+            return a.Multiplier < b.Multiplier
+        end)
+        return circles[1]
+    end
+
+    return nil
+end
+
+-- Helper: Klik Button
+function MinigameDetector.ClickCircle(circleData)
+    if not circleData then return false end
+
+    local button = circleData.Button
+
+    -- Method 1: GuiButton Click
+    pcall(function()
+        -- Trigger semua event yang mungkin
+        for _, connection in pairs(getconnections(button.MouseButton1Click)) do
+            connection:Fire()
+        end
+        for _, connection in pairs(getconnections(button.Activated)) do
+            connection:Fire()
+        end
+    end)
+
+    -- Method 2: Virtual Input (Backup)
+    task.spawn(function()
+        local center = circleData.Position + (circleData.Size / 2)
+
+        pcall(function()
+            Services.VirtualInputManager:SendMouseButtonEvent(
+                center.X, center.Y, 0, true, game, 0
+            )
+            task.wait(0.05)
+            Services.VirtualInputManager:SendMouseButtonEvent(
+                center.X, center.Y, 0, false, game, 0
+            )
+        end)
+    end)
+
+    if State.DebugMinigame then
+        print("[Minigame] Clicked:", circleData.Text)
+    end
+
+    return true
+end
+
+-- Helper: Wait untuk circle muncul
+function MinigameDetector.WaitForCircle(minigameGUI, timeout)
+    timeout = timeout or 2
+    local startTime = tick()
+
+    while tick() - startTime < timeout do
+        local circle = MinigameDetector.FindActiveCircle(minigameGUI)
+        if circle then
+            return circle
+        end
+        task.wait(0.05)
+    end
+
+    return nil
+end
+
+-- ============================================
+-- AUTO MINIGAME CLICKER
+-- ============================================
+local MinigameClicker = {}
+MinigameClicker.IsActive = false
+MinigameClicker.CurrentMultiplier = 1.0
+
+function MinigameClicker.PlayMinigame()
+    if not State.AutoClickMinigame then
+        print("[Minigame] Manual mode - Play yourself!")
+        return false
+    end
+
+    MinigameClicker.IsActive = true
+    MinigameClicker.CurrentMultiplier = 1.0
+
+    print("[Minigame] Starting auto-clicker...")
+
+    -- Tunggu GUI muncul
+    task.wait(0.5)
+    local minigameGUI = MinigameDetector.FindMinigameGUI()
+
+    if not minigameGUI then
+        print("[Minigame] GUI not found!")
+        MinigameClicker.IsActive = false
+        return false
+    end
+
+    print("[Minigame] GUI Found:", minigameGUI.Name)
+
+    -- Loop klik circles
+    local clickCount = 0
+    local maxClicks = 50 -- Safety limit
+
+    while MinigameClicker.IsActive and clickCount < maxClicks do
+        -- Cari circle yang aktif
+        local circle = MinigameDetector.WaitForCircle(minigameGUI, 1)
+
+        if circle then
+            -- Cek apakah sudah mencapai target
+            if circle.Multiplier >= State.MinigameMaxMultiplier then
+                print("[Minigame] Target reached: x" .. circle.Multiplier)
+                MinigameDetector.ClickCircle(circle) -- Klik terakhir
+                task.wait(0.3)
+                break
+            end
+
+            -- Klik circle
+            local success = MinigameDetector.ClickCircle(circle)
+
+            if success then
+                clickCount = clickCount + 1
+                MinigameClicker.CurrentMultiplier = circle.Multiplier
+
+                if State.DebugMinigame then
+                    print("[Minigame] Progress: x" .. circle.Multiplier .. " (" .. clickCount .. " clicks)")
+                end
+            end
+
+            task.wait(State.MinigameClickDelay)
+        else
+            -- Tidak ada circle, mungkin minigame selesai
+            if State.DebugMinigame then
+                print("[Minigame] No more circles found")
+            end
+            break
+        end
+    end
+
+    print("[Minigame] Finished! Final multiplier: x" .. MinigameClicker.CurrentMultiplier)
+    MinigameClicker.IsActive = false
+
+    return true
+end
+
+-- Stop minigame clicker
+function MinigameClicker.Stop()
+    MinigameClicker.IsActive = false
+    print("[Minigame] Stopped")
+end
+
+-- ============================================
+-- BREWING LOGIC - IMPROVED VERSION
 -- ============================================
 local Brewing = {}
 
-function Brewing.ProcessCauldron(cauldronName)
-    if not State.AutoBrew then return end
-
-    -- 1. Ambil Data
+-- Helper: Cek apakah cauldron unlocked
+function Brewing.IsCauldronUnlocked(cauldronName)
     local cData = Utilities.GetCauldronData(cauldronName)
-    local cPrompt = Utilities.GetCauldronPrompt(cauldronName)
+    return cData and cData.Unlocked.Value or false
+end
 
-    if not cData or not cPrompt then return end
-    if not cData.Unlocked.Value then return end
+-- Helper: Get semua unlocked cauldrons
+function Brewing.GetUnlockedCauldrons()
+    local unlocked = {}
 
-    local cModel = cPrompt.Parent
+    for i = 1, 4 do
+        local name = "Cauldron" .. i
+        if Brewing.IsCauldronUnlocked(name) then
+            table.insert(unlocked, name)
+        end
+    end
+
+    return unlocked
+end
+
+-- Helper: Get cauldron status
+function Brewing.GetCauldronStatus(cauldronName)
+    local cData = Utilities.GetCauldronData(cauldronName)
+    if not cData then return "LOCKED" end
+
     local isCooking = cData.Cooking.Value
     local timeRemaining = cData.TimeRemaining.Value
     local itemsJson = cData.Items.Value
@@ -214,89 +459,320 @@ function Brewing.ProcessCauldron(cauldronName)
     local count = #itemsTable
     local capacity = 5 + cData.Boost.Value
 
-    -- KONDISI 1: SEDANG MASAK
     if isCooking then
         if timeRemaining <= 0 then
-            -- Claim Potion
-            -- Ganti Notify dengan Print agar tidak error font
-            print("[AutoBrew] Claiming " .. cauldronName)
-
-            -- Jalan ke Cauldron dulu biar aman
-            Utilities.WalkTo(cModel.Position)
-
-            -- Remote Claim
-            Utilities.FireRemote("ClaimPotion", { cauldronName, cModel })
-            task.wait(1.5)
+            return "READY_TO_CLAIM"
+        else
+            return "COOKING" -- Masih masak
         end
-        return -- Keluar agar tidak lanjut ke logika isi item
+    elseif count >= 2 then
+        return "READY_TO_BREW"    -- Sudah penuh, siap brew
+    elseif count > 0 then
+        return "PARTIALLY_FILLED" -- Ada item tapi belum penuh
+    else
+        return "EMPTY"            -- Kosong
     end
+end
 
-    -- KONDISI 2: BELUM PENUH (Isi Bahan)
-    if count < capacity then
-        local item = Utilities.GetIngredient()
-        if item then
-            -- Jalan ke Cauldron
-            Utilities.WalkTo(cModel.Position)
+-- Helper: Get next available cauldron
+function Brewing.GetNextAvailableCauldron()
+    for _, name in ipairs(State.CauldronPriority) do
+        if Brewing.IsCauldronUnlocked(name) then
+            local status = Brewing.GetCauldronStatus(name)
 
-            -- Equip Item
-            local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
-            if hum then
-                hum:EquipTool(item)
-                task.wait(0.3) -- Animasi Equip
-
-                -- Tekan E (Proximity Prompt)
-                if cPrompt and cPrompt.Parent then
-                    fireproximityprompt(cPrompt)
-                    -- Ganti Notify dengan Print
-                    print("[AutoBrew] Added " .. item.Name .. " to " .. cauldronName)
-                end
-
-                task.wait(State.AddItemDelay)
-
-                -- Unequip jika item masih ada (gagal masuk)
-                if item.Parent == LocalPlayer.Character then
-                    hum:UnequipTools()
-                end
+            -- Prioritas: Empty > Partially Filled > Ready to Claim
+            if status == "EMPTY" or status == "PARTIALLY_FILLED" or status == "READY_TO_CLAIM" then
+                return name, status
             end
         end
+    end
 
-        -- KONDISI 3: SUDAH PENUH (Start Brew)
-    elseif count >= 2 then
-        -- Ganti Notify dengan Print
+    -- Semua lagi masak, return yang paling cepat selesai
+    if State.WaitForCauldron then
+        return Brewing.GetFastestCookingCauldron()
+    end
+
+    return nil, nil
+end
+
+-- Helper: Get cauldron yang paling cepat selesai
+function Brewing.GetFastestCookingCauldron()
+    local fastest = nil
+    local minTime = math.huge
+
+    for i = 1, 4 do
+        local name = "Cauldron" .. i
+        local cData = Utilities.GetCauldronData(name)
+
+        if cData and cData.Cooking.Value then
+            local timeRemaining = cData.TimeRemaining.Value
+            if timeRemaining < minTime and timeRemaining > 0 then
+                minTime = timeRemaining
+                fastest = name
+            end
+        end
+    end
+
+    return fastest, minTime
+end
+
+-- MAIN: Process Single Cauldron (Improved)
+function Brewing.ProcessCauldron(cauldronName)
+    if not State.AutoBrew then return false end
+
+    -- 1. Ambil Data
+    local cData = Utilities.GetCauldronData(cauldronName)
+    local cPrompt = Utilities.GetCauldronPrompt(cauldronName)
+
+    if not cData or not cPrompt then return false end
+    if not cData.Unlocked.Value then return false end
+
+    local cModel = cPrompt.Parent
+    local status = Brewing.GetCauldronStatus(cauldronName)
+
+    -- Mark sedang diproses
+    State.IsBrewing[cauldronName] = true
+
+    -- KONDISI 1: READY TO CLAIM
+    if status == "READY_TO_CLAIM" then
+        print("[AutoBrew] Claiming " .. cauldronName)
+        Utilities.WalkTo(cModel.Position)
+        Utilities.FireRemote("ClaimPotion", { cauldronName, cModel })
+        task.wait(1.5)
+        State.IsBrewing[cauldronName] = false
+        return true
+    end
+
+    -- KONDISI 2: COOKING (Skip atau Wait)
+    if status == "COOKING" then
+        if State.AutoSwitchCauldron then
+            -- Skip ke cauldron lain
+            State.IsBrewing[cauldronName] = false
+            return false
+        else
+            -- Tunggu selesai
+            local timeRemaining = cData.TimeRemaining.Value
+            print("[AutoBrew] Waiting " .. cauldronName .. " (" .. math.ceil(timeRemaining) .. "s)")
+            task.wait(math.min(timeRemaining + 1, 10))   -- Max wait 10s
+            return Brewing.ProcessCauldron(cauldronName) -- Retry
+        end
+    end
+
+    -- KONDISI 3: EMPTY atau PARTIALLY FILLED (Isi bahan)
+    if status == "EMPTY" or status == "PARTIALLY_FILLED" then
+        local itemsJson = cData.Items.Value
+        local itemsTable = Services.HttpService:JSONDecode(itemsJson)
+        local count = #itemsTable
+        local capacity = 5 + cData.Boost.Value
+
+        -- Isi sampai penuh atau sampai habis bahan
+        local noItemAttempts = 0
+        while count < capacity do
+            -- GUNAKAN FILTER RARITY
+            local item = Utilities.GetIngredient()
+
+            if not item then
+                noItemAttempts = noItemAttempts + 1
+                if noItemAttempts >= 3 then
+                    print("[AutoBrew] No more ingredients with rarity: " .. State.SelectedRarity)
+                    break
+                end
+                task.wait(0.5)
+            else
+                noItemAttempts = 0 -- Reset counter
+
+                -- Jalan ke Cauldron
+                Utilities.WalkTo(cModel.Position)
+
+                -- Equip Item
+                local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
+                if hum then
+                    hum:EquipTool(item)
+                    task.wait(0.3)
+
+                    -- Tekan E
+                    if cPrompt and cPrompt.Parent then
+                        fireproximityprompt(cPrompt)
+                        print("[AutoBrew] Added " .. item.Name .. " (" .. State.SelectedRarity .. ") to " .. cauldronName)
+                    end
+
+                    task.wait(State.AddItemDelay)
+
+                    -- Unequip jika gagal
+                    if item.Parent == LocalPlayer.Character then
+                        hum:UnequipTools()
+                    end
+                end
+
+                -- Update count
+                task.wait(0.2)
+                itemsJson = cData.Items.Value
+                itemsTable = Services.HttpService:JSONDecode(itemsJson)
+                count = #itemsTable
+            end
+        end
+    end
+
+    -- KONDISI 4: READY TO BREW
+    if status == "READY_TO_BREW" or Brewing.GetCauldronStatus(cauldronName) == "READY_TO_BREW" then
         print("[AutoBrew] Starting Brew " .. cauldronName)
 
         -- 1. Konfirmasi Brew
         Utilities.FireRemote("ConfirmBrew", { cauldronName, cModel })
 
-        -- 2. Tunggu Minigame (Pura-pura main)
-        -- Kita pakai print saja biar aman
+        -- 2. Tunggu Minigame
         print("[AutoBrew] Playing minigame...")
-        task.wait(State.MinigameDuration)
+        -- 2. Play Minigame (Auto atau Manual)
+        if State.AutoClickMinigame then
+            print("[AutoBrew] Auto-playing minigame...")
+            MinigameClicker.PlayMinigame()
+        else
+            print("[AutoBrew] Manual minigame - Click the circles yourself!")
+            -- Tunggu user selesai main
+            task.wait(State.MinigameDuration)
+        end
 
-        -- 3. Selesaikan Minigame (Score 5)
-        Utilities.FireRemote("FinishedBrewMinigame", { cauldronName, cModel, 2.5 })
+        -- 3. Selesaikan Minigame
+        -- Utilities.FireRemote("FinishedBrewMinigame", { cauldronName, cModel, 2.5 })
         task.wait(1)
     end
+
+    State.IsBrewing[cauldronName] = false
+    return true
 end
 
-function Brewing.StartLoop()
+-- ============================================
+-- SEQUENTIAL BREWING (Original - Improved)
+-- ============================================
+function Brewing.StartSequentialLoop()
     task.spawn(function()
-        while State.AutoBrew do
-            -- Loop Cauldron satu per satu (Sequential) agar karakter tidak bingung jalan kemana
-            local plotData = LocalPlayer:WaitForChild("Data"):WaitForChild("MainData"):WaitForChild("PlotData")
+        print("[AutoBrew] Starting Sequential Mode (1 by 1)")
 
-            for _, child in pairs(plotData:GetChildren()) do
+        while State.AutoBrew do
+            local processedAny = false
+
+            -- Loop berdasarkan prioritas
+            for _, cauldronName in ipairs(State.CauldronPriority) do
                 if not State.AutoBrew then break end
 
-                if string.find(child.Name, "Cauldron") then
-                    Brewing.ProcessCauldron(child.Name)
-                    task.wait(0.5) -- Jeda antar cauldron
+                -- Filter target cauldron
+                if State.BrewTargetCauldron == "All" or State.BrewTargetCauldron == cauldronName then
+                    if Brewing.IsCauldronUnlocked(cauldronName) then
+                        local success = Brewing.ProcessCauldron(cauldronName)
+                        if success then
+                            processedAny = true
+                        end
+                        task.wait(0.5) -- Jeda antar cauldron
+                    end
+                end
+            end
+
+            -- Jika tidak ada yang diproses, tunggu sebentar
+            if not processedAny then
+                task.wait(2)
+            else
+                task.wait(1)
+            end
+        end
+
+        print("[AutoBrew] Sequential Loop Stopped")
+    end)
+end
+
+-- ============================================
+-- PARALLEL BREWING (NEW - Process All at Once)
+-- ============================================
+function Brewing.StartParallelLoop()
+    task.spawn(function()
+        print("[AutoBrew] Starting Parallel Mode (All at once)")
+
+        while State.AutoBrew do
+            local threads = {}
+
+            -- Spawn thread untuk setiap cauldron
+            for _, cauldronName in ipairs(State.CauldronPriority) do
+                if not State.AutoBrew then break end
+
+                if State.BrewTargetCauldron == "All" or State.BrewTargetCauldron == cauldronName then
+                    if Brewing.IsCauldronUnlocked(cauldronName) then
+                        table.insert(threads, task.spawn(function()
+                            Brewing.ProcessCauldron(cauldronName)
+                        end))
+                    end
+                end
+            end
+
+            -- Tunggu semua thread selesai (max 30 detik)
+            local waitTime = 0
+            while waitTime < 30 do
+                local allDone = true
+                for name, status in pairs(State.IsBrewing) do
+                    if status then allDone = false end
+                end
+                if allDone then break end
+                task.wait(1)
+                waitTime = waitTime + 1
+            end
+
+            task.wait(2)
+        end
+
+        print("[AutoBrew] Parallel Loop Stopped")
+    end)
+end
+
+-- ============================================
+-- SMART QUEUE SYSTEM (NEW - Most Efficient)
+-- ============================================
+function Brewing.StartSmartQueue()
+    task.spawn(function()
+        print("[AutoBrew] Starting Smart Queue Mode")
+
+        while State.AutoBrew do
+            -- 1. Claim semua yang ready
+            for i = 1, 4 do
+                local name = "Cauldron" .. i
+                if Brewing.GetCauldronStatus(name) == "READY_TO_CLAIM" then
+                    Brewing.ProcessCauldron(name)
+                end
+            end
+
+            -- 2. Cari cauldron yang available
+            local nextCauldron, status = Brewing.GetNextAvailableCauldron()
+
+            if nextCauldron then
+                print("[AutoBrew] Processing " .. nextCauldron .. " (Status: " .. status .. ")")
+                Brewing.ProcessCauldron(nextCauldron)
+            else
+                -- Semua lagi masak, tunggu yang paling cepat
+                local fastest, minTime = Brewing.GetFastestCookingCauldron()
+                if fastest and minTime < 30 then
+                    print("[AutoBrew] All cooking. Waiting for " .. fastest .. " (" .. math.ceil(minTime) .. "s)")
+                    task.wait(math.min(minTime + 1, 10))
+                else
+                    task.wait(5) -- Wait longer jika semua masih lama
                 end
             end
 
             task.wait(1)
         end
+
+        print("[AutoBrew] Smart Queue Stopped")
     end)
+end
+
+-- ============================================
+-- MAIN START LOOP (Auto-select mode)
+-- ============================================
+function Brewing.StartLoop()
+    -- Pilih mode berdasarkan settings
+    if State.UseParallelBrewing then
+        Brewing.StartParallelLoop()
+    elseif State.AutoSwitchCauldron then
+        Brewing.StartSmartQueue()
+    else
+        Brewing.StartSequentialLoop()
+    end
 end
 
 -- ============================================
@@ -500,17 +976,49 @@ local BrewSection = MainTab:Section({ Title = "Potion Brewing" })
 
 BrewSection:Toggle({
     Title = "Auto Brew Potion",
-    Desc = "Auto Add Ingredients -> Brew -> Claim",
+    Desc = "Auto Add Ingredients -> Brew -> Claim (All 4 Cauldrons)",
     Value = false,
     Callback = function(Value)
         State.AutoBrew = Value
         if Value then
             Brewing.StartLoop()
         else
-            WindUI:Notify({ Title = "System", Content = "Stopping Auto Brew...", Duration = 2 })
+            print("[System] Stopping Auto Brew...")
         end
     end
 })
+
+BrewSection:Dropdown({
+    Title = "Target Cauldron",
+    Desc = "Which cauldron to brew",
+    Values = { "All", "Cauldron1", "Cauldron2", "Cauldron3", "Cauldron4" },
+    Value = "All",
+    Callback = function(Value)
+        State.BrewTargetCauldron = Value
+        print("[Settings] Target Cauldron:", Value)
+    end
+})
+
+BrewSection:Dropdown({
+    Title = "Brewing Mode",
+    Desc = "How to process multiple cauldrons",
+    Values = { "Smart Queue", "Sequential", "Parallel" },
+    Value = "Smart Queue",
+    Callback = function(Value)
+        if Value == "Parallel" then
+            State.UseParallelBrewing = true
+            State.AutoSwitchCauldron = false
+        elseif Value == "Smart Queue" then
+            State.UseParallelBrewing = false
+            State.AutoSwitchCauldron = true
+        else -- Sequential
+            State.UseParallelBrewing = false
+            State.AutoSwitchCauldron = false
+        end
+        print("[Settings] Brewing Mode:", Value)
+    end
+})
+
 BrewSection:Dropdown({
     Title = "Item Rarity Filter",
     Desc = "Only brew items with this rarity",
@@ -521,6 +1029,7 @@ BrewSection:Dropdown({
         print("[Settings] Rarity Filter set to:", Value)
     end
 })
+
 BrewSection:Slider({
     Title = "Add Item Delay",
     Desc = "Time between adding ingredients",
@@ -531,6 +1040,94 @@ BrewSection:Slider({
     end
 })
 
+BrewSection:Toggle({
+    Title = "Wait for Cooking",
+    Desc = "Wait for cauldron to finish or skip to next?",
+    Value = false,
+    Callback = function(Value)
+        State.WaitForCauldron = Value
+    end
+})
+local MinigameMonitor = {}
+MinigameMonitor.Connection = nil
+
+function MinigameMonitor.Start()
+    if MinigameMonitor.Connection then return end
+
+    print("[MinigameMonitor] Started")
+
+    MinigameMonitor.Connection = Services.RunService.Heartbeat:Connect(function()
+        if not State.AutoClickMinigame then return end
+        if MinigameClicker.IsActive then return end -- Jangan double-run
+
+        -- Cek apakah minigame aktif
+        local minigameGUI = MinigameDetector.FindMinigameGUI()
+
+        if minigameGUI then
+            -- Ada minigame aktif, start clicker
+            task.spawn(function()
+                MinigameClicker.PlayMinigame()
+            end)
+        end
+    end)
+end
+
+function MinigameMonitor.Stop()
+    if MinigameMonitor.Connection then
+        MinigameMonitor.Connection:Disconnect()
+        MinigameMonitor.Connection = nil
+    end
+    print("[MinigameMonitor] Stopped")
+end
+
+-- ============================================
+-- UI CONTROLS - TAMBAHKAN DI BrewSection
+-- ============================================
+
+BrewSection:Toggle({
+    Title = "Auto Click Minigame",
+    Desc = "Automatically click circles in brewing minigame",
+    Value = true,
+    Callback = function(Value)
+        State.AutoClickMinigame = Value
+
+        if Value then
+            MinigameMonitor.Start()
+        else
+            MinigameMonitor.Stop()
+            MinigameClicker.Stop()
+        end
+    end
+})
+
+BrewSection:Slider({
+    Title = "Minigame Click Delay",
+    Desc = "Time between clicks (Lower = Faster)",
+    Value = { Min = 0.05, Max = 0.5, Default = 0.1 },
+    Step = 0.05,
+    Callback = function(Value)
+        State.MinigameClickDelay = Value
+    end
+})
+
+BrewSection:Slider({
+    Title = "Target Multiplier",
+    Desc = "Stop clicking at this multiplier",
+    Value = { Min = 1.5, Max = 3.0, Default = 2.5 },
+    Step = 0.1,
+    Callback = function(Value)
+        State.MinigameMaxMultiplier = Value
+    end
+})
+
+BrewSection:Toggle({
+    Title = "Debug Minigame",
+    Desc = "Show detailed minigame logs",
+    Value = false,
+    Callback = function(Value)
+        State.DebugMinigame = Value
+    end
+})
 -- ============================================
 -- PLAYER TAB
 -- ============================================
