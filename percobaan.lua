@@ -42,6 +42,7 @@ local LocalPlayer = Services.Players.LocalPlayer
 -- ============================================
 local State = {
     AutoFarm = false,
+    GameMode = "Raid",
     AttackDelay = 0.1,
     SearchRange = 1000,
     UseKiting = true,
@@ -816,17 +817,22 @@ function Farming.StartLoop()
 
             WindUI:Notify({ Title = "System", Content = "Starting New Cycle...", Duration = 1 })
 
-            -- 1. Masuk Lobby
             Utilities.FireRemote("StartLobby", nil)
-            task.wait(1.5)
+            task.wait(1)
+            if State.GameMode == "Siege" then
+                Utilities.FireRemote("ChangeGamemode", { "Siege" })
+                task.wait(0.2)
+                Utilities.FireRemote("ChangeGamemode", { "Siege" })
+                print("[AutoFarm] Set Game Mode to Siege")
+                task.wait(0.5)
+            end
+            task.wait(1)
             if not State.AutoFarm then break end
 
-            -- 2. Mulai Game
             Utilities.FireRemote("StartGame", nil)
             WindUI:Notify({ Title = "Game Start", Content = "Entering Combat Mode!", Duration = 2 })
             task.wait(1)
 
-            -- 3. Loop Combat
             local isDead = false
 
             while State.AutoFarm do
@@ -840,18 +846,13 @@ function Farming.StartLoop()
                 local targetRoot = Utilities.GetTarget()
 
                 if targetRoot then
-                    -- Jalankan Kiting
                     Farming.KiteLogic(targetRoot)
 
-                    -- AUTO AIM akan handle cursor movement secara otomatis
-                    -- Remote attack akan mengikuti posisi kursor
                     local attackCFrame = targetRoot.CFrame
                     if State.ReverseAttackDirection then
-                        -- Balik 180 derajat
                         local pos = targetRoot.CFrame.Position
                         local lookVec = -targetRoot.CFrame.LookVector
                         attackCFrame = CFrame.lookAt(pos, pos + lookVec)
-                        print("[Farming] Reversing attack direction")
                     end
                     local attackArgs = { attackCFrame }
                     Utilities.FireRemote("UseMove", attackArgs)
@@ -911,6 +912,17 @@ local SettingsTab = Window:Tab({ Title = "Settings", Icon = "settings" })
 -- ============================================
 local FarmSection = MainTab:Section({ Title = "Combat Loop" })
 
+FarmSection:Dropdown({
+    Title = "Game Mode",
+    Desc = "Select Fight Mode (Raid/Siege)",
+    Values = { "Raid", "Siege" },
+    Value = "Raid",
+    Callback = function(Value)
+        State.GameMode = Value
+        print("[Settings] Game Mode set to:", Value)
+    end
+})
+
 UIRefs.AutoFarmToggle = FarmSection:Toggle({
     Title = "Auto Farm",
     Desc = "Auto Join -> Kill -> Die -> Repeat",
@@ -924,6 +936,7 @@ UIRefs.AutoFarmToggle = FarmSection:Toggle({
         end
     end
 })
+
 
 FarmSection:Slider({
     Title = "Attack Delay",
