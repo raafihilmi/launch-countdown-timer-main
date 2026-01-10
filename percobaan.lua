@@ -75,7 +75,9 @@ local State = {
     AutoClickMinigame = true,
     MinigameClickDelay = 0.1,
     DebugMinigame = false,
-    AutoChest = false,
+    AutoOpenChest = false,
+    AutoPlaceChest = false,
+    SelectedChestRarity = "All",
 }
 
 -- ============================================
@@ -448,30 +450,38 @@ end
 -- ============================================
 local ChestLogic = {}
 
--- Helper: Cari Chest di Backpack
+-- Helper: Cari Chest di Backpack berdasarkan Rarity
 function ChestLogic.GetChestFromBackpack()
     local backpack = LocalPlayer:FindFirstChild("Backpack")
     if not backpack then return nil end
 
     for _, tool in pairs(backpack:GetChildren()) do
         if tool:IsA("Tool") and string.find(string.lower(tool.Name), "chest") then
-            local id = tool:GetAttribute("ID")
-            if id then
-                return id, tool.Name
+            local isValid = false
+
+            -- Cek Filter Rarity
+            if State.SelectedChestRarity == "All" then
+                isValid = true
+            elseif tool.Name == State.SelectedChestRarity then
+                isValid = true
+            end
+
+            if isValid then
+                local id = tool:GetAttribute("ID")
+                if id then
+                    return id, tool.Name
+                end
             end
         end
     end
     return nil
 end
 
--- Helper: Hitung Slot Pasangan (Logic 1-4 vs 5-8)
+-- Helper: Hitung Slot Pasangan
 function ChestLogic.GetPairSlot(slotNum)
     if slotNum <= 4 then
-        -- Jika slot 1-4, pasangan adalah dirinya sendiri
         return "Slot" .. slotNum
     else
-        -- Jika slot 5-8, pasangan adalah slot dikurangi 4 (Seberangnya)
-        -- Contoh: Slot 7 -> Slot 3, Slot 5 -> Slot 1
         return "Slot" .. (slotNum - 4)
     end
 end
@@ -479,14 +489,14 @@ end
 -- Main Loop Chest
 function ChestLogic.StartLoop()
     task.spawn(function()
-        print("[Chest] Auto Chest Started")
+        print("[Chest] Logic Started")
 
-        while State.AutoChest do
+        while State.AutoOpenChest or State.AutoPlaceChest do
             local mainData = LocalPlayer:WaitForChild("Data"):WaitForChild("MainData"):WaitForChild("PlotData")
 
-            -- Loop Slot 1 sampai 8
             for i = 1, 8 do
-                if not State.AutoChest then break end
+                -- Stop jika kedua fitur dimatikan
+                if not (State.AutoOpenChest or State.AutoPlaceChest) then break end
 
                 local slotName = "Slot" .. i
                 local slotData = mainData:FindFirstChild(slotName)
@@ -496,43 +506,35 @@ function ChestLogic.StartLoop()
                     local timeRemaining = slotData:FindFirstChild("TimeRemaining")
 
                     if draining and timeRemaining then
-                        -- KONDISI 1: READY TO OPEN
-                        -- Draining true DAN Waktu habis (<= 0)
-                        if draining.Value == true and timeRemaining.Value <= 0 then
+                        -- LOGIKA OPEN CHEST
+                        if State.AutoOpenChest and draining.Value == true and timeRemaining.Value <= 0 then
                             local pairName = ChestLogic.GetPairSlot(i)
+                            print("[Chest] Opening " .. slotName .. " & " .. pairName)
 
-                            print("[Chest] Opening " .. slotName .. " (Pair: " .. pairName .. ")")
-
-                            -- Kirim Remote Open
                             local args = { slotName, pairName }
                             Utilities.FireRemote("OpenChest", args)
+                            task.wait(1)
 
-                            task.wait(1) -- Delay biar gak spam
-
-                            -- KONDISI 2: EMPTY SLOT (READY TO PLACE)
-                            -- Draining false (Asumsi slot kosong/idle)
-                        elseif draining.Value == false then
-                            -- Cari chest di backpack
+                            -- LOGIKA PLACE CHEST
+                        elseif State.AutoPlaceChest and draining.Value == false then
+                            -- Cari chest sesuai rarity yang dipilih
                             local chestID, chestName = ChestLogic.GetChestFromBackpack()
 
                             if chestID then
                                 print("[Chest] Placing " .. chestName .. " into " .. slotName)
 
-                                -- Kirim Remote Place
                                 local args = { slotName, chestID }
                                 Utilities.FireRemote("PlaceOnSlot", args)
-
-                                task.wait(1) -- Delay setelah naruh
+                                task.wait(1)
                             end
                         end
                     end
                 end
             end
 
-            -- Jeda loop utama agar tidak crash/lag
             task.wait(2)
         end
-        print("[Chest] Auto Chest Stopped")
+        print("[Chest] Logic Stopped")
     end)
 end
 
@@ -1263,26 +1265,50 @@ BrewSection:Toggle({
 })
 
 local ChestTab = Window:Tab({ Title = "Chest", Icon = "package" })
-
 local ChestSection = ChestTab:Section({ Title = "Manager" })
 
+-- Dropdown Rarity
+ChestSection:Dropdown({
+    Title = "Select Chest Rarity",
+    Desc = "Choose which chest to auto place",
+    Values = { "All", "Rare Chest", "Magical Chest", "Epic Chest", "Legendary Chest", "Mythical Chest" },
+    Value = "All",
+    Callback = function(Value)
+        State.SelectedChestRarity = Value
+        print("[Chest] Rarity filter set to:", Value)
+    end
+})
+
+-- Toggle Auto Place
 ChestSection:Toggle({
-    Title = "Auto Open & Place Chest",
-    Desc = "Auto place chests from backpack & open when ready (Supports Slot 5-8 Logic)",
+    Title = "Auto Place Chest",
+    Desc = "Automatically place selected chest into empty slots",
     Value = false,
     Callback = function(Value)
-        State.AutoChest = Value
+        State.AutoPlaceChest = Value
         if Value then
-            ChestLogic.StartLoop()
+            -- Jika loop belum jalan (AutoOpen mati), start loop baru
+            if not State.AutoOpenChest then
+                ChestLogic.StartLoop()
+            end
         end
     end
 })
 
--- Info tambahan (Opsional)
-ChestSection:Paragraph({
-    Title = "How it works:",
-    Content =
-    "- Places 'Chest' items from Backpack to empty slots.\n- Slot 1-4: Opens normally.\n- Slot 5-8: Opens with opposite pair logic (e.g., Slot 7 & Slot 3)."
+-- Toggle Auto Open
+ChestSection:Toggle({
+    Title = "Auto Open Chest",
+    Desc = "Automatically open finished chests",
+    Value = false,
+    Callback = function(Value)
+        State.AutoOpenChest = Value
+        if Value then
+            -- Jika loop belum jalan (AutoPlace mati), start loop baru
+            if not State.AutoPlaceChest then
+                ChestLogic.StartLoop()
+            end
+        end
+    end
 })
 -- ============================================
 -- PLAYER TAB
@@ -1362,6 +1388,8 @@ Window:OnDestroy(function()
     State.AutoBrew = false
     State.AutoSellPotion = false
     State.AutoClickMinigame = false
+    State.AutoPlaceChest = false
+    State.AutoOpenChest = false
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
         LocalPlayer.Character.Humanoid.WalkSpeed = 16
     end
