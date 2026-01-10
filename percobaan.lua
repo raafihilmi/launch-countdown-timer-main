@@ -78,6 +78,8 @@ local State = {
     AutoOpenChest = false,
     AutoPlaceChest = false,
     SelectedChestRarity = "All",
+    AutoBuyStaff = false,
+    TargetStaffs = {},
 }
 
 -- ============================================
@@ -464,6 +466,44 @@ end
 function MinigameClicker.Stop()
     MinigameClicker.IsActive = false
     print("[Minigame] Stopped")
+end
+
+-- ============================================
+-- STAFF BUYING LOGIC
+-- ============================================
+local StaffLogic = {}
+
+function StaffLogic.StartLoop()
+    task.spawn(function()
+        print("[Staff] Auto Buy Started")
+
+        while State.AutoBuyStaff do
+            -- Cek apakah ada staff yang dipilih
+            if #State.TargetStaffs > 0 then
+                for _, staffName in ipairs(State.TargetStaffs) do
+                    if not State.AutoBuyStaff then break end
+
+                    -- Kirim Remote Buy
+                    -- Argumen remote: "BuyStaff", { "NamaStaff" }
+                    print("[Staff] Buying: " .. staffName)
+                    Utilities.FireRemote("BuyStaff", { staffName })
+
+                    -- Delay sedikit biar tidak spam parah/crash
+                    task.wait(0.5)
+                end
+            else
+                -- Jika toggle nyala tapi tidak ada yang dipilih
+                if math.random(1, 20) == 1 then -- Print jarang-jarang
+                    print("[Staff] No staffs selected in dropdown!")
+                end
+            end
+
+            -- Jeda antar cycle
+            task.wait(1.5)
+        end
+
+        print("[Staff] Auto Buy Stopped")
+    end)
 end
 
 -- ============================================
@@ -1451,6 +1491,44 @@ SettingsTab:Keybind({
 })
 
 -- ============================================
+-- STAFF SHOP UI
+-- ============================================
+local StaffSection = ShopTab:Section({ Title = "Auto Buy Staffs" })
+
+local StaffList = {
+    "Starter Staff", "Apprentice Staff", "Master's Staff", "Energy Staff",
+    "Earth Staff", "Fire Staff", "Wind Staff", "Lightning Staff",
+    "Nature Staff", "Water Staff", "Light Staff", "Holy Staff",
+    "Explosion Staff", "Dark Staff", "Flower Staff", "Void Staff",
+    "Dusk Staff", "Mystic Staff", "Venom Staff", "Reaper Staff",
+    "Lunar Staff", "Atomic Staff", "Fractal Staff"
+}
+
+StaffSection:Dropdown({
+    Title = "Select Staffs",
+    Desc = "Choose which staffs to auto-buy (Multi-select)",
+    Values = StaffList,
+    Multi = true, -- Mengaktifkan Multi Select
+    Value = {},   -- Default kosong
+    Callback = function(Value)
+        -- Value mengembalikan table berisi nama-nama yang dicentang
+        State.TargetStaffs = Value
+        print("[Staff] Selected Items:", table.concat(Value, ", "))
+    end
+})
+
+StaffSection:Toggle({
+    Title = "Auto Buy Selected Staff",
+    Desc = "Continuously attempts to buy selected staffs",
+    Value = false,
+    Callback = function(Value)
+        State.AutoBuyStaff = Value
+        if Value then
+            StaffLogic.StartLoop()
+        end
+    end
+})
+-- ============================================
 -- CLEANUP HANDLER
 -- ============================================
 Window:OnDestroy(function()
@@ -1462,6 +1540,7 @@ Window:OnDestroy(function()
     State.AutoClickMinigame = false
     State.AutoPlaceChest = false
     State.AutoOpenChest = false
+    State.AutoBuyStaff = false
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
         LocalPlayer.Character.Humanoid.WalkSpeed = 16
     end
