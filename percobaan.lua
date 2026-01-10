@@ -1380,6 +1380,57 @@ SellPotionSection:Slider({
     end
 })
 -- ============================================
+-- SHOP GUI SECTION
+-- ============================================
+local ShopTab = Window:Tab({ Title = "Shops", Icon = "shopping-cart" })
+local ShopSection = ShopTab:Section({ Title = "Open GUI (No NPC Required)" })
+
+-- Daftar Shop sesuai request
+local ShopList = {
+    "WispShop",
+    "MagicShop",
+    "ShardWitch",
+    "TravelingMerchant",
+    "StaffShop",
+    "RelicShop"
+}
+
+-- Loop untuk membuat tombol secara otomatis
+for _, shopName in ipairs(ShopList) do
+    ShopSection:Button({
+        Title = "Open " .. shopName,
+        Desc = "Opens the " .. shopName .. " interface",
+        Callback = function()
+            local ReplicatedStorage = game:GetService("ReplicatedStorage")
+            local LocalPlayer = game:GetService("Players").LocalPlayer
+
+            -- Gunakan pcall agar script tidak crash jika ada nama frame yang salah/berubah
+            local success, err = pcall(function()
+                -- 1. Load Module Interface Game
+                local Interface = require(ReplicatedStorage.Modules.Client.Interface)
+
+                -- 2. Cari Frame secara dinamis berdasarkan shopName
+                -- Pola: PlayerGui.Main.Frames.[NamaShop].MainFrame
+                local TargetFrame = LocalPlayer.PlayerGui.Main.Frames:FindFirstChild(shopName)
+
+                if TargetFrame and TargetFrame:FindFirstChild("MainFrame") then
+                    -- 3. Buka GUI menggunakan fungsi internal game
+                    Interface:GetElement(TargetFrame.MainFrame):Show()
+                else
+                    error("Frame not found: " .. shopName)
+                end
+            end)
+
+            if success then
+                WindUI:Notify({ Title = "Shop", Content = shopName .. " Opened!", Duration = 2 })
+            else
+                WindUI:Notify({ Title = "Error", Content = "Failed to open " .. shopName, Duration = 2 })
+                warn("[Shop Error] " .. tostring(err))
+            end
+        end
+    })
+end
+-- ============================================
 -- SETTINGS TAB
 -- ============================================
 SettingsTab:Dropdown({
