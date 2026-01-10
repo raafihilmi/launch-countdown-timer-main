@@ -43,7 +43,8 @@ local LocalPlayer = Services.Players.LocalPlayer
 local State = {
     AutoFarm = false,
     GameMode = "Raid",
-    AttackDelay = 0.1,
+    GameDifficulty = "Normal",
+    AttackDelay = 0.45,
     SearchRange = 1000,
     UseKiting = true,
     SafeRadius = 25,
@@ -74,6 +75,7 @@ local State = {
     AutoClickMinigame = true,
     MinigameClickDelay = 0.1,
     DebugMinigame = false,
+    AutoChest = false,
 }
 
 -- ============================================
@@ -103,26 +105,52 @@ function Utilities.FireRemote(actionName, args)
     )
 end
 
--- Fungsi Mencari Musuh Terdekat
 function Utilities.GetTarget()
     local nearestEnemy = nil
-    local minDistance = State.SearchRange
+    local minDistance = math.huge
     local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
 
-    if not myRoot then return nil end
+    local centerPosition = nil
+
+    if State.GameMode == "Siege" then
+        local world = Services.Workspace:FindFirstChild("World")
+        local renders = world and world:FindFirstChild("Renders")
+        local crystal = renders and renders:FindFirstChild("Crystal Forest")
+
+        if crystal then
+            if crystal:IsA("Model") then
+                centerPosition = crystal:GetPivot().Position
+            elseif crystal:IsA("BasePart") then
+                centerPosition = crystal.Position
+            end
+        end
+    end
+
+    if not centerPosition then
+        if myRoot then
+            centerPosition = myRoot.Position
+        else
+            return nil
+        end
+    end
 
     for _, enemy in pairs(EnemiesFolder:GetChildren()) do
         local enemyRoot = enemy:FindFirstChild("HumanoidRootPart")
 
         if enemyRoot then
-            -- Cek Attribute Health (agar tidak mengejar yang sudah mati)
             local health = enemy:GetAttribute("Health")
             local isAlive = true
             if health and health <= 0 then isAlive = false end
 
             if isAlive then
-                local dist = (myRoot.Position - enemyRoot.Position).Magnitude
-                if dist < minDistance then
+                local dist = (centerPosition - enemyRoot.Position).Magnitude
+
+                local inRange = true
+                if State.GameMode ~= "Siege" and dist > State.SearchRange then
+                    inRange = false
+                end
+
+                if inRange and dist < minDistance then
                     minDistance = dist
                     nearestEnemy = enemyRoot
                 end
@@ -413,6 +441,99 @@ end
 function MinigameClicker.Stop()
     MinigameClicker.IsActive = false
     print("[Minigame] Stopped")
+end
+
+-- ============================================
+-- CHEST LOGIC MODULE
+-- ============================================
+local ChestLogic = {}
+
+-- Helper: Cari Chest di Backpack
+function ChestLogic.GetChestFromBackpack()
+    local backpack = LocalPlayer:FindFirstChild("Backpack")
+    if not backpack then return nil end
+
+    for _, tool in pairs(backpack:GetChildren()) do
+        if tool:IsA("Tool") and string.find(string.lower(tool.Name), "chest") then
+            local id = tool:GetAttribute("ID")
+            if id then
+                return id, tool.Name
+            end
+        end
+    end
+    return nil
+end
+
+-- Helper: Hitung Slot Pasangan (Logic 1-4 vs 5-8)
+function ChestLogic.GetPairSlot(slotNum)
+    if slotNum <= 4 then
+        -- Jika slot 1-4, pasangan adalah dirinya sendiri
+        return "Slot" .. slotNum
+    else
+        -- Jika slot 5-8, pasangan adalah slot dikurangi 4 (Seberangnya)
+        -- Contoh: Slot 7 -> Slot 3, Slot 5 -> Slot 1
+        return "Slot" .. (slotNum - 4)
+    end
+end
+
+-- Main Loop Chest
+function ChestLogic.StartLoop()
+    task.spawn(function()
+        print("[Chest] Auto Chest Started")
+
+        while State.AutoChest do
+            local mainData = LocalPlayer:WaitForChild("Data"):WaitForChild("MainData"):WaitForChild("PlotData")
+
+            -- Loop Slot 1 sampai 8
+            for i = 1, 8 do
+                if not State.AutoChest then break end
+
+                local slotName = "Slot" .. i
+                local slotData = mainData:FindFirstChild(slotName)
+
+                if slotData then
+                    local draining = slotData:FindFirstChild("Draining")
+                    local timeRemaining = slotData:FindFirstChild("TimeRemaining")
+
+                    if draining and timeRemaining then
+                        -- KONDISI 1: READY TO OPEN
+                        -- Draining true DAN Waktu habis (<= 0)
+                        if draining.Value == true and timeRemaining.Value <= 0 then
+                            local pairName = ChestLogic.GetPairSlot(i)
+
+                            print("[Chest] Opening " .. slotName .. " (Pair: " .. pairName .. ")")
+
+                            -- Kirim Remote Open
+                            local args = { slotName, pairName }
+                            Utilities.FireRemote("OpenChest", args)
+
+                            task.wait(1) -- Delay biar gak spam
+
+                            -- KONDISI 2: EMPTY SLOT (READY TO PLACE)
+                            -- Draining false (Asumsi slot kosong/idle)
+                        elseif draining.Value == false then
+                            -- Cari chest di backpack
+                            local chestID, chestName = ChestLogic.GetChestFromBackpack()
+
+                            if chestID then
+                                print("[Chest] Placing " .. chestName .. " into " .. slotName)
+
+                                -- Kirim Remote Place
+                                local args = { slotName, chestID }
+                                Utilities.FireRemote("PlaceOnSlot", args)
+
+                                task.wait(1) -- Delay setelah naruh
+                            end
+                        end
+                    end
+                end
+            end
+
+            -- Jeda loop utama agar tidak crash/lag
+            task.wait(2)
+        end
+        print("[Chest] Auto Chest Stopped")
+    end)
 end
 
 -- ============================================
@@ -826,6 +947,13 @@ function Farming.StartLoop()
                 print("[AutoFarm] Set Game Mode to Siege")
                 task.wait(0.5)
             end
+            if State.GameDifficulty then
+                Utilities.FireRemote("ChangeDifficulty", { State.GameDifficulty })
+                task.wait(0.2)
+                Utilities.FireRemote("ChangeDifficulty", { State.GameDifficulty })
+                print("[AutoFarm] Set Game Difficulty to " .. State.GameDifficulty)
+                task.wait(0.5)
+            end
             task.wait(1)
             if not State.AutoFarm then break end
 
@@ -923,9 +1051,18 @@ FarmSection:Dropdown({
     end
 })
 
+FarmSection:Dropdown({
+    Title = "Game Difficulty",
+    Values = { "Normal", "Hard" },
+    Value = "Normal",
+    Callback = function(Value)
+        State.GameDifficulty = Value
+        print("[Settings] Game Difficulty set to:", Value)
+    end
+})
+
 UIRefs.AutoFarmToggle = FarmSection:Toggle({
     Title = "Auto Farm",
-    Desc = "Auto Join -> Kill -> Die -> Repeat",
     Value = false,
     Callback = function(Value)
         State.AutoFarm = Value
@@ -941,7 +1078,7 @@ UIRefs.AutoFarmToggle = FarmSection:Toggle({
 FarmSection:Slider({
     Title = "Attack Delay",
     Desc = "Time between hits (Lower = Faster)",
-    Value = { Min = 0.05, Max = 1, Default = 0.1 },
+    Value = { Min = 0.05, Max = 1, Default = 0.45 },
     Step = 0.05,
     Callback = function(Value)
         State.AttackDelay = Value
@@ -1123,6 +1260,29 @@ BrewSection:Toggle({
     Callback = function(Value)
         State.DebugMinigame = Value
     end
+})
+
+local ChestTab = Window:Tab({ Title = "Chest", Icon = "package" })
+
+local ChestSection = ChestTab:Section({ Title = "Manager" })
+
+ChestSection:Toggle({
+    Title = "Auto Open & Place Chest",
+    Desc = "Auto place chests from backpack & open when ready (Supports Slot 5-8 Logic)",
+    Value = false,
+    Callback = function(Value)
+        State.AutoChest = Value
+        if Value then
+            ChestLogic.StartLoop()
+        end
+    end
+})
+
+-- Info tambahan (Opsional)
+ChestSection:Paragraph({
+    Title = "How it works:",
+    Content =
+    "- Places 'Chest' items from Backpack to empty slots.\n- Slot 1-4: Opens normally.\n- Slot 5-8: Opens with opposite pair logic (e.g., Slot 7 & Slot 3)."
 })
 -- ============================================
 -- PLAYER TAB
