@@ -5,7 +5,7 @@ local WindUI = loadstring(game:HttpGet("https://pastebin.com/raw/m8P8dLfd"))()
 local Config = {
     Window = {
         Title = "BAP by JumantaraHub",
-        Icon = "flask",
+        Icon = "game",
         Author = "JumantaraHub",
         Theme = "Plant",
         Folder = "BAP_JumantaraHub",
@@ -80,13 +80,16 @@ local State = {
     SelectedChestRarity = "All",
     AutoBuyStaff = false,
     TargetStaffs = {},
+    AutoBuyMagic = false,
+    SelectedMagic = "",
 }
 
 -- ============================================
 -- UI REFERENCES
 -- ============================================
 local UIRefs = {
-    AutoFarmToggle = nil
+    AutoFarmToggle = nil,
+    MagicToggle = nil
 }
 
 -- ============================================
@@ -469,6 +472,63 @@ function MinigameClicker.Stop()
 end
 
 -- ============================================
+-- MAGIC BUYING LOGIC (UPDATED)
+-- ============================================
+local MagicLogic = {}
+
+function MagicLogic.StartLoop()
+    task.spawn(function()
+        print("[Magic] Auto Buy Started")
+
+        -- Referensi Path Data
+        local mainData = LocalPlayer:WaitForChild("Data"):WaitForChild("MainData")
+        local equippedMagic = mainData:WaitForChild("EquippedMagic") -- Value String
+
+        while State.AutoBuyMagic do
+            -- 1. Validasi: Apakah Magic sudah terpilih?
+            if State.SelectedMagic == "" then
+                print("[Magic] No magic selected.")
+                State.AutoBuyMagic = false
+                if UIRefs.MagicToggle then UIRefs.MagicToggle:Set(false) end
+                break
+            end
+
+            -- 2. CEK KEPEMILIKAN (Target Logic)
+            -- Jika EquippedMagic valuenya SAMA dengan SelectedMagic, berarti sudah terbeli/terequip
+            if equippedMagic.Value == State.SelectedMagic then
+                print("[Magic] Success! You now have " .. State.SelectedMagic)
+
+                -- Matikan State Logic
+                State.AutoBuyMagic = false
+
+                -- Matikan Visual Toggle UI
+                if UIRefs.MagicToggle then
+                    UIRefs.MagicToggle:Set(false)
+                end
+
+                -- Kirim Notifikasi
+                WindUI:Notify({
+                    Title = "Auto Buy Finished",
+                    Content = "Successfully bought: " .. State.SelectedMagic,
+                    Duration = 4
+                })
+
+                break -- Hentikan Loop
+            end
+
+            -- 3. Eksekusi Beli (Jika belum punya)
+            print("[Magic] Buying: " .. State.SelectedMagic)
+            Utilities.FireRemote("BuyMagic", { State.SelectedMagic })
+
+            -- Delay antar percobaan
+            task.wait(1.5)
+        end
+
+        print("[Magic] Auto Buy Stopped")
+    end)
+end
+
+-- ============================================
 -- STAFF BUYING LOGIC
 -- ============================================
 local StaffLogic = {}
@@ -499,7 +559,7 @@ function StaffLogic.StartLoop()
             end
 
             -- Jeda antar cycle
-            task.wait(1.5)
+            task.wait(120)
         end
 
         print("[Staff] Auto Buy Stopped")
@@ -1094,7 +1154,7 @@ Window:EditOpenButton(Config.OpenButton)
 
 -- TAB ORDER
 local MainTab = Window:Tab({ Title = "Auto Farm", Icon = "swords" })
-local SellPotionTab = Window:Tab({ Title = "Sell Potion", Icon = "coin" })
+local SellPotionTab = Window:Tab({ Title = "Sell Potion", Icon = "circle-dollar-sign" })
 local PlayerTab = Window:Tab({ Title = "Player", Icon = "user" })
 local SettingsTab = Window:Tab({ Title = "Settings", Icon = "settings" })
 
@@ -1529,6 +1589,50 @@ StaffSection:Toggle({
     end
 })
 -- ============================================
+-- MAGIC SHOP UI
+-- ============================================
+local MagicSection = ShopTab:Section({ Title = "Auto Buy Magic" })
+
+-- List Nama Magic (Hasil Ekstrak dari Decompiler)
+local MagicList = {
+    "Fire Flies", "Earth Slam", "Energy Blast", "Fire Ball", "Wind Slice",
+    "Boulder Roll", "Water Bullets", "Wind Cyclone", "Tsunami",
+    "Light Beam", "Light Ray", "Holy Light", "Flower Bloom", "Purify",
+    "Void Slash", "Void Heart", "Venom Surge", "Reaper Frenzy",
+    "Lunar Shatter", "Atomic Blast", "Fractal Cleave"
+}
+
+MagicSection:Dropdown({
+    Title = "Select Magic",
+    Desc = "Choose one magic to auto-buy",
+    Values = MagicList,
+    Value = "",    -- Default kosong
+    Multi = false, -- Single Select Only
+    Callback = function(Value)
+        State.SelectedMagic = Value
+        print("[Magic] Selected Target:", Value)
+    end
+})
+
+UIRefs.MagicToggle = MagicSection:Toggle({
+    Title = "Auto Buy Selected Magic",
+    Desc = "Continuously attempts to buy the selected magic until equipped",
+    Value = false,
+    Callback = function(Value)
+        State.AutoBuyMagic = Value
+        if Value then
+            -- Validasi sebelum jalan
+            if State.SelectedMagic == "" then
+                WindUI:Notify({ Title = "Warning", Content = "Please select a magic first!", Duration = 3 })
+                -- Matikan toggle segera jika tidak ada pilihan
+                if UIRefs.MagicToggle then UIRefs.MagicToggle:Set(false) end
+            else
+                MagicLogic.StartLoop()
+            end
+        end
+    end
+})
+-- ============================================
 -- CLEANUP HANDLER
 -- ============================================
 Window:OnDestroy(function()
@@ -1541,6 +1645,7 @@ Window:OnDestroy(function()
     State.AutoPlaceChest = false
     State.AutoOpenChest = false
     State.AutoBuyStaff = false
+    State.AutoBuyMagic = false
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
         LocalPlayer.Character.Humanoid.WalkSpeed = 16
     end
