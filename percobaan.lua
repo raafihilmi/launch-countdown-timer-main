@@ -200,28 +200,49 @@ function Utilities.WalkTo(position)
     return false
 end
 
--- Helper: Cari Bahan (Dengan Filter Potion, Chest, DAN Rarity)
 function Utilities.GetIngredient()
     local backpack = LocalPlayer:FindFirstChild("Backpack")
     if not backpack then return nil end
 
+    local function IsValidItem(tool)
+        if not tool:IsA("Tool") or not tool:GetAttribute("ID") then return false end
+
+        if string.find(tool.Name, "Potion") or string.find(tool.Name, "Chest") then
+            return false
+        end
+
+        if State.SelectedRarity == "All" then
+            return true
+        else
+            local data = ItemDataModule:GetData(tool.Name)
+            if data and data.Data and data.Data.Rarity == State.SelectedRarity then
+                return true
+            end
+        end
+        return false
+    end
+
+    -- PASS 1: Cari Item dengan Attribute 'Enchant'
     for _, tool in pairs(backpack:GetChildren()) do
-        if tool:IsA("Tool") and tool:GetAttribute("ID") then
-            -- 1. Filter Pengecualian (Jangan ambil Potion jadi atau Chest)
-            if not string.find(tool.Name, "Potion") and not string.find(tool.Name, "Chest") then
-                -- 2. Filter Rarity
-                if State.SelectedRarity == "All" then
-                    return tool -- Jika pilih All, langsung ambil
-                else
-                    -- Cek data item dari Module Game
-                    local data = ItemDataModule:GetData(tool.Name)
-                    if data and data.Data and data.Data.Rarity == State.SelectedRarity then
-                        return tool -- Ambil hanya jika Rarity cocok
-                    end
-                end
+        if IsValidItem(tool) then
+            -- Cek keberadaan attribute Enchant (nil jika tidak ada)
+            if tool:GetAttribute("Enchant") ~= nil then
+                print("[AutoBrew] Found Enchanted Item: " .. tool.Name)
+                return tool
             end
         end
     end
+
+    -- PASS 2: Jika tidak ada Enchant, ambil item biasa
+    for _, tool in pairs(backpack:GetChildren()) do
+        if IsValidItem(tool) then
+            -- Ambil yang TIDAK punya enchant (agar pass 1 validitasnya terjaga)
+            if tool:GetAttribute("Enchant") == nil then
+                return tool
+            end
+        end
+    end
+
     return nil
 end
 
