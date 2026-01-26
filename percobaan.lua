@@ -178,24 +178,24 @@ WindUI:AddTheme(
 
 local Window =
     WindUI:CreateWindow(
-    {
-        Title = "Catch and Tame: AUTO FARM",
-        Icon = "door-open",
-        Author = "JumantaraHub v18",
-        Theme = "Peach Glow Dominant",
-        Folder = "CatchandTame_v18",
-        KeySystem = {                                                   
-        Note = "Key System. With platoboost.",              
-        API = {                                                     
-            { -- PlatoBoost
-                Type = "platoboost",                                
-                ServiceId = 16361, -- service id
-                Secret = "4485a80f-25df-4788-b082-5d3f19a932ac", -- platoboost secret
-            },                                                      
-        },                                                          
-    },   
-    }
-)
+        {
+            Title = "Catch and Tame: AUTO FARM",
+            Icon = "door-open",
+            Author = "JumantaraHub v2",
+            Theme = "Plant",
+            Folder = "CatchandTame_JumantaraHub",
+            KeySystem = {
+                Note = "Key System. With platoboost.",
+                API = {
+                    {                                                    -- PlatoBoost
+                        Type = "platoboost",
+                        ServiceId = 16361,                               -- service id
+                        Secret = "4485a80f-25df-4788-b082-5d3f19a932ac", -- platoboost secret
+                    },
+                },
+            },
+        }
+    )
 
 Window:EditOpenButton(
     {
@@ -211,65 +211,74 @@ Window:EditOpenButton(
 )
 
 Window:Tag({
-    Title = "Christmas Update",
+    Title = "Breeding & Eggs",
     Icon = "rss",
     Color = Color3.fromHex("#30ff6a"),
-    Radius = 0, 
+    Radius = 0,
 })
 
 local Tab =
     Window:Tab(
-    {
-        Title = "Main",
-        Icon = "bird",
-        Locked = false
-    }
-)
+        {
+            Title = "Main",
+            Icon = "bird",
+            Locked = false
+        }
+    )
 
 local CollectTab =
     Window:Tab(
-    {
-        Title = "Auto Collect",
-        Icon = "bird",
-        Locked = false
-    }
-)
-
+        {
+            Title = "Auto Collect",
+            Icon = "bird",
+            Locked = false
+        }
+    )
+local BreedTab = Window:Tab({
+    Title = "Breeding & Eggs",
+    Icon = "bird",
+    Locked = false
+})
+local PickupTab = Window:Tab({
+    Title = "Auto Pickup",
+    Icon = "bird",
+    Locked = false
+})
 local SellTab =
     Window:Tab(
-    {
-        Title = "Auto Sell",
-        Icon = "bird",
-        Locked = false
-    }
-)
+        {
+            Title = "Auto Sell",
+            Icon = "bird",
+            Locked = false
+        }
+    )
 
 local BuyTab =
     Window:Tab(
-    {
-        Title = "Auto Buy Food",
-        Icon = "bird",
-        Locked = false
-    }
-)
+        {
+            Title = "Auto Buy Food",
+            Icon = "bird",
+            Locked = false
+        }
+    )
 
 local FeedTab =
     Window:Tab(
-    {
-        Title = "Feed",
-        Icon = "bird",
-        Locked = false
-    }
-)
+        {
+            Title = "Feed",
+            Icon = "bird",
+            Locked = false
+        }
+    )
 
 local SettingTab =
     Window:Tab(
-    {
-        Title = "Settings",
-        Icon = "bird",
-        Locked = false
-    }
-)
+        {
+            Title = "Settings",
+            Icon = "bird",
+            Locked = false
+        }
+    )
 
 getgenv().SelectRarity = "Legendary"
 
@@ -280,9 +289,15 @@ getgenv().AutoCatchEnabled = true
 getgenv().DebugMode = false
 
 getgenv().AutoCollectCash = false
-
+getgenv().AntiAfk = true
 getgenv().AutoSell = false
-
+getgenv().AutoBreed = false
+getgenv().AutoPickupEgg = false
+getgenv().BreedParent1 = nil
+getgenv().BreedParent2 = nil
+getgenv().SelectedBreedRarities = {}
+getgenv().EggAction = "Pickup" -- Default action
+getgenv().EnableEggManager = false
 getgenv().SellConfig = {
     ["Common"] = false,
     ["Uncommon"] = false,
@@ -291,7 +306,11 @@ getgenv().SellConfig = {
     ["Legendary"] = false,
     ["Mythical"] = false
 }
+getgenv().AutoPickupPets = false
+getgenv().PickupPetRarities = {} -- Menyimpan Rarity yang dipilih
 
+getgenv().AutoPickupEggs = false
+getgenv().PickupEggNames = {} -- Menyimpan Nama Egg yang dipilih
 getgenv().AutoBuyFood = false
 
 getgenv().SelectedFoodList = {}
@@ -304,7 +323,11 @@ getgenv().SelectedFeedFood = "Steak"
 
 getgenv().TargetPetUUID = nil
 
-local rarityList = {"Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythical"}
+local rarityList = { "Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythical" }
+local eggNamesList = {}
+for _, rarity in ipairs(rarityList) do
+    table.insert(eggNamesList, rarity .. " Egg")
+end
 
 local Remotes = game:GetService("ReplicatedStorage"):WaitForChild("Remotes")
 
@@ -361,7 +384,7 @@ local function RunCatchProtocol(targetPet)
     local distance = (petPivot.Position - root.Position).Magnitude
 
     if distance > 20 then
-        WindUI:Notify({Title = "Failed", Content = "Server distance too far, try again.", Duration = 2})
+        WindUI:Notify({ Title = "Failed", Content = "Server distance too far, try again.", Duration = 2 })
 
         return
     end
@@ -376,10 +399,10 @@ local function RunCatchProtocol(targetPet)
 
     local success, err =
         pcall(
-        function()
-            Remotes.minigameRequest:InvokeServer(targetPet, root.CFrame)
-        end
-    )
+            function()
+                Remotes.minigameRequest:InvokeServer(targetPet, root.CFrame)
+            end
+        )
 
     if not success then
         return
@@ -393,7 +416,7 @@ local function RunCatchProtocol(targetPet)
         end
     )
 
-    local progressSteps = {0, 30, 60, 90, 100}
+    local progressSteps = { 0, 30, 60, 90, 100 }
 
     for _, prog in ipairs(progressSteps) do
         Remotes.UpdateProgress:FireServer(prog)
@@ -443,7 +466,7 @@ local function StartCandyFarm()
                 end
 
                 if not foundTarget and getgenv().AutoFarmCandy then
-                    WindUI:Notify({Title = "Waiting for Spawn", Content = "Searching for Candy Pet...", Duration = 1})
+                    WindUI:Notify({ Title = "Waiting for Spawn", Content = "Searching for Candy Pet...", Duration = 1 })
 
                     task.wait(3)
                 end
@@ -502,7 +525,7 @@ local function StartRarityFarm()
 
                 if not foundTarget and getgenv().AutoFarmRarity then
                     WindUI:Notify(
-                        {Title = "Searching...", Content = "Waiting for spawn " .. getgenv().SelectRarity, Duration = 1}
+                        { Title = "Searching...", Content = "Waiting for spawn " .. getgenv().SelectRarity, Duration = 1 }
                     )
 
                     task.wait(3)
@@ -576,10 +599,10 @@ local function StartAutoSell()
 
                 local success, inventory =
                     pcall(
-                    function()
-                        return RS.Remotes.getPetInventory:InvokeServer()
-                    end
-                )
+                        function()
+                            return RS.Remotes.getPetInventory:InvokeServer()
+                        end
+                    )
 
                 if success and inventory then
                     local soldCount = 0
@@ -617,33 +640,33 @@ local function StartAutoBuy()
             while getgenv().AutoBuyFood do
                 local success, err =
                     pcall(
-                    function()
-                        local RS = game:GetService("ReplicatedStorage")
+                        function()
+                            local RS = game:GetService("ReplicatedStorage")
 
-                        local Packages = RS:WaitForChild("Packages")
+                            local Packages = RS:WaitForChild("Packages")
 
-                        local Index = Packages:WaitForChild("_Index")
+                            local Index = Packages:WaitForChild("_Index")
 
-                        local KnitPkg = Index:WaitForChild("sleitnick_knit@1.7.0")
+                            local KnitPkg = Index:WaitForChild("sleitnick_knit@1.7.0")
 
-                        local Services = KnitPkg:WaitForChild("knit"):WaitForChild("Services")
+                            local Services = KnitPkg:WaitForChild("knit"):WaitForChild("Services")
 
-                        local BuyRemote =
-                            Services:WaitForChild("FoodService"):WaitForChild("RE"):WaitForChild("BuyFood")
+                            local BuyRemote =
+                                Services:WaitForChild("FoodService"):WaitForChild("RE"):WaitForChild("BuyFood")
 
-                        if BuyRemote then
-                            for _, foodName in pairs(getgenv().SelectedFoodList) do
-                                if not getgenv().AutoBuyFood then
-                                    break
+                            if BuyRemote then
+                                for _, foodName in pairs(getgenv().SelectedFoodList) do
+                                    if not getgenv().AutoBuyFood then
+                                        break
+                                    end
+
+                                    BuyRemote:FireServer(foodName, getgenv().BuyAmount)
+
+                                    task.wait(0.2)
                                 end
-
-                                BuyRemote:FireServer(foodName, getgenv().BuyAmount)
-
-                                task.wait(0.2)
                             end
                         end
-                    end
-                )
+                    )
 
                 task.wait(1)
             end
@@ -667,6 +690,191 @@ local function GetMyPen()
     return nil
 end
 
+
+local function StartSmartAutoBreed()
+    task.spawn(function()
+        while getgenv().AutoBreed do
+            local myPen = GetMyPen()
+
+            if myPen then
+                local petsFolder = myPen:FindFirstChild("Pets")
+                if petsFolder then
+                    local readyPets = {}
+
+                    -- 1. Filter pets: Check Cooldown AND Rarity
+                    for _, pet in pairs(petsFolder:GetChildren()) do
+                        if pet:IsA("Model") then
+                            local cooldown = pet:GetAttribute("CooldownEnd")
+                            local rarity = pet:GetAttribute("Rarity")
+
+                            -- Check if pet is free (no cooldown)
+                            if not cooldown then
+                                -- Check if the pet's rarity is in our selected list
+                                if table.find(getgenv().SelectedBreedRarities, rarity) then
+                                    table.insert(readyPets, pet)
+                                end
+                            end
+                        end
+                    end
+
+                    -- 2. Check availability
+                    if #readyPets < 2 then
+                        -- Optional: Only notify if the user explicitly wants to know, to avoid spam
+                        WindUI:Notify({
+                            Title = "Status",
+                            Content =
+                            "Pet are cooldown or Not enough pets with selected rarity ready .",
+                            Duration = 2
+                        })
+                    else
+                        -- 3. Pairing Logic
+                        local pairsBred = 0
+
+                        -- Step by 2 (Pair i with i+1)
+                        for i = 1, #readyPets, 2 do
+                            local parent1 = readyPets[i]
+                            local parent2 = readyPets[i + 1]
+
+                            -- Ensure both exist
+                            if parent1 and parent2 then
+                                pcall(function()
+                                    game:GetService("ReplicatedStorage").Remotes.breedRequest:InvokeServer(
+                                        parent1,
+                                        parent2,
+                                        parent1:GetPivot().Position,
+                                        parent2:GetPivot().Position
+                                    )
+                                end)
+                                pairsBred = pairsBred + 1
+                                task.wait(0.2)
+                            end
+                        end
+
+                        if pairsBred > 0 then
+                            WindUI:Notify({
+                                Title = "Auto Breed",
+                                Content = "Paired " .. tostring(pairsBred) .. " couples matching filters.",
+                                Duration = 2
+                            })
+                        end
+                    end
+                end
+            end
+
+            task.wait(5)
+        end
+    end)
+end
+
+local function StartEggManager()
+    task.spawn(function()
+        while getgenv().EnableEggManager do
+            local myPen = GetMyPen()
+
+            if myPen and myPen:FindFirstChild("Eggs") then
+                local eggs = myPen.Eggs:GetChildren()
+
+                if #eggs > 0 then
+                    for _, egg in pairs(eggs) do
+                        if not getgenv().EnableEggManager then break end
+
+                        -- MODE: PICKUP
+                        if getgenv().EggAction == "Pickup" then
+                            -- Logic from your previous request
+                            pcall(function()
+                                game:GetService("ReplicatedStorage").Remotes.pickupRequest:InvokeServer(
+                                    "Egg",
+                                    egg.Name,
+                                    egg
+                                )
+                            end)
+                            task.wait(0.5) -- Pickup speed
+
+                            -- MODE: HATCH
+                        elseif getgenv().EggAction == "Hatch" then
+                            -- Logic using the new Hatch Remote
+                            pcall(function()
+                                local HatchRemote = game:GetService("ReplicatedStorage").Packages._Index
+                                    ["sleitnick_knit@1.7.0"].knit.Services.TimerService.RF.RequestEggHatch
+
+                                -- Assuming egg.Name is the UUID required
+                                HatchRemote:InvokeServer(egg.Name)
+                            end)
+
+                            -- Hatching usually has an animation, so we wait longer to avoid errors
+                            task.wait(3.5)
+                        end
+                    end
+                end
+            end
+
+            task.wait(1)
+        end
+    end)
+end
+local function StartAutoPickupPets()
+    task.spawn(function()
+        while getgenv().AutoPickupPets do
+            local myPen = GetMyPen()
+            if myPen then
+                local petsFolder = myPen:FindFirstChild("Pets")
+                if petsFolder then
+                    for _, pet in pairs(petsFolder:GetChildren()) do
+                        if not getgenv().AutoPickupPets then break end
+
+                        -- Cek apakah Rarity pet ini ada di daftar pilihan kita
+                        local rarity = pet:GetAttribute("Rarity")
+                        if pet:IsA("Model") and table.find(getgenv().PickupPetRarities, rarity) then
+                            pcall(function()
+                                -- Argument: "Pet", UUID, ObjectInstance
+                                game:GetService("ReplicatedStorage").Remotes.pickupRequest:InvokeServer(
+                                    "Pet",
+                                    pet.Name, -- UUID
+                                    pet       -- Instance
+                                )
+                            end)
+                            task.wait(0.1) -- Delay kecil agar tidak disconnect
+                        end
+                    end
+                end
+            end
+            task.wait(1)
+        end
+    end)
+end
+
+local function StartAutoPickupEggs()
+    task.spawn(function()
+        while getgenv().AutoPickupEggs do
+            local myPen = GetMyPen()
+            if myPen then
+                local eggsFolder = myPen:FindFirstChild("Eggs")
+                if eggsFolder then
+                    for _, egg in pairs(eggsFolder:GetChildren()) do
+                        if not getgenv().AutoPickupEggs then break end
+
+                        -- Kita asumsikan nama telur di game formatnya "Rarity Egg"
+                        -- Kita ambil atribut nama, atau jika tidak ada, gunakan nama part
+                        local eggName = egg:GetAttribute("EggName") or egg.EggName
+
+                        -- Cek apakah nama telur ini ada di daftar yang kita pilih
+                        if table.find(getgenv().PickupEggNames, eggName) then
+                            pcall(function()
+                                game:GetService("ReplicatedStorage").Remotes.pickupRequest:InvokeServer(
+                                    "Egg",
+                                    egg.Name, -- UUID telur
+                                    egg       -- Instance telur
+                                )
+                            end)
+                            task.wait(0.1) -- Delay aman
+                        end
+                    end
+                end
+            end
+            task.wait(1)
+        end
+    end)
+end
 local function UpdatePetList()
     petMap = {}
 
@@ -708,13 +916,14 @@ local function StartAutoFeed()
                 if getgenv().TargetPetUUID then
                     local success, err =
                         pcall(
-                        function()
-                            local FeedRemote =
-                                game:GetService("ReplicatedStorage").Packages._Index["sleitnick_knit@1.7.0"].knit.Services.FoodService.RF.FeedPet
+                            function()
+                                local FeedRemote =
+                                    game:GetService("ReplicatedStorage").Packages._Index["sleitnick_knit@1.7.0"].knit
+                                    .Services.FoodService.RF.FeedPet
 
-                            FeedRemote:InvokeServer(getgenv().SelectedFeedFood, getgenv().TargetPetUUID)
-                        end
-                    )
+                                FeedRemote:InvokeServer(getgenv().SelectedFeedFood, getgenv().TargetPetUUID)
+                            end
+                        )
                 end
 
                 task.wait(0.2)
@@ -725,10 +934,10 @@ end
 
 local Section =
     Tab:Section(
-    {
-        Title = "Target"
-    }
-)
+        {
+            Title = "Target"
+        }
+    )
 
 Tab:Dropdown(
     {
@@ -765,25 +974,26 @@ Tab:Toggle(
 
 local SectionExecution =
     Tab:Section(
-    {
-        Title = "Execution"
-    }
-)
+        {
+            Title = "Execution"
+        }
+    )
 
 Tab:Toggle(
     {
         Title = "Auto Farm Candy Event (Loop)",
         Value = false,
         Desc = "CandyFarmToggle",
+        Locked = true,
         Callback = function(Value)
             getgenv().AutoFarmCandy = Value
 
             if Value then
-                WindUI:Notify({Title = "Auto Farm Active", Content = "Started hunting Candy Pet...", Duration = 2})
+                WindUI:Notify({ Title = "Auto Farm Active", Content = "Started hunting Candy Pet...", Duration = 2 })
 
                 StartCandyFarm()
             else
-                WindUI:Notify({Title = "Auto Farm Stop", Content = "Stopping after current target.", Duration = 2})
+                WindUI:Notify({ Title = "Auto Farm Stop", Content = "Stopping after current target.", Duration = 2 })
             end
         end
     }
@@ -793,7 +1003,7 @@ Tab:Button(
     {
         Title = "Catch 1 Target (Safe Mode)",
         Callback = function()
-            WindUI:Notify({Title = "Manual Mode", Content = "Searching for 1 target...", Duration = 2})
+            WindUI:Notify({ Title = "Manual Mode", Content = "Searching for 1 target...", Duration = 2 })
 
             local folder = workspace:FindFirstChild("RoamingPets") and workspace.RoamingPets:FindFirstChild("Pets")
 
@@ -834,7 +1044,7 @@ Tab:Button(
 
                         RunCatchProtocol(pet)
 
-                        WindUI:Notify({Title = "Done", Content = "Target processed.", Duration = 2})
+                        WindUI:Notify({ Title = "Done", Content = "Target processed.", Duration = 2 })
                     end
 
                     break
@@ -842,7 +1052,7 @@ Tab:Button(
             end
 
             if not found then
-                WindUI:Notify({Title = "Empty", Content = "No target found " .. getgenv().SelectRarity, Duration = 2})
+                WindUI:Notify({ Title = "Empty", Content = "No target found " .. getgenv().SelectRarity, Duration = 2 })
             end
         end
     }
@@ -858,12 +1068,12 @@ Tab:Toggle(
 
             if Value then
                 WindUI:Notify(
-                    {Title = "Auto Farm ON", Content = "Searching for all " .. getgenv().SelectRarity, Duration = 2}
+                    { Title = "Auto Farm ON", Content = "Searching for all " .. getgenv().SelectRarity, Duration = 2 }
                 )
 
                 StartRarityFarm()
             else
-                WindUI:Notify({Title = "Auto Farm OFF", Content = "Stopping after this target.", Duration = 2})
+                WindUI:Notify({ Title = "Auto Farm OFF", Content = "Stopping after this target.", Duration = 2 })
             end
         end
     }
@@ -871,10 +1081,10 @@ Tab:Toggle(
 
 local SectionCollect =
     CollectTab:Section(
-    {
-        Title = "Farming Features"
-    }
-)
+        {
+            Title = "Farming Features"
+        }
+    )
 
 CollectTab:Toggle(
     {
@@ -885,11 +1095,11 @@ CollectTab:Toggle(
             getgenv().AutoCollectCash = Value
 
             if Value then
-                WindUI:Notify({Title = "Auto Collect ON", Content = "Collecting cash from your Pen...", Duration = 2})
+                WindUI:Notify({ Title = "Auto Collect ON", Content = "Collecting cash from your Pen...", Duration = 2 })
 
                 StartAutoCollect()
             else
-                WindUI:Notify({Title = "Auto Collect OFF", Content = "Stopped collecting cash.", Duration = 2})
+                WindUI:Notify({ Title = "Auto Collect OFF", Content = "Stopped collecting cash.", Duration = 2 })
             end
         end
     }
@@ -897,12 +1107,12 @@ CollectTab:Toggle(
 
 local SectionConfig =
     SellTab:Section(
-    {
-        Title = "Select Rarity to Sell"
-    }
-)
+        {
+            Title = "Select Rarity to Sell"
+        }
+    )
 
-local rarities = {"Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythical"}
+local rarities = { "Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythical" }
 
 for _, rarity in ipairs(rarities) do
     SellTab:Toggle(
@@ -919,10 +1129,10 @@ end
 
 local SectionAction =
     SellTab:Section(
-    {
-        Title = "Execution"
-    }
-)
+        {
+            Title = "Execution"
+        }
+    )
 
 SellTab:Toggle(
     {
@@ -933,11 +1143,11 @@ SellTab:Toggle(
             getgenv().AutoSell = Value
 
             if Value then
-                WindUI:Notify({Title = "Auto Sell ON", Content = "Started selling selected pets...", Duration = 2})
+                WindUI:Notify({ Title = "Auto Sell ON", Content = "Started selling selected pets...", Duration = 2 })
 
                 StartAutoSell()
             else
-                WindUI:Notify({Title = "Auto Sell OFF", Content = "Stopped selling.", Duration = 2})
+                WindUI:Notify({ Title = "Auto Sell OFF", Content = "Stopped selling.", Duration = 2 })
             end
         end
     }
@@ -945,16 +1155,16 @@ SellTab:Toggle(
 
 local SectionBuy =
     BuyTab:Section(
-    {
-        Title = "Purchase Configuration"
-    }
-)
+        {
+            Title = "Purchase Configuration"
+        }
+    )
 
 BuyTab:Dropdown(
     {
         Title = "Select Food (Multi-select)",
         Values = foodList,
-        Value = {"Apple"},
+        Value = { "Apple" },
         Multi = true,
         Desc = "FoodDropdownMulti",
         Callback = function(Option)
@@ -979,7 +1189,7 @@ BuyTab:Slider(
     }
 )
 
-local SectionExec = BuyTab:Section({Title = "Execution"})
+local SectionExec = BuyTab:Section({ Title = "Execution" })
 
 BuyTab:Toggle(
     {
@@ -990,17 +1200,17 @@ BuyTab:Toggle(
             getgenv().AutoBuyFood = Value
 
             if Value then
-                WindUI:Notify({Title = "Auto Buy ON", Content = "Buying food...", Duration = 2})
+                WindUI:Notify({ Title = "Auto Buy ON", Content = "Buying food...", Duration = 2 })
 
                 StartAutoBuy()
             else
-                WindUI:Notify({Title = "Auto Buy OFF", Content = "Stopped.", Duration = 2})
+                WindUI:Notify({ Title = "Auto Buy OFF", Content = "Stopped.", Duration = 2 })
             end
         end
     }
 )
 
-local SectionConfig = FeedTab:Section({Title = "1. Select Food"})
+local SectionConfig = FeedTab:Section({ Title = "1. Select Food" })
 
 FeedTab:Dropdown(
     {
@@ -1017,29 +1227,29 @@ FeedTab:Dropdown(
     }
 )
 
-local SectionTarget = FeedTab:Section({Title = "2. Select Target Pet"})
+local SectionTarget = FeedTab:Section({ Title = "2. Select Target Pet" })
 
 local PetDropdown =
     FeedTab:Dropdown(
-    {
-        Title = "Target Pet",
-        Values = {"Click Refresh First..."},
-        Value = "",
-        Multi = false,
-        Desc = "TargetPetDrop",
-        Callback = function(Option)
-            local selectedName = (type(Option) == "table" and Option[1]) or Option
+        {
+            Title = "Target Pet",
+            Values = { "Click Refresh First..." },
+            Value = "",
+            Multi = false,
+            Desc = "TargetPetDrop",
+            Callback = function(Option)
+                local selectedName = (type(Option) == "table" and Option[1]) or Option
 
-            if petMap[selectedName] then
-                local realUUID = petMap[selectedName]
+                if petMap[selectedName] then
+                    local realUUID = petMap[selectedName]
 
-                getgenv().TargetPetUUID = realUUID
+                    getgenv().TargetPetUUID = realUUID
 
-                WindUI:Notify({Title = "Target Set", Content = "Pet ID saved.", Duration = 1})
+                    WindUI:Notify({ Title = "Target Set", Content = "Pet ID saved.", Duration = 1 })
+                end
             end
-        end
-    }
-)
+        }
+    )
 
 FeedTab:Button(
     {
@@ -1049,12 +1259,12 @@ FeedTab:Button(
 
             PetDropdown:Refresh(newList)
 
-            WindUI:Notify({Title = "Updated", Content = "Pet list updated!", Duration = 1})
+            WindUI:Notify({ Title = "Updated", Content = "Pet list updated!", Duration = 1 })
         end
     }
 )
 
-local SectionExec = FeedTab:Section({Title = "Execution"})
+local SectionExec = FeedTab:Section({ Title = "Execution" })
 
 FeedTab:Toggle(
     {
@@ -1068,9 +1278,9 @@ FeedTab:Toggle(
                 if getgenv().TargetPetUUID then
                     StartAutoFeed()
 
-                    WindUI:Notify({Title = "Auto Feed ON", Content = "Feeding started...", Duration = 2})
+                    WindUI:Notify({ Title = "Auto Feed ON", Content = "Feeding started...", Duration = 2 })
                 else
-                    WindUI:Notify({Title = "Error", Content = "Select a Pet above first!", Duration = 2})
+                    WindUI:Notify({ Title = "Error", Content = "Select a Pet above first!", Duration = 2 })
                 end
             end
         end
@@ -1079,47 +1289,234 @@ FeedTab:Toggle(
 
 local Keybind =
     SettingTab:Keybind(
-    {
-        Title = "Keybind",
-        Desc = "Keybind to open ui",
-        Value = "K",
-        Callback = function(v)
-            Window:SetToggleKey(Enum.KeyCode[v])
-        end
-    }
-)
+        {
+            Title = "Keybind",
+            Desc = "Keybind to open ui",
+            Value = "K",
+            Callback = function(v)
+                Window:SetToggleKey(Enum.KeyCode[v])
+            end
+        }
+    )
 
 local ThemeDropdown =
     SettingTab:Dropdown(
-    {
-        Title = "Select Theme",
-        Desc = "Choose your desired interface theme",
-        Values = {
-            "Material Nature Dark",
-            "Material Nature Light",
-            "Pacific Dark",
-            "Peach Glow Dominant",
-            "Rose",
-            "Plant",
-            "Red",
-            "Indigo",
-            "Sky",
-            "Violet",
-            "Amber",
-            "Emerald",
-            "Midnight",
-            "Crimson",
-            "Monokai Pro",
-            "Cotton Candy",
-            "Rainbow"
-        },
-        Value = "Material Nature Dark",
-        Callback = function(option)
-            WindUI:SetTheme(option)
+        {
+            Title = "Select Theme",
+            Desc = "Choose your desired interface theme",
+            Values = {
+                "Material Nature Dark",
+                "Material Nature Light",
+                "Pacific Dark",
+                "Peach Glow Dominant",
+                "Rose",
+                "Plant",
+                "Red",
+                "Indigo",
+                "Sky",
+                "Violet",
+                "Amber",
+                "Emerald",
+                "Midnight",
+                "Crimson",
+                "Monokai Pro",
+                "Cotton Candy",
+                "Rainbow"
+            },
+            Value = "Plant",
+            Callback = function(option)
+                WindUI:SetTheme(option)
+            end
+        }
+    )
+-- Breeding Section
+BreedTab:Section({
+    Title = "Smart Breeding Configuration"
+})
+
+-- Dropdown to select which rarities to breed
+BreedTab:Dropdown({
+    Title = "Filter Rarity (Multi-Select)",
+    Values = { "Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythical" },
+    Value = {}, -- Default empty, user must select
+    Multi = true,
+    Desc = "Select rarities you want to auto breed.",
+    Callback = function(Options)
+        -- WindUI Multi-Dropdown returns a table of strings, e.g. {"Legendary", "Mythical"}
+        getgenv().SelectedBreedRarities = Options
+    end
+})
+
+BreedTab:Toggle({
+    Title = "Enable Smart Auto Breed",
+    Desc = "Pairs ready pets based on selected rarities.",
+    Value = false,
+    Callback = function(Value)
+        getgenv().AutoBreed = Value
+
+        if Value then
+            -- Safety check: Warn if no rarity is selected
+            if #getgenv().SelectedBreedRarities == 0 then
+                WindUI:Notify({
+                    Title = "Warning",
+                    Content = "Please select at least one Rarity in the dropdown!",
+                    Duration = 3
+                })
+            end
+
+            WindUI:Notify({
+                Title = "System",
+                Content = "Smart Breeding Started...",
+                Duration = 2
+            })
+            StartSmartAutoBreed()
+        else
+            WindUI:Notify({
+                Title = "System",
+                Content = "Smart Breeding Stopped.",
+                Duration = 2
+            })
         end
-    }
-)
+    end
+})
+BreedTab:Section({
+    Title = "Egg Management"
+})
 
+-- Dropdown to select Action (Only one can be active)
+BreedTab:Dropdown({
+    Title = "Egg Action Mode",
+    Values = { "Pickup", "Hatch" },
+    Value = "Pickup",
+    Multi = false,
+    Desc = "Choose to either Pickup eggs to inventory OR Hatch them directly.",
+    Callback = function(Option)
+        -- Handle both string or table return from WindUI
+        local val = (type(Option) == "table" and Option[1]) or Option
+        getgenv().EggAction = val
 
+        WindUI:Notify({
+            Title = "Mode Changed",
+            Content = "Switched to: " .. val .. " Mode.",
+            Duration = 1
+        })
+    end
+})
 
+-- Master Toggle for Egg Features
+BreedTab:Toggle({
+    Title = "Enable Egg Manager",
+    Value = false,
+    Callback = function(Value)
+        getgenv().EnableEggManager = Value
 
+        if Value then
+            WindUI:Notify({
+                Title = "Egg Manager",
+                Content = "Started " .. getgenv().EggAction .. " eggs...",
+                Duration = 2
+            })
+            StartEggManager()
+        else
+            WindUI:Notify({
+                Title = "Egg Manager",
+                Content = "Stopped.",
+                Duration = 2
+            })
+        end
+    end
+})
+
+PickupTab:Section({ Title = "Pet Pickup Config" })
+
+PickupTab:Dropdown({
+    Title = "Filter Rarity (Multi)",
+    Values = { "Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythical" },
+    Value = {},
+    Multi = true,
+    Desc = "Select rarities to auto pickup.",
+    Callback = function(Options)
+        getgenv().PickupPetRarities = Options
+    end
+})
+
+PickupTab:Toggle({
+    Title = "Auto Pickup Pets",
+    Desc = "Pick up pets matching the selected rarities.",
+    Value = false,
+    Callback = function(Value)
+        getgenv().AutoPickupPets = Value
+        if Value then
+            -- Safety check
+            if #getgenv().PickupPetRarities == 0 then
+                WindUI:Notify({ Title = "Warning", Content = "Select at least 1 Rarity first!", Duration = 2 })
+            else
+                StartAutoPickupPets()
+                WindUI:Notify({ Title = "System", Content = "Started picking up pets...", Duration = 2 })
+            end
+        end
+    end
+})
+
+-- SECTION: EGGS
+PickupTab:Section({ Title = "Egg Pickup Config" })
+
+PickupTab:Dropdown({
+    Title = "Filter Egg Name (Multi)",
+    Values = eggNamesList,
+    Value = {},
+    Multi = true,
+    Desc = "Select specific egg rarities to pickup.",
+    Callback = function(Options)
+        getgenv().PickupEggNames = Options
+    end
+})
+
+PickupTab:Toggle({
+    Title = "Auto Pickup Eggs",
+    Value = false,
+    Callback = function(Value)
+        getgenv().AutoPickupEggs = Value
+        if Value then
+            -- Safety Check
+            if #getgenv().PickupEggNames == 0 then
+                WindUI:Notify({ Title = "Warning", Content = "Select egg types from the dropdown first!", Duration = 2 })
+            else
+                StartAutoPickupEggs()
+                WindUI:Notify({ Title = "System", Content = "Started picking up selected eggs...", Duration = 2 })
+            end
+        else
+            WindUI:Notify({ Title = "System", Content = "Stopped picking up eggs.", Duration = 2 })
+        end
+    end
+})
+
+-- Logic Anti AFK (Jalankan ini sekali saja di awal script, tidak perlu dalam fungsi loop)
+local VirtualUser = game:GetService("VirtualUser")
+game:GetService("Players").LocalPlayer.Idled:Connect(function()
+    if getgenv().AntiAfk then
+        VirtualUser:CaptureController()
+        VirtualUser:ClickButton2(Vector2.new())
+    end
+end)
+SettingTab:Toggle({
+    Title = "Anti AFK",
+    Value = true,
+    Callback = function(Value)
+        getgenv().AntiAfk = Value
+
+        if Value then
+            WindUI:Notify({
+                Title = "Anti AFK",
+                Content = "Enabled. You can now leave your device.",
+                Duration = 2
+            })
+        else
+            WindUI:Notify({
+                Title = "Anti AFK",
+                Content = "Disabled.",
+                Duration = 2
+            })
+        end
+    end
+})
