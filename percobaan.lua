@@ -211,7 +211,7 @@ Window:EditOpenButton(
 )
 
 Window:Tag({
-    Title = "Breeding & Eggs",
+    Title = "Auto Everything",
     Icon = "rss",
     Color = Color3.fromHex("#30ff6a"),
     Radius = 0,
@@ -241,11 +241,6 @@ local BreedTab = Window:Tab({
 })
 local PickupTab = Window:Tab({
     Title = "Auto Pickup",
-    Icon = "bird",
-    Locked = false
-})
-local FruitTab = Window:Tab({
-    Title = "Auto Collect Fruits",
     Icon = "bird",
     Locked = false
 })
@@ -856,7 +851,24 @@ local function StartAutoBuy()
         end
     )
 end
+local function StartWalkSpeedLoop()
+    task.spawn(function()
+        while getgenv().EnableWalkSpeed do
+            pcall(function()
+                local char = game.Players.LocalPlayer.Character
+                if char and char:FindFirstChild("Humanoid") then
+                    char.Humanoid.WalkSpeed = getgenv().WalkSpeedValue
+                end
+            end)
+            task.wait() -- Loop cepat agar override sistem game
+        end
 
+        -- Reset ke normal saat dimatikan
+        pcall(function()
+            game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = 16
+        end)
+    end)
+end
 local function StartAutoFeedAllFoodsToTarget()
     task.spawn(function()
         while getgenv().AutoFeedAllFoods do
@@ -2062,10 +2074,10 @@ PlaceTab:Toggle({
     end
 })
 -- SECTION: FRUITS (Tambahkan ini di bawah section Eggs)
-FruitTab:Section({ Title = "Event Fruit Config" })
+CollectTab:Section({ Title = "Fruit Config" })
 
-FruitTab:Toggle({
-    Title = "Auto Collect Event Fruits",
+CollectTab:Toggle({
+    Title = "Auto Collect Fruits",
     Desc = "Teleports and collects Volcanic & Cosmic fruits automatically.",
     Value = false,
     Callback = function(Value)
@@ -2076,6 +2088,34 @@ FruitTab:Toggle({
             StartAutoCollectFruits()
         else
             WindUI:Notify({ Title = "System", Content = "Stopped collecting fruits.", Duration = 2 })
+        end
+    end
+})
+-- Tambahkan ini di dalam SettingTab (sebelum Keybind)
+SettingTab:Section({ Title = "Movement" })
+
+SettingTab:Slider({
+    Title = "WalkSpeed Config",
+    Desc = "Adjust your movement speed.",
+    Value = {
+        Min = 16,
+        Max = 200,
+        Default = 16
+    },
+    Step = 1,
+    Callback = function(Value)
+        getgenv().WalkSpeedValue = Value
+    end
+})
+
+SettingTab:Toggle({
+    Title = "Enable WalkSpeed",
+    Value = false,
+    Callback = function(Value)
+        getgenv().EnableWalkSpeed = Value
+
+        if Value then
+            StartWalkSpeedLoop()
         end
     end
 })
