@@ -471,63 +471,53 @@ local function GetInventoryData()
     end)
     if success then return result else return {} end
 end
+-- Variabel forward declaration untuk Dropdown (agar bisa di-refresh dari dalam fungsi)
+local PlaceDropdown = nil
 
-local function StartAutoPlacePets()
-    task.spawn(function()
-        while getgenv().AutoPlace do
-            local myPen = GetMyPen()
-            local inventory = GetInventoryData()
+local function ExecutePlacePets()
+    local myPen = GetMyPen()
+    local inv = GetInventoryData()
 
-            if myPen and inventory then
-                -- Ambil Posisi Pen (WorldPivot)
-                -- Kita tambahkan Random Offset (x, z) agar pet menyebar dan tidak menumpuk
-                local penPivot = myPen:GetPivot()
-                local basePos = penPivot.Position
+    if myPen and inv then
+        local penPos = myPen:GetPivot().Position
+        local count = 0
 
-                -- Loop semua UUID yang dipilih user di dropdown
-                for _, targetUUID in pairs(getgenv().PetsToPlaceList) do
-                    if not getgenv().AutoPlace then break end
+        -- Loop semua pet yang DIPILIH user
+        for _, uuid in pairs(getgenv().PetsToPlaceList) do
+            -- Validasi: Pastikan pet masih ada di inventory & belum placed
+            if inv[uuid] and not inv[uuid].placed then
+                local offset = Vector3.new(math.random(-15, 15), 5, math.random(-15, 15))
 
-                    -- Cek apakah pet ini benar-benar ada di inventory (validasi)
-                    local petData = inventory[targetUUID]
-                    if petData then
-                        -- Logika Posisi: Sebar acak di sekitar tengah kandang
-                        local randomOffset = Vector3.new(math.random(-10, 10), 5, math.random(-10, 10))
-                        local finalPos = basePos + randomOffset
+                -- Cek Grip (Posisi pegang) dari tool
+                local tool = game.Players.LocalPlayer.Backpack:FindFirstChild(uuid)
+                local grip = tool and tool:GetAttribute("Grip") or CFrame.new()
 
-                        -- Logika CFrame (Grip): Sesuai request
-                        -- Kita coba cari tool di Backpack. Jika tidak ada (karena tidak di-equip), kita pakai default.
-                        local targetCFrame = CFrame.new() -- Default
-
-                        local backpackTool = game.Players.LocalPlayer.Backpack:FindFirstChild(targetUUID)
-                        if backpackTool and backpackTool:GetAttribute("Grip") then
-                            targetCFrame = backpackTool:GetAttribute("Grip")
-                        end
-
-                        -- Fire Server
-                        pcall(function()
-                            game:GetService("ReplicatedStorage").Remotes.RequestPlacePet:FireServer(
-                                targetUUID,
-                                finalPos,
-                                targetCFrame
-                            )
-                        end)
-
-                        -- Hapus dari list lokal agar tidak mencoba place ulang (opsional, visual only)
-                        -- Tapi karena kita loop getgenv list, biarkan saja, server akan menolak jika sudah placed.
-                        task.wait(0.2)
-                    end
-                end
-
-                -- Matikan toggle otomatis setelah satu putaran selesai agar tidak spamming error
-                getgenv().AutoPlace = false
-                WindUI:Notify({ Title = "Auto Place", Content = "Placement request sent!", Duration = 3 })
-                -- Update toggle visual di UI nanti (jika didukung lib)
+                -- Fire Remote
+                game:GetService("ReplicatedStorage").Remotes.RequestPlacePet:FireServer(uuid, penPos + offset, grip)
+                count = count + 1
+                task.wait(0.1) -- Jeda dikit biar server memproses
             end
-
-            task.wait(1)
         end
-    end)
+
+        if count > 0 then
+            WindUI:Notify({ Title = "Success", Content = "Placed " .. count .. " pets!", Duration = 3 })
+        else
+            WindUI:Notify({ Title = "Info", Content = "No valid pets placed (Maybe already placed?)", Duration = 2 })
+        end
+
+        -- === AUTO REFRESH LOGIC ===
+        -- Kosongkan pilihan user agar tidak nyangkut
+        getgenv().PetsToPlaceList = {}
+
+        -- Update isi dropdown dengan data terbaru
+        if PlaceDropdown then
+            local newList, newMap = GetPlaceablePetsList()
+            placeableMap = newMap          -- Update mapping global
+            PlaceDropdown:Refresh(newList) -- Refresh visual UI
+            -- Deselect visual di library (jika didukung) atau set value ke kosong
+            -- WindUI biasanya mereset value visual saat Refresh dipanggil dengan list baru
+        end
+    end
 end
 
 -- Fungsi untuk mengambil list pet di inventory untuk Dropdown
@@ -2023,54 +2013,64 @@ local PlaceTab = Window:Tab({
     Locked = false
 })
 
+-- ==========================================
+--  PLACE TAB (Button Version)
+-- ==========================================
+
 PlaceTab:Section({ Title = "Inventory Manager" })
 
-local PlaceDropdown = PlaceTab:Dropdown({
+-- Definisi Dropdown (Disimpan ke variabel agar bisa diakses fungsi)
+PlaceDropdown = PlaceTab:Dropdown({
     Title = "Select Pets to Place",
-    Values = { "Click Refresh..." },
+    Values = { "Click Refresh First..." },
     Value = {},
-    Multi = true, -- Bisa pilih banyak sekaligus
-    Desc = "Select pets from your inventory to place into the pen.",
-    Callback = function(Options)
-        -- Convert nama tampilan kembali menjadi UUID
-        local uuidList = {}
-        for _, name in pairs(Options) do
-            if placeableMap[name] then
-                table.insert(uuidList, placeableMap[name])
+    Multi = true,
+    Desc = "Select pets to put in your pen.",
+    Callback = function(v)
+        local u = {}
+        -- Konversi Nama Tampilan -> UUID Asli
+        for _, n in pairs(v) do
+            if placeableMap[n] then
+                table.insert(u, placeableMap[n])
             end
         end
-        getgenv().PetsToPlaceList = uuidList
+        getgenv().PetsToPlaceList = u
     end
 })
 
 PlaceTab:Button({
     Title = "Refresh Inventory",
-    Desc = "Scan your backpack for new pets.",
     Callback = function()
+        -- 1. Ambil data baru
         local newList, newMap = GetPlaceablePetsList()
-        placeableMap = newMap -- Update map global
+        placeableMap = newMap
+
+        -- 2. Kosongkan pilihan user sebelumnya (PENTING AGAR TIDAK NUMPUK)
+        getgenv().PetsToPlaceList = {}
+
+        -- 3. Update UI
         PlaceDropdown:Refresh(newList)
-        WindUI:Notify({ Title = "System", Content = "Inventory refreshed!", Duration = 1 })
+
+        WindUI:Notify({ Title = "System", Content = "Inventory refreshed & Selection cleared.", Duration = 1 })
     end
 })
 
 PlaceTab:Section({ Title = "Execution" })
 
-PlaceTab:Toggle({
+-- Ubah dari Toggle menjadi Button
+PlaceTab:Button({
     Title = "Place Selected Pets",
-    Desc = "Places all selected pets into your pen (Randomly scattered).",
-    Value = false,
-    Callback = function(Value)
-        getgenv().AutoPlace = Value
-
-        if Value then
-            if #getgenv().PetsToPlaceList == 0 then
-                WindUI:Notify({ Title = "Warning", Content = "Select pets from dropdown first!", Duration = 2 })
-            else
-                WindUI:Notify({ Title = "System", Content = "Placing pets...", Duration = 2 })
-                StartAutoPlacePets()
-            end
+    Desc = "Places pets and auto-refreshes the list.",
+    Callback = function()
+        -- Cek apakah user sudah memilih pet
+        if #getgenv().PetsToPlaceList == 0 then
+            WindUI:Notify({ Title = "Warning", Content = "Please select pets from the dropdown first!", Duration = 2 })
+            return
         end
+
+        WindUI:Notify({ Title = "System", Content = "Placing pets...", Duration = 2 })
+        ExecutePlacePets() -- Jalankan fungsi sekali
+        PlaceDropdown:Select("")
     end
 })
 -- SECTION: FRUITS (Tambahkan ini di bawah section Eggs)
