@@ -181,7 +181,7 @@ local Window =
         {
             Title = "Catch and Tame: AUTO FARM",
             Icon = "door-open",
-            Author = "JumantaraHub v2.1",
+            Author = "JumantaraHub v2.2",
             Theme = "Plant",
             Folder = "CatchandTame_JumantaraHub",
             KeySystem = {
