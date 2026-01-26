@@ -181,7 +181,7 @@ local Window =
         {
             Title = "Catch and Tame: AUTO FARM",
             Icon = "door-open",
-            Author = "JumantaraHub v2",
+            Author = "JumantaraHub v2.1",
             Theme = "Plant",
             Folder = "CatchandTame_JumantaraHub",
             KeySystem = {
@@ -244,6 +244,11 @@ local PickupTab = Window:Tab({
     Icon = "bird",
     Locked = false
 })
+local FruitTab = Window:Tab({
+    Title = "Auto Collect Fruits",
+    Icon = "bird",
+    Locked = false
+})
 local SellTab =
     Window:Tab(
         {
@@ -265,7 +270,7 @@ local BuyTab =
 local FeedTab =
     Window:Tab(
         {
-            Title = "Feed",
+            Title = "Auto Feed",
             Icon = "bird",
             Locked = false
         }
@@ -281,6 +286,7 @@ local SettingTab =
     )
 
 getgenv().SelectRarity = "Legendary"
+getgenv().TargetCatchRarities = {}
 
 getgenv().MutationOnly = false
 
@@ -308,7 +314,7 @@ getgenv().SellConfig = {
 }
 getgenv().AutoPickupPets = false
 getgenv().PickupPetRarities = {} -- Menyimpan Rarity yang dipilih
-
+getgenv().AutoCollectFruits = false
 getgenv().AutoPickupEggs = false
 getgenv().PickupEggNames = {} -- Menyimpan Nama Egg yang dipilih
 getgenv().AutoBuyFood = false
@@ -322,13 +328,31 @@ getgenv().AutoFeed = false
 getgenv().SelectedFeedFood = "Steak"
 
 getgenv().TargetPetUUID = nil
+getgenv().SelectedRecipe = nil
+getgenv().AutoBreedRecipe = false
+getgenv().AutoBreedAllRecipes = false
+getgenv().AutoFeedAll = false
+getgenv().FoodsToFeed = {}
+getgenv().AutoFeedAllFoods = false
+getgenv().AutoPlace = false
+getgenv().PetsToPlaceList = {}
 
-local rarityList = { "Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythical" }
+local rarityList = { "Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythical", "Exclusive", "Secret" }
+local RarityWeights = {
+    ["Common"] = 1,
+    ["Uncommon"] = 2,
+    ["Rare"] = 3,
+    ["Epic"] = 4,
+    ["Legendary"] = 5,
+    ["Mythical"] = 6,
+    ["Exclusive"] = 7,
+    ["Secret"] = 8
+}
 local eggNamesList = {}
 for _, rarity in ipairs(rarityList) do
     table.insert(eggNamesList, rarity .. " Egg")
 end
-
+local BreedRecipes = require(game:GetService("ReplicatedStorage").Configs.Breeding.breedRecipes)
 local Remotes = game:GetService("ReplicatedStorage"):WaitForChild("Remotes")
 
 local Players = game:GetService("Players")
@@ -345,7 +369,21 @@ local foodList = {
 }
 
 local petMap = {}
+local function GetMyPen()
+    local p = game.Players.LocalPlayer
 
+    local pensFolder = workspace:FindFirstChild("PlayerPens")
+
+    if pensFolder then
+        for _, pen in pairs(pensFolder:GetChildren()) do
+            if pen:GetAttribute("Owner") == p.Name then
+                return pen
+            end
+        end
+    end
+
+    return nil
+end
 local function EquipLasso()
     local backpack = LocalPlayer:FindFirstChild("Backpack")
 
@@ -431,6 +469,126 @@ local function RunCatchProtocol(targetPet)
     )
 end
 
+local function GetInventoryData()
+    local RS = game:GetService("ReplicatedStorage")
+    local success, result = pcall(function()
+        return RS.Remotes.getPetInventory:InvokeServer()
+    end)
+    if success then return result else return {} end
+end
+
+local function StartAutoPlacePets()
+    task.spawn(function()
+        while getgenv().AutoPlace do
+            local myPen = GetMyPen()
+            local inventory = GetInventoryData()
+
+            if myPen and inventory then
+                -- Ambil Posisi Pen (WorldPivot)
+                -- Kita tambahkan Random Offset (x, z) agar pet menyebar dan tidak menumpuk
+                local penPivot = myPen:GetPivot()
+                local basePos = penPivot.Position
+
+                -- Loop semua UUID yang dipilih user di dropdown
+                for _, targetUUID in pairs(getgenv().PetsToPlaceList) do
+                    if not getgenv().AutoPlace then break end
+
+                    -- Cek apakah pet ini benar-benar ada di inventory (validasi)
+                    local petData = inventory[targetUUID]
+                    if petData then
+                        -- Logika Posisi: Sebar acak di sekitar tengah kandang
+                        local randomOffset = Vector3.new(math.random(-10, 10), 5, math.random(-10, 10))
+                        local finalPos = basePos + randomOffset
+
+                        -- Logika CFrame (Grip): Sesuai request
+                        -- Kita coba cari tool di Backpack. Jika tidak ada (karena tidak di-equip), kita pakai default.
+                        local targetCFrame = CFrame.new() -- Default
+
+                        local backpackTool = game.Players.LocalPlayer.Backpack:FindFirstChild(targetUUID)
+                        if backpackTool and backpackTool:GetAttribute("Grip") then
+                            targetCFrame = backpackTool:GetAttribute("Grip")
+                        end
+
+                        -- Fire Server
+                        pcall(function()
+                            game:GetService("ReplicatedStorage").Remotes.RequestPlacePet:FireServer(
+                                targetUUID,
+                                finalPos,
+                                targetCFrame
+                            )
+                        end)
+
+                        -- Hapus dari list lokal agar tidak mencoba place ulang (opsional, visual only)
+                        -- Tapi karena kita loop getgenv list, biarkan saja, server akan menolak jika sudah placed.
+                        task.wait(0.2)
+                    end
+                end
+
+                -- Matikan toggle otomatis setelah satu putaran selesai agar tidak spamming error
+                getgenv().AutoPlace = false
+                WindUI:Notify({ Title = "Auto Place", Content = "Placement request sent!", Duration = 3 })
+                -- Update toggle visual di UI nanti (jika didukung lib)
+            end
+
+            task.wait(1)
+        end
+    end)
+end
+
+-- Fungsi untuk mengambil list pet di inventory untuk Dropdown
+-- Format: "NamaPet [Rarity] - UUID"
+local function GetPlaceablePetsList()
+    local list = {}
+    local rawMap = {} -- UUID map
+
+    local inventory = GetInventoryData()
+    if inventory then
+        for uuid, data in pairs(inventory) do
+            if not data.placed then
+                local displayName = data.name ..
+                    " [" .. (data.rarity or "?") .. "] | " .. (data.mutation or "?")
+                table.insert(list, displayName)
+                rawMap[displayName] = uuid
+            end
+        end
+    end
+
+    table.sort(list)
+    return list, rawMap
+end
+
+local placeableMap = {}
+local function GetFormattedRecipes()
+    local list = {}
+    local rawMap = {} -- Menyimpan data asli untuk dipakai logic nanti
+
+    for poolName, data in pairs(BreedRecipes) do
+        if data.Parent1 and data.Parent2 and data.Data and data.Data.BreedSpecific then
+            -- Ambil nama telur hasil (Result)
+            local resultEggName = "Unknown"
+            for eggName, chance in pairs(data.Data.BreedSpecific) do
+                resultEggName = eggName
+                break -- Ambil satu saja sebagai display
+            end
+
+            local displayName = data.Parent1 .. " + " .. data.Parent2 .. " -> " .. resultEggName
+            table.insert(list, displayName)
+
+            -- Simpan mapping agar saat user pilih nama, kita tahu data aslinya
+            rawMap[displayName] = {
+                P1 = data.Parent1,
+                P2 = data.Parent2
+            }
+        end
+    end
+
+    table.sort(list) -- Urutkan abjad biar rapi
+    return list, rawMap
+end
+
+-- Inisialisasi list resep
+local recipeList, recipeMap = GetFormattedRecipes()
+
 local function StartCandyFarm()
     task.spawn(
         function()
@@ -478,65 +636,90 @@ local function StartCandyFarm()
 end
 
 local function StartRarityFarm()
-    task.spawn(
-        function()
-            while getgenv().AutoFarmRarity do
-                local folder = workspace:FindFirstChild("RoamingPets") and workspace.RoamingPets:FindFirstChild("Pets")
+    task.spawn(function()
+        while getgenv().AutoFarmRarity do
+            local folder = workspace:FindFirstChild("RoamingPets") and workspace.RoamingPets:FindFirstChild("Pets")
 
-                local foundTarget = false
+            if folder then
+                local potentialTargets = {}
 
-                if folder then
-                    for _, pet in pairs(folder:GetChildren()) do
-                        if not getgenv().AutoFarmRarity then
-                            break
-                        end
+                -- 1. SCANNING PHASE
+                -- Kumpulkan semua pet yang sesuai kriteria ke dalam tabel
+                for _, pet in pairs(folder:GetChildren()) do
+                    if not getgenv().AutoFarmRarity then break end
 
-                        local r = pet:GetAttribute("Rarity")
+                    local r = pet:GetAttribute("Rarity")
+                    local m = pet:GetAttribute("Mutation")
+                    local isTarget = false
 
-                        local m = pet:GetAttribute("Mutation")
-
-                        local isTarget = false
-
-                        if getgenv().MutationOnly then
-                            if m and m ~= "None" then
-                                isTarget = true
-                            end
-                        elseif r == getgenv().SelectRarity then
+                    -- Logika Target
+                    if getgenv().MutationOnly then
+                        if m and m ~= "None" then isTarget = true end
+                    else
+                        -- Cek apakah rarity pet ini ada di daftar pilihan kita (Multi-Select)
+                        if table.find(getgenv().TargetCatchRarities, r) then
                             isTarget = true
                         end
+                    end
 
-                        if isTarget and (pet:IsA("Model") or pet:IsA("BasePart")) then
-                            foundTarget = true
-
-                            local p = game.Players.LocalPlayer
-
-                            if p and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                                p.Character.HumanoidRootPart.CFrame = pet:GetPivot() * CFrame.new(0, 2, 0)
-
-                                task.wait(0.5)
-
-                                RunCatchProtocol(pet)
-
-                                task.wait(4.5)
-                            end
-                        end
+                    if isTarget and (pet:IsA("Model") or pet:IsA("BasePart")) then
+                        table.insert(potentialTargets, pet)
                     end
                 end
 
-                if not foundTarget and getgenv().AutoFarmRarity then
-                    WindUI:Notify(
-                        { Title = "Searching...", Content = "Waiting for spawn " .. getgenv().SelectRarity, Duration = 1 }
-                    )
+                -- 2. PRIORITY PHASE
+                -- Jika ada target, urutkan berdasarkan Rarity paling tinggi (Secret > Mythical > Common)
+                if #potentialTargets > 0 then
+                    table.sort(potentialTargets, function(a, b)
+                        local rA = a:GetAttribute("Rarity") or "Common"
+                        local rB = b:GetAttribute("Rarity") or "Common"
 
-                    task.wait(3)
+                        local wA = RarityWeights[rA] or 0
+                        local wB = RarityWeights[rB] or 0
+
+                        -- Mutation prioritas sangat tinggi (opsional, tambah +100 biar selalu dikejar duluan)
+                        if a:GetAttribute("Mutation") ~= "None" then wA = wA + 100 end
+                        if b:GetAttribute("Mutation") ~= "None" then wB = wB + 100 end
+
+                        return wA > wB -- Urutkan dari Besar ke Kecil
+                    end)
+
+                    -- Ambil target terbaik (urutan pertama setelah sort)
+                    local bestTarget = potentialTargets[1]
+                    local bestRarity = bestTarget:GetAttribute("Rarity")
+
+                    WindUI:Notify({
+                        Title = "Target Found!",
+                        Content = "Pursuing: " .. bestRarity .. " (Priority)",
+                        Duration = 2
+                    })
+
+                    -- 3. CATCH PHASE
+                    local p = game.Players.LocalPlayer
+                    if p and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                        -- Teleport ke atas pet sedikit
+                        p.Character.HumanoidRootPart.CFrame = bestTarget:GetPivot() * CFrame.new(0, 3, 0)
+                        task.wait(0.2)
+
+                        -- Jalankan protokol penangkapan
+                        RunCatchProtocol(bestTarget)
+
+                        -- Tunggu sampai proses selesai + jeda sedikit
+                        task.wait(4.5)
+                    end
+                else
+                    -- Jika tidak ada target sama sekali
+                    if getgenv().AutoFarmRarity then
+                        WindUI:Notify({ Title = "Scanning...", Content = "No targets found.", Duration = 1 })
+                        task.wait(2)
+                    end
                 end
-
-                task.wait(1)
+            else
+                task.wait(2)
             end
         end
-    )
+    end)
 end
-
 local function StartAutoCollect()
     task.spawn(
         function()
@@ -674,22 +857,104 @@ local function StartAutoBuy()
     )
 end
 
-local function GetMyPen()
-    local p = game.Players.LocalPlayer
+local function StartAutoFeedAllFoodsToTarget()
+    task.spawn(function()
+        while getgenv().AutoFeedAllFoods do
+            -- Pastikan ada target pet yang dipilih
+            if getgenv().TargetPetUUID then
+                -- Loop semua makanan yang ada di daftar foodList
+                for _, foodName in ipairs(foodList) do
+                    if not getgenv().AutoFeedAllFoods then break end
 
-    local pensFolder = workspace:FindFirstChild("PlayerPens")
+                    pcall(function()
+                        local FeedRemote = game:GetService("ReplicatedStorage").Packages._Index["sleitnick_knit@1.7.0"]
+                            .knit.Services.FoodService.RF.FeedPet
 
-    if pensFolder then
-        for _, pen in pairs(pensFolder:GetChildren()) do
-            if pen:GetAttribute("Owner") == p.Name then
-                return pen
+                        -- Feed makanan tersebut ke Target Pet
+                        FeedRemote:InvokeServer(foodName, getgenv().TargetPetUUID, 1)
+                    end)
+
+                    -- Delay cepat antar suapan
+                    task.wait(0.1)
+                end
             end
+
+            -- Ulangi loop (beri jeda sedikit agar tidak crash)
+            task.wait(0.5)
         end
-    end
-
-    return nil
+    end)
 end
+local function StartRecipeBreeding()
+    task.spawn(function()
+        while getgenv().AutoBreedRecipe do
+            -- Cek apakah user sudah memilih resep
+            if getgenv().SelectedRecipe and recipeMap[getgenv().SelectedRecipe] then
+                local targetData = recipeMap[getgenv().SelectedRecipe]
+                local p1Target = targetData.P1
+                print("Target P1: " .. p1Target)
+                local p2Target = targetData.P2
+                print("Target P2: " .. p2Target)
 
+                local myPen = GetMyPen()
+                if myPen and myPen:FindFirstChild("Pets") then
+                    -- List penampung pet yang valid (tidak cooldown)
+                    local listP1 = {}
+                    local listP2 = {}
+
+                    for _, pet in pairs(myPen.Pets:GetChildren()) do
+                        if pet:IsA("Model") and not pet:GetAttribute("CooldownEnd") then
+                            local pName = pet:GetAttribute("Name") -- Ambil nama asli pet (bukan nama object)
+
+                            -- Masukkan ke list jika namanya cocok
+                            if pName == p1Target then
+                                table.insert(listP1, pet)
+                            elseif pName == p2Target then
+                                table.insert(listP2, pet)
+                            end
+                        end
+                    end
+
+                    -- LOGIKA PASANGAN
+                    local pairsBred = 0
+
+                    -- Loop sebanyak jumlah pasangan yang mungkin
+                    -- Kita ambil jumlah terkecil dari kedua list agar pasangannya pas
+                    local maxPairs = math.min(#listP1, #listP2)
+
+                    if maxPairs > 0 then
+                        for i = 1, maxPairs do
+                            local parentA = listP1[i]
+                            local parentB = listP2[i]
+
+                            if parentA and parentB then
+                                pcall(function()
+                                    game:GetService("ReplicatedStorage").Remotes.breedRequest:InvokeServer(
+                                        parentA,
+                                        parentB,
+                                        parentA:GetPivot().Position,
+                                        parentB:GetPivot().Position
+                                    )
+                                end)
+                                pairsBred = pairsBred + 1
+                                task.wait(0.2)
+                            end
+                        end
+
+                        if pairsBred > 0 then
+                            WindUI:Notify({
+                                Title = "Recipe Breeder",
+                                Content = "Bred " .. pairsBred .. " pairs of " .. p1Target .. " + " .. p2Target,
+                                Duration = 2
+                            })
+                        end
+                    end
+                end
+            end
+
+            task.wait(5) -- Delay scan loop
+        end
+    end)
+end
 
 local function StartSmartAutoBreed()
     task.spawn(function()
@@ -765,7 +1030,142 @@ local function StartSmartAutoBreed()
         end
     end)
 end
+local function StartAutoBreedAllRecipes()
+    task.spawn(function()
+        while getgenv().AutoBreedAllRecipes do
+            local myPen = GetMyPen()
 
+            if myPen and myPen:FindFirstChild("Pets") then
+                -- Langkah 1: Kelompokkan Pet yang READY (No Cooldown) berdasarkan Namanya
+                local petInventory = {}
+
+                for _, pet in pairs(myPen.Pets:GetChildren()) do
+                    if pet:IsA("Model") and not pet:GetAttribute("CooldownEnd") then
+                        local pName = pet:GetAttribute("Name") -- Ambil nama asli spesies
+
+                        if pName then
+                            if not petInventory[pName] then
+                                petInventory[pName] = {}
+                            end
+                            table.insert(petInventory[pName], pet)
+                        end
+                    end
+                end
+
+                -- Langkah 2: Cek Resep Game satu per satu
+                -- BreedRecipes adalah variabel yang kamu require di jawaban sebelumnya
+                local totalBred = 0
+
+                for _, recipeData in pairs(BreedRecipes) do
+                    -- Jika user mematikan toggle di tengah jalan, hentikan loop
+                    if not getgenv().AutoBreedAllRecipes then break end
+
+                    local p1Name = recipeData.Parent1
+                    local p2Name = recipeData.Parent2
+
+                    -- Cek apakah kita punya stok untuk kedua parent ini
+                    if petInventory[p1Name] and petInventory[p2Name] then
+                        -- LOOP: Kawinkan sampai stok habis untuk resep ini
+                        while true do
+                            local parentA = nil
+                            local parentB = nil
+
+                            -- KASUS 1: Spesies Sama (Misal: Wolf + Wolf)
+                            if p1Name == p2Name then
+                                if #petInventory[p1Name] >= 2 then
+                                    parentA = table.remove(petInventory[p1Name], 1)
+                                    parentB = table.remove(petInventory[p1Name], 1)
+                                else
+                                    break -- Stok tidak cukup untuk pasangan sejenis
+                                end
+
+                                -- KASUS 2: Spesies Beda (Misal: Lion + Tiger)
+                            else
+                                if #petInventory[p1Name] >= 1 and #petInventory[p2Name] >= 1 then
+                                    parentA = table.remove(petInventory[p1Name], 1)
+                                    parentB = table.remove(petInventory[p2Name], 1)
+                                else
+                                    break -- Salah satu stok habis
+                                end
+                            end
+
+                            -- Eksekusi Breed
+                            if parentA and parentB then
+                                pcall(function()
+                                    game:GetService("ReplicatedStorage").Remotes.breedRequest:InvokeServer(
+                                        parentA,
+                                        parentB,
+                                        parentA:GetPivot().Position,
+                                        parentB:GetPivot().Position
+                                    )
+                                end)
+                                totalBred = totalBred + 1
+                                task.wait(0.2) -- Delay kecil agar server tidak menolak
+                            end
+                        end
+                    end
+                end
+
+                if totalBred > 0 then
+                    WindUI:Notify({
+                        Title = "Auto Recipe",
+                        Content = "Successfully bred " .. totalBred .. " pairs from all recipes.",
+                        Duration = 2
+                    })
+                else
+                    WindUI:Notify({
+                        Title = "Auto Recipe",
+                        Content = "Pet CD or No available pairs found for any recipe.",
+                        Duration = 2
+                    })
+                end
+            end
+
+            task.wait(5) -- Scan ulang setiap 5 detik
+        end
+    end)
+end
+local function StartAutoCollectFruits()
+    task.spawn(function()
+        while getgenv().AutoCollectFruits do
+            local visuals = workspace:FindFirstChild("WeatherVisuals")
+
+            if visuals then
+                -- Loop semua anak di folder (Model dengan nama UUID)
+                for _, model in pairs(visuals:GetChildren()) do
+                    if not getgenv().AutoCollectFruits then break end
+
+                    -- Cari buah di dalam model tersebut
+                    local fruit = model:FindFirstChild("CosmicFruit") or model:FindFirstChild("VolcanicFruit")
+
+                    if fruit then
+                        -- Cari ProximityPrompt (biasanya ada langsung di dalam Model Fruit atau di Handle)
+                        local prompt = fruit:FindFirstChildWhichIsA("ProximityPrompt") or
+                            (fruit:FindFirstChild("Handle") and fruit.Handle:FindFirstChildWhichIsA("ProximityPrompt"))
+
+                        if prompt and prompt.Enabled then
+                            local p = game.Players.LocalPlayer
+                            if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                                -- PERBAIKAN: Gunakan :GetPivot() karena target adalah Model
+                                p.Character.HumanoidRootPart.CFrame = fruit:GetPivot()
+                            end
+
+                            -- Delay agar server mendeteksi player sudah dekat
+                            task.wait(0.25)
+
+                            -- Eksekusi Prompt (Bypass waktu tahan 3 detik)
+                            fireproximityprompt(prompt)
+
+                            -- Tunggu sebentar agar tidak spamming error
+                            task.wait(0.1)
+                        end
+                    end
+                end
+            end
+            task.wait(1)
+        end
+    end)
+end
 local function StartEggManager()
     task.spawn(function()
         while getgenv().EnableEggManager do
@@ -812,6 +1212,7 @@ local function StartEggManager()
         end
     end)
 end
+
 local function StartAutoPickupPets()
     task.spawn(function()
         while getgenv().AutoPickupPets do
@@ -890,8 +1291,9 @@ local function UpdatePetList()
                 local pName = pet:GetAttribute("Name") or "Unknown"
 
                 local pLevel = pet:GetAttribute("Level") or 0
+                local pMutate = pet:GetAttribute("Mutation") or "None"
 
-                local displayName = pName .. " (" .. tostring(pLevel) .. ")"
+                local displayName = pName .. " (" .. tostring(pLevel) .. ")" .. " " .. pMutate .. " "
 
                 if petMap[displayName] then
                     displayName = displayName .. " [" .. string.sub(pet.Name, 1, 3) .. "]"
@@ -921,7 +1323,7 @@ local function StartAutoFeed()
                                     game:GetService("ReplicatedStorage").Packages._Index["sleitnick_knit@1.7.0"].knit
                                     .Services.FoodService.RF.FeedPet
 
-                                FeedRemote:InvokeServer(getgenv().SelectedFeedFood, getgenv().TargetPetUUID)
+                                FeedRemote:InvokeServer(getgenv().SelectedFeedFood, getgenv().TargetPetUUID, 1)
                             end
                         )
                 end
@@ -939,18 +1341,16 @@ local Section =
         }
     )
 
-Tab:Dropdown(
-    {
-        Title = "Choose Rarity",
-        Values = rarityList,
-        Value = "Legendary",
-        Multi = false,
-        Desc = "RarityDrop",
-        Callback = function(Option)
-            getgenv().SelectRarity = Option
-        end
-    }
-)
+Tab:Dropdown({
+    Title = "Target Rarities (Multi-Select)",
+    Values = rarityList, -- List sudah mencakup Secret & Exclusive
+    Value = {},          -- Default kosong
+    Multi = true,        -- Aktifkan Multi Select
+    Desc = "Select multiple rarities. Script prioritizes the highest tier automatically.",
+    Callback = function(Options)
+        getgenv().TargetCatchRarities = Options
+    end
+})
 
 Tab:Toggle(
     {
@@ -979,25 +1379,7 @@ local SectionExecution =
         }
     )
 
-Tab:Toggle(
-    {
-        Title = "Auto Farm Candy Event (Loop)",
-        Value = false,
-        Desc = "CandyFarmToggle",
-        Locked = true,
-        Callback = function(Value)
-            getgenv().AutoFarmCandy = Value
 
-            if Value then
-                WindUI:Notify({ Title = "Auto Farm Active", Content = "Started hunting Candy Pet...", Duration = 2 })
-
-                StartCandyFarm()
-            else
-                WindUI:Notify({ Title = "Auto Farm Stop", Content = "Stopping after current target.", Duration = 2 })
-            end
-        end
-    }
-)
 
 Tab:Button(
     {
@@ -1058,27 +1440,29 @@ Tab:Button(
     }
 )
 
-Tab:Toggle(
-    {
-        Title = "Auto Farm Selected Rarity (Loop)",
-        Value = false,
-        Desc = "RarityFarmToggle",
-        Callback = function(Value)
-            getgenv().AutoFarmRarity = Value
+Tab:Toggle({
+    Title = "Auto Farm Priority (Loop)",
+    Value = false,
+    Desc = "Scans map and catches the BEST pet from your selection.",
+    Callback = function(Value)
+        getgenv().AutoFarmRarity = Value
 
-            if Value then
-                WindUI:Notify(
-                    { Title = "Auto Farm ON", Content = "Searching for all " .. getgenv().SelectRarity, Duration = 2 }
-                )
-
-                StartRarityFarm()
+        if Value then
+            if #getgenv().TargetCatchRarities == 0 and not getgenv().MutationOnly then
+                WindUI:Notify({ Title = "Warning", Content = "Select at least 1 Rarity first!", Duration = 2 })
             else
-                WindUI:Notify({ Title = "Auto Farm OFF", Content = "Stopping after this target.", Duration = 2 })
+                WindUI:Notify({
+                    Title = "Auto Farm ON",
+                    Content = "Scanning for highest priority targets...",
+                    Duration = 2
+                })
+                StartRarityFarm()
             end
+        else
+            WindUI:Notify({ Title = "Auto Farm OFF", Content = "Stopped.", Duration = 2 })
         end
-    }
-)
-
+    end
+})
 local SectionCollect =
     CollectTab:Section(
         {
@@ -1379,6 +1763,87 @@ BreedTab:Toggle({
         end
     end
 })
+BreedTab:Section({ Title = "Recipe Auto Breed" })
+
+local RecipeDropdown = BreedTab:Dropdown({
+    Title = "Select Recipe",
+    Values = recipeList, -- Mengambil dari fungsi GetFormattedRecipes tadi
+    Value = "Select Recipe...",
+    Multi = false,
+    Desc = "Choose specific breeding combination provided by the game.",
+    Callback = function(Option)
+        -- Handle return value WindUI
+        local val = (type(Option) == "table" and Option[1]) or Option
+        getgenv().SelectedRecipe = val
+    end
+})
+
+BreedTab:Button({
+    Title = "Refresh Recipes",
+    Desc = "Click if game updates or list is empty.",
+    Callback = function()
+        -- Reload resep jika diperlukan
+        local newList, newMap = GetFormattedRecipes()
+        recipeList = newList
+        recipeMap = newMap
+        RecipeDropdown:Refresh(newList)
+        WindUI:Notify({ Title = "System", Content = "Recipes list updated!", Duration = 1 })
+    end
+})
+
+BreedTab:Toggle({
+    Title = "Start Recipe Breeding",
+    Desc = "Auto breed pets based on the selected recipe above.",
+    Value = false,
+    Callback = function(Value)
+        getgenv().AutoBreedRecipe = Value
+
+        if Value then
+            if not getgenv().SelectedRecipe then
+                WindUI:Notify({ Title = "Error", Content = "Please select a recipe first!", Duration = 2 })
+                return
+            end
+
+            WindUI:Notify({ Title = "System", Content = "Recipe Breeding Started...", Duration = 2 })
+            StartRecipeBreeding()
+        else
+            WindUI:Notify({ Title = "System", Content = "Recipe Breeding Stopped.", Duration = 2 })
+        end
+    end
+})
+BreedTab:Divider()
+BreedTab:Toggle({
+    Title = "Auto Breed ALL Recipes",
+    Desc = "Automatically detects and breeds ALL matching pairs found in your pen.",
+    Value = false,
+    Callback = function(Value)
+        getgenv().AutoBreedAllRecipes = Value
+
+        if Value then
+            -- Matikan fitur breed lain agar tidak bentrok
+            if getgenv().AutoBreed or getgenv().AutoBreedRecipe then
+                WindUI:Notify({ Title = "System", Content = "Disabled other breed modes to prevent conflict.", Duration = 2 })
+                getgenv().AutoBreed = false
+                getgenv().AutoBreedRecipe = false
+                -- Jangan lupa update visual toggle lain ke false jika library mendukung,
+                -- atau biarkan saja user yang mematikan.
+            end
+
+            WindUI:Notify({
+                Title = "System",
+                Content = "Scanning inventory for ANY valid recipes...",
+                Duration = 2
+            })
+            StartAutoBreedAllRecipes()
+        else
+            WindUI:Notify({
+                Title = "System",
+                Content = "Auto Breed All Stopped.",
+                Duration = 2
+            })
+        end
+    end
+})
 BreedTab:Section({
     Title = "Egg Management"
 })
@@ -1517,6 +1982,100 @@ SettingTab:Toggle({
                 Content = "Disabled.",
                 Duration = 2
             })
+        end
+    end
+})
+FeedTab:Toggle({
+    Title = "Auto Feed ALL Foods (To Target)",
+    Desc = "Spam feeds ALL types of food to the selected target pet.",
+    Value = false,
+    Callback = function(Value)
+        getgenv().AutoFeedAllFoods = Value
+
+        if Value then
+            if getgenv().TargetPetUUID then
+                WindUI:Notify({ Title = "Feeding", Content = "Feeding everything to target...", Duration = 2 })
+                StartAutoFeedAllFoodsToTarget()
+            else
+                WindUI:Notify({ Title = "Error", Content = "Please select a Target Pet first!", Duration = 2 })
+                -- Matikan toggle secara visual jika library mendukung, atau biarkan saja
+            end
+        else
+            WindUI:Notify({ Title = "Stopped", Content = "Stopped feeding all foods.", Duration = 2 })
+        end
+    end
+})
+local PlaceTab = Window:Tab({
+    Title = "Auto Place",
+    Icon = "package", -- Icon paket/box
+    Locked = false
+})
+
+PlaceTab:Section({ Title = "Inventory Manager" })
+
+local PlaceDropdown = PlaceTab:Dropdown({
+    Title = "Select Pets to Place",
+    Values = { "Click Refresh..." },
+    Value = {},
+    Multi = true, -- Bisa pilih banyak sekaligus
+    Desc = "Select pets from your inventory to place into the pen.",
+    Callback = function(Options)
+        -- Convert nama tampilan kembali menjadi UUID
+        local uuidList = {}
+        for _, name in pairs(Options) do
+            if placeableMap[name] then
+                table.insert(uuidList, placeableMap[name])
+            end
+        end
+        getgenv().PetsToPlaceList = uuidList
+    end
+})
+
+PlaceTab:Button({
+    Title = "Refresh Inventory",
+    Desc = "Scan your backpack for new pets.",
+    Callback = function()
+        local newList, newMap = GetPlaceablePetsList()
+        placeableMap = newMap -- Update map global
+        PlaceDropdown:Refresh(newList)
+        WindUI:Notify({ Title = "System", Content = "Inventory refreshed!", Duration = 1 })
+    end
+})
+
+PlaceTab:Section({ Title = "Execution" })
+
+PlaceTab:Toggle({
+    Title = "Place Selected Pets",
+    Desc = "Places all selected pets into your pen (Randomly scattered).",
+    Value = false,
+    Callback = function(Value)
+        getgenv().AutoPlace = Value
+
+        if Value then
+            if #getgenv().PetsToPlaceList == 0 then
+                WindUI:Notify({ Title = "Warning", Content = "Select pets from dropdown first!", Duration = 2 })
+            else
+                WindUI:Notify({ Title = "System", Content = "Placing pets...", Duration = 2 })
+                StartAutoPlacePets()
+            end
+        end
+    end
+})
+-- SECTION: FRUITS (Tambahkan ini di bawah section Eggs)
+FruitTab:Section({ Title = "Event Fruit Config" })
+
+FruitTab:Toggle({
+    Title = "Auto Collect Event Fruits",
+    Desc = "Teleports and collects Volcanic & Cosmic fruits automatically.",
+    Value = false,
+    Callback = function(Value)
+        getgenv().AutoCollectFruits = Value
+
+        if Value then
+            WindUI:Notify({ Title = "System", Content = "Searching for event fruits...", Duration = 2 })
+            StartAutoCollectFruits()
+        else
+            WindUI:Notify({ Title = "System", Content = "Stopped collecting fruits.", Duration = 2 })
         end
     end
 })
