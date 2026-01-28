@@ -181,7 +181,7 @@ local Window =
         {
             Title = "Catch and Tame: AUTO FARM",
             Icon = "door-open",
-            Author = "JumantaraHub v2.2",
+            Author = "JumantaraHub v2.3",
             Theme = "Plant",
             Folder = "CatchandTame_JumantaraHub",
             KeySystem = {
@@ -331,6 +331,10 @@ getgenv().FoodsToFeed = {}
 getgenv().AutoFeedAllFoods = false
 getgenv().AutoPlace = false
 getgenv().PetsToPlaceList = {}
+getgenv().SellEggConfig = {}
+getgenv().SellConfig = {}
+getgenv().IgnoredPets = {}
+
 
 local rarityList = { "Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythical", "Exclusive", "Secret" }
 local RarityWeights = {
@@ -471,6 +475,42 @@ local function GetInventoryData()
     end)
     if success then return result else return {} end
 end
+local function GetEggInventoryData()
+    local RS = game:GetService("ReplicatedStorage")
+    local success, result = pcall(function()
+        return RS.Remotes.getEggInventory:InvokeServer()
+    end)
+    if success then return result else return {} end
+end
+-- Coba ambil config pet dari game
+local PetConfig = nil
+local success, result = pcall(function()
+    -- Sesuaikan path ini dengan lokasi asli ModuleScript yang kamu decompile tadi
+    -- Biasanya ada di ReplicatedStorage > Configs > Pets atau similar
+    return require(game:GetService("ReplicatedStorage").Configs.Pets)
+end)
+
+if success then
+    PetConfig = result
+else
+    -- Fallback jika gagal load (bisa isi manual atau kosongkan)
+    PetConfig = {}
+    warn("Gagal load Pet Config, fitur filter nama mungkin kosong.")
+end
+
+local function GetAllPetNames()
+    local names = {}
+    if PetConfig then
+        for name, _ in pairs(PetConfig) do
+            -- Kita masukkan semua nama ke list
+            table.insert(names, name)
+        end
+    end
+    table.sort(names) -- Urutkan abjad biar rapi
+    return names
+end
+
+local fullPetNameList = GetAllPetNames()
 -- Variabel forward declaration untuk Dropdown (agar bisa di-refresh dari dalam fungsi)
 local PlaceDropdown = nil
 
@@ -624,27 +664,27 @@ local function StartRarityFarm()
     task.spawn(function()
         while getgenv().AutoFarmRarity do
             local folder = workspace:FindFirstChild("RoamingPets") and workspace.RoamingPets:FindFirstChild("Pets")
-
             if folder then
                 local potentialTargets = {}
-
-                -- 1. SCANNING PHASE
-                -- Kumpulkan semua pet yang sesuai kriteria ke dalam tabel
                 for _, pet in pairs(folder:GetChildren()) do
                     if not getgenv().AutoFarmRarity then break end
+
+                    -- === FILTER BARU: CEK BLACKLIST NAMA ===
+                    local pName = pet:GetAttribute("Name") or pet.Name
+                    if table.find(getgenv().IgnoredPets, pName) then
+                        -- Jika nama ada di blacklist, SKIP (Lanjut ke pet berikutnya)
+                        continue
+                    end
+                    -- =======================================
 
                     local r = pet:GetAttribute("Rarity")
                     local m = pet:GetAttribute("Mutation")
                     local isTarget = false
 
-                    -- Logika Target
                     if getgenv().MutationOnly then
                         if m and m ~= "None" then isTarget = true end
                     else
-                        -- Cek apakah rarity pet ini ada di daftar pilihan kita (Multi-Select)
-                        if table.find(getgenv().TargetCatchRarities, r) then
-                            isTarget = true
-                        end
+                        if table.find(getgenv().TargetCatchRarities, r) then isTarget = true end
                     end
 
                     if isTarget and (pet:IsA("Model") or pet:IsA("BasePart")) then
@@ -652,56 +692,29 @@ local function StartRarityFarm()
                     end
                 end
 
-                -- 2. PRIORITY PHASE
-                -- Jika ada target, urutkan berdasarkan Rarity paling tinggi (Secret > Mythical > Common)
                 if #potentialTargets > 0 then
+                    -- Priority Sort (Sama seperti sebelumnya)
                     table.sort(potentialTargets, function(a, b)
                         local rA = a:GetAttribute("Rarity") or "Common"
                         local rB = b:GetAttribute("Rarity") or "Common"
-
                         local wA = RarityWeights[rA] or 0
                         local wB = RarityWeights[rB] or 0
-
-                        -- Mutation prioritas sangat tinggi (opsional, tambah +100 biar selalu dikejar duluan)
                         if a:GetAttribute("Mutation") ~= "None" then wA = wA + 100 end
                         if b:GetAttribute("Mutation") ~= "None" then wB = wB + 100 end
-
-                        return wA > wB -- Urutkan dari Besar ke Kecil
+                        return wA > wB
                     end)
 
-                    -- Ambil target terbaik (urutan pertama setelah sort)
                     local bestTarget = potentialTargets[1]
-                    local bestRarity = bestTarget:GetAttribute("Rarity")
-
-                    WindUI:Notify({
-                        Title = "Target Found!",
-                        Content = "Pursuing: " .. bestRarity .. " (Priority)",
-                        Duration = 2
-                    })
-
-                    -- 3. CATCH PHASE
                     local p = game.Players.LocalPlayer
-                    if p and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                        -- Teleport ke atas pet sedikit
+                    if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
                         p.Character.HumanoidRootPart.CFrame = bestTarget:GetPivot() * CFrame.new(0, 3, 0)
                         task.wait(0.2)
-
-                        -- Jalankan protokol penangkapan
                         RunCatchProtocol(bestTarget)
-
-                        -- Tunggu sampai proses selesai + jeda sedikit
                         task.wait(4.5)
                     end
-                else
-                    -- Jika tidak ada target sama sekali
-                    if getgenv().AutoFarmRarity then
-                        WindUI:Notify({ Title = "Scanning...", Content = "No targets found.", Duration = 1 })
-                        task.wait(2)
-                    end
                 end
-            else
-                task.wait(2)
             end
+            task.wait(1)
         end
     end)
 end
@@ -1335,7 +1348,40 @@ local function StartAutoFeed()
         end
     )
 end
+local function StartAutoSellEggs()
+    task.spawn(function()
+        while getgenv().AutoSellEggs do
+            local inv = GetEggInventoryData()
 
+            if inv then
+                local soldCount = 0
+                for uuid, data in pairs(inv) do
+                    if not getgenv().AutoSellEggs then break end
+
+                    -- PERBAIKAN: Gunakan data.type == "Egg" alih-alih data.name
+                    if data.type == "Egg" then
+                        -- Cek apakah Rarity telur ini ada di daftar yang ingin dijual user
+                        if data.rarity and table.find(getgenv().SellEggConfig, data.rarity) then
+                            pcall(function()
+                                game:GetService("ReplicatedStorage").Remotes.sellEgg:InvokeServer(uuid, false)
+                            end)
+
+                            soldCount = soldCount + 1
+                            task.wait(0.1) -- Jeda dikit biar server tidak menolak
+                        end
+                    end
+                end
+
+                -- Opsional: Info di F9 jika ada yang terjual
+                if soldCount > 0 then
+                    print("Auto Sell: Sold " .. soldCount .. " eggs.")
+                end
+            end
+
+            task.wait(3) -- Loop setiap 3 detik
+        end
+    end)
+end
 local Section =
     Tab:Section(
         {
@@ -1373,6 +1419,16 @@ Tab:Toggle(
         end
     }
 )
+Tab:Dropdown({
+    Title = "Ignore Pets (Blacklist)",
+    Values = fullPetNameList, -- List nama yang diambil dari config v1 tadi
+    Value = {},
+    Multi = true,
+    Desc = "Select pets you do NOT want to catch (Name based).",
+    Callback = function(v)
+        getgenv().IgnoredPets = v
+    end
+})
 
 local SectionExecution =
     Tab:Section(
@@ -1491,54 +1547,98 @@ CollectTab:Toggle(
     }
 )
 
-local SectionConfig =
-    SellTab:Section(
-        {
-            Title = "Select Rarity to Sell"
-        }
-    )
 
-local rarities = { "Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythical" }
+-- === SECTION: PETS ===
+SellTab:Section({ Title = "Pet Selling" })
 
-for _, rarity in ipairs(rarities) do
-    SellTab:Toggle(
-        {
-            Title = "Sell " .. rarity,
-            Value = false,
-            Desc = "Sell" .. rarity,
-            Callback = function(Value)
-                getgenv().SellConfig[rarity] = Value
-            end
-        }
-    )
-end
+SellTab:Dropdown({
+    Title = "Select Pet Rarities",
+    Values = rarityList, -- List dari Common s/d Secret
+    Value = {},
+    Multi = true,        -- Multi Select Aktif
+    Desc = "Select which pet rarities to auto-sell.",
+    Callback = function(Options)
+        getgenv().SellConfig = Options
+    end
+})
 
-local SectionAction =
-    SellTab:Section(
-        {
-            Title = "Execution"
-        }
-    )
-
-SellTab:Toggle(
-    {
-        Title = "Enable Auto Sell (Loop)",
-        Value = false,
-        Desc = "AutoSellMain",
-        Callback = function(Value)
-            getgenv().AutoSell = Value
-
-            if Value then
-                WindUI:Notify({ Title = "Auto Sell ON", Content = "Started selling selected pets...", Duration = 2 })
-
-                StartAutoSell()
+SellTab:Toggle({
+    Title = "Auto Sell Pets (Loop)",
+    Value = false,
+    Desc = "Automatically sells pets based on the selection above.",
+    Callback = function(v)
+        getgenv().AutoSell = v
+        if v then
+            -- Safety Check
+            if #getgenv().SellConfig == 0 then
+                WindUI:Notify({ Title = "Warning", Content = "Select at least one Pet Rarity first!", Duration = 2 })
             else
-                WindUI:Notify({ Title = "Auto Sell OFF", Content = "Stopped selling.", Duration = 2 })
-            end
-        end
-    }
-)
+                WindUI:Notify({ Title = "System", Content = "Auto Sell Pets Started...", Duration = 2 })
 
+                -- Logic Loop (Langsung di dalam callback agar praktis)
+                task.spawn(function()
+                    while getgenv().AutoSell do
+                        local inv = GetInventoryData()
+                        if inv then
+                            for uuid, d in pairs(inv) do
+                                if not getgenv().AutoSell then break end
+
+                                -- Filter: Pastikan BUKAN Egg, Rarity cocok, dan Tidak Placed
+                                if d.name and not string.find(d.name, "Egg") then
+                                    if d.rarity and table.find(getgenv().SellConfig, d.rarity) and not d.placed then
+                                        pcall(function()
+                                            game:GetService("ReplicatedStorage").Remotes.sellPet:InvokeServer(uuid, false)
+                                        end)
+                                        task.wait(0.1)
+                                    end
+                                end
+                            end
+                        end
+                        task.wait(3) -- Cek setiap 3 detik
+                    end
+                end)
+            end
+        else
+            WindUI:Notify({ Title = "System", Content = "Auto Sell Pets Stopped.", Duration = 2 })
+        end
+    end
+})
+
+-- === SECTION: EGGS ===
+SellTab:Section({ Title = "Egg Selling" })
+
+-- Ganti Toggle banyak dengan 1 Dropdown Multi
+SellTab:Dropdown({
+    Title = "Select Egg Rarities",
+    Values = rarityList, -- Menggunakan list rarity yang sudah ada (Common s/d Secret)
+    Value = {},
+    Multi = true,        -- Multi Select aktif
+    Desc = "Select which egg rarities to auto-sell.",
+    Callback = function(Options)
+        getgenv().SellEggConfig = Options
+    end
+})
+
+SellTab:Toggle({
+    Title = "Auto Sell Eggs (Loop)",
+    Value = false,
+    Desc = "Automatically sells unwanted eggs based on the selection above.",
+    Callback = function(v)
+        getgenv().AutoSellEggs = v
+
+        if v then
+            -- Safety check: Pastikan user memilih minimal 1 rarity
+            if #getgenv().SellEggConfig == 0 then
+                WindUI:Notify({ Title = "Warning", Content = "Select at least one Egg Rarity first!", Duration = 2 })
+            else
+                WindUI:Notify({ Title = "System", Content = "Auto Sell Eggs Started...", Duration = 2 })
+                StartAutoSellEggs()
+            end
+        else
+            WindUI:Notify({ Title = "System", Content = "Auto Sell Eggs Stopped.", Duration = 2 })
+        end
+    end
+})
 local SectionBuy =
     BuyTab:Section(
         {
