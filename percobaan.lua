@@ -1550,9 +1550,9 @@ SectionCollect:Toggle(
 
 
 -- === SECTION: PETS ===
-SellTab:Section({ Title = "Pet Selling" })
+local petSellingSection = SellTab:Section({ Title = "Pet Selling" })
 
-SellTab:Dropdown({
+petSellingSection:Dropdown({
     Title = "Select Pet Rarities",
     Values = rarityList, -- List dari Common s/d Secret
     Value = {},
@@ -1563,7 +1563,7 @@ SellTab:Dropdown({
     end
 })
 
-SellTab:Toggle({
+petSellingSection:Toggle({
     Title = "Auto Sell Pets (Loop)",
     Value = false,
     Desc = "Automatically sells pets based on the selection above.",
@@ -1606,10 +1606,10 @@ SellTab:Toggle({
 })
 
 -- === SECTION: EGGS ===
-SellTab:Section({ Title = "Egg Selling" })
+local eggSellingSection = SellTab:Section({ Title = "Egg Selling" })
 
 -- Ganti Toggle banyak dengan 1 Dropdown Multi
-SellTab:Dropdown({
+eggSellingSection:Dropdown({
     Title = "Select Egg Rarities",
     Values = rarityList, -- Menggunakan list rarity yang sudah ada (Common s/d Secret)
     Value = {},
@@ -1620,7 +1620,7 @@ SellTab:Dropdown({
     end
 })
 
-SellTab:Toggle({
+eggSellingSection:Toggle({
     Title = "Auto Sell Eggs (Loop)",
     Value = false,
     Desc = "Automatically sells unwanted eggs based on the selection above.",
@@ -1647,7 +1647,7 @@ local SectionBuy =
         }
     )
 
-BuyTab:Dropdown(
+SectionBuy:Dropdown(
     {
         Title = "Select Food (Multi-select)",
         Values = foodList,
@@ -1660,7 +1660,7 @@ BuyTab:Dropdown(
     }
 )
 
-BuyTab:Slider(
+SectionBuy:Slider(
     {
         Title = "Amount Per Item",
         Value = {
@@ -1678,7 +1678,7 @@ BuyTab:Slider(
 
 local SectionExec = BuyTab:Section({ Title = "Execution" })
 
-BuyTab:Toggle(
+SectionExec:Toggle(
     {
         Title = "Auto Buy Food (Loop)",
         Value = false,
@@ -1699,7 +1699,7 @@ BuyTab:Toggle(
 
 local SectionConfig = FeedTab:Section({ Title = "1. Select Food" })
 
-FeedTab:Dropdown(
+SectionConfig:Dropdown(
     {
         Title = "Food Type",
         Values = foodList,
@@ -1717,7 +1717,7 @@ FeedTab:Dropdown(
 local SectionTarget = FeedTab:Section({ Title = "2. Select Target Pet" })
 
 local PetDropdown =
-    FeedTab:Dropdown(
+    SectionTarget:Dropdown(
         {
             Title = "Target Pet",
             Values = { "Click Refresh First..." },
@@ -1738,7 +1738,7 @@ local PetDropdown =
         }
     )
 
-FeedTab:Button(
+SectionTarget:Button(
     {
         Title = "Refresh Pet List (Click when changing pet)",
         Callback = function()
@@ -1753,7 +1753,7 @@ FeedTab:Button(
 
 local SectionExec = FeedTab:Section({ Title = "Execution" })
 
-FeedTab:Toggle(
+SectionExec:Toggle(
     {
         Title = "Auto Feed Selected Target (Loop)",
         Value = false,
@@ -1773,9 +1773,14 @@ FeedTab:Toggle(
         end
     }
 )
-
+local configurationSection =
+    SettingTab:Section(
+        {
+            Title = "Configuration"
+        }
+    )
 local Keybind =
-    SettingTab:Keybind(
+    configurationSection:Keybind(
         {
             Title = "Keybind",
             Desc = "Keybind to open ui",
@@ -1787,7 +1792,7 @@ local Keybind =
     )
 
 local ThemeDropdown =
-    SettingTab:Dropdown(
+    configurationSection:Dropdown(
         {
             Title = "Select Theme",
             Desc = "Choose your desired interface theme",
@@ -1817,12 +1822,12 @@ local ThemeDropdown =
         }
     )
 -- Breeding Section
-BreedTab:Section({
+local smartBreedingSection = BreedTab:Section({
     Title = "Smart Breeding Configuration"
 })
 
 -- Dropdown to select which rarities to breed
-BreedTab:Dropdown({
+smartBreedingSection:Dropdown({
     Title = "Filter Rarity (Multi-Select)",
     Values = { "Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythical" },
     Value = {}, -- Default empty, user must select
@@ -1834,7 +1839,7 @@ BreedTab:Dropdown({
     end
 })
 
-BreedTab:Toggle({
+smartBreedingSection:Toggle({
     Title = "Enable Smart Auto Breed",
     Desc = "Pairs ready pets based on selected rarities.",
     Value = false,
@@ -1995,9 +2000,9 @@ eggBreadSection:Toggle({
     end
 })
 
-PickupTab:Section({ Title = "Pet Pickup Config" })
+local petPickupSection = PickupTab:Section({ Title = "Pet Pickup Config" })
 
-PickupTab:Dropdown({
+petPickupSection:Dropdown({
     Title = "Filter Rarity (Multi)",
     Values = { "Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythical" },
     Value = {},
@@ -2008,7 +2013,7 @@ PickupTab:Dropdown({
     end
 })
 
-PickupTab:Toggle({
+petPickupSection:Toggle({
     Title = "Auto Pickup Pets",
     Desc = "Pick up pets matching the selected rarities.",
     Value = false,
@@ -2027,9 +2032,9 @@ PickupTab:Toggle({
 })
 
 -- SECTION: EGGS
-PickupTab:Section({ Title = "Egg Pickup Config" })
+local eggPickupSection = PickupTab:Section({ Title = "Egg Pickup Config" })
 
-PickupTab:Dropdown({
+eggPickupSection:Dropdown({
     Title = "Filter Egg Name (Multi)",
     Values = eggNamesList,
     Value = {},
@@ -2040,7 +2045,7 @@ PickupTab:Dropdown({
     end
 })
 
-PickupTab:Toggle({
+eggPickupSection:Toggle({
     Title = "Auto Pickup Eggs",
     Value = false,
     Callback = function(Value)
@@ -2067,7 +2072,7 @@ game:GetService("Players").LocalPlayer.Idled:Connect(function()
         VirtualUser:ClickButton2(Vector2.new())
     end
 end)
-SettingTab:Toggle({
+configurationSection:Toggle({
     Title = "Anti AFK",
     Value = true,
     Callback = function(Value)
@@ -2088,7 +2093,7 @@ SettingTab:Toggle({
         end
     end
 })
-FeedTab:Toggle({
+SectionExec:Toggle({
     Title = "Auto Feed ALL Foods (To Target)",
     Desc = "Spam feeds ALL types of food to the selected target pet.",
     Value = false,
@@ -2193,9 +2198,9 @@ fruitSection:Toggle({
     end
 })
 -- Tambahkan ini di dalam SettingTab (sebelum Keybind)
-SettingTab:Section({ Title = "Movement" })
+local movementSection = SettingTab:Section({ Title = "Movement" })
 
-SettingTab:Slider({
+movementSection:Slider({
     Title = "WalkSpeed Config",
     Desc = "Adjust your movement speed.",
     Value = {
@@ -2209,7 +2214,7 @@ SettingTab:Slider({
     end
 })
 
-SettingTab:Toggle({
+movementSection:Toggle({
     Title = "Enable WalkSpeed",
     Value = false,
     Callback = function(Value)
