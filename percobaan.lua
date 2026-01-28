@@ -1389,7 +1389,7 @@ local Section =
         }
     )
 
-Tab:Dropdown({
+Section:Dropdown({
     Title = "Target Rarities (Multi-Select)",
     Values = rarityList, -- List sudah mencakup Secret & Exclusive
     Value = {},          -- Default kosong
@@ -1400,7 +1400,7 @@ Tab:Dropdown({
     end
 })
 
-Tab:Toggle(
+Section:Toggle(
     {
         Title = "Mutation Only",
         Value = false,
@@ -1410,7 +1410,7 @@ Tab:Toggle(
     }
 )
 
-Tab:Toggle(
+Section:Toggle(
     {
         Title = "Auto Catch (After Teleport)",
         Value = true,
@@ -1419,11 +1419,12 @@ Tab:Toggle(
         end
     }
 )
-Tab:Dropdown({
+Section:Dropdown({
     Title = "Ignore Pets (Blacklist)",
     Values = fullPetNameList, -- List nama yang diambil dari config v1 tadi
     Value = {},
     Multi = true,
+    SearchBarEnabled = true,
     Desc = "Select pets you do NOT want to catch (Name based).",
     Callback = function(v)
         getgenv().IgnoredPets = v
@@ -1439,7 +1440,7 @@ local SectionExecution =
 
 
 
-Tab:Button(
+SectionExecution:Button(
     {
         Title = "Catch 1 Target (Safe Mode)",
         Callback = function()
@@ -1498,7 +1499,7 @@ Tab:Button(
     }
 )
 
-Tab:Toggle({
+SectionExecution:Toggle({
     Title = "Auto Farm Priority (Loop)",
     Value = false,
     Desc = "Scans map and catches the BEST pet from your selection.",
@@ -1528,7 +1529,7 @@ local SectionCollect =
         }
     )
 
-CollectTab:Toggle(
+SectionCollect:Toggle(
     {
         Title = "Auto Collect Cash (My Pen)",
         Value = false,
@@ -1865,9 +1866,9 @@ BreedTab:Toggle({
         end
     end
 })
-BreedTab:Section({ Title = "Recipe Auto Breed" })
+local breedRecipeSection = BreedTab:Section({ Title = "Recipe Auto Breed" })
 
-local RecipeDropdown = BreedTab:Dropdown({
+local RecipeDropdown = breedRecipeSection:Dropdown({
     Title = "Select Recipe",
     Values = recipeList, -- Mengambil dari fungsi GetFormattedRecipes tadi
     Value = "Select Recipe...",
@@ -1880,7 +1881,7 @@ local RecipeDropdown = BreedTab:Dropdown({
     end
 })
 
-BreedTab:Button({
+breedRecipeSection:Button({
     Title = "Refresh Recipes",
     Desc = "Click if game updates or list is empty.",
     Callback = function()
@@ -1893,7 +1894,7 @@ BreedTab:Button({
     end
 })
 
-BreedTab:Toggle({
+breedRecipeSection:Toggle({
     Title = "Start Recipe Breeding",
     Desc = "Auto breed pets based on the selected recipe above.",
     Value = false,
@@ -1913,8 +1914,8 @@ BreedTab:Toggle({
         end
     end
 })
-BreedTab:Divider()
-BreedTab:Toggle({
+breedRecipeSection:Divider()
+breedRecipeSection:Toggle({
     Title = "Auto Breed ALL Recipes",
     Desc = "Automatically detects and breeds ALL matching pairs found in your pen.",
     Value = false,
@@ -1946,12 +1947,12 @@ BreedTab:Toggle({
         end
     end
 })
-BreedTab:Section({
+local eggBreadSection = BreedTab:Section({
     Title = "Egg Management"
 })
 
 -- Dropdown to select Action (Only one can be active)
-BreedTab:Dropdown({
+eggBreadSection:Dropdown({
     Title = "Egg Action Mode",
     Values = { "Pickup", "Hatch" },
     Value = "Pickup",
@@ -1971,7 +1972,7 @@ BreedTab:Dropdown({
 })
 
 -- Master Toggle for Egg Features
-BreedTab:Toggle({
+eggBreadSection:Toggle({
     Title = "Enable Egg Manager",
     Value = false,
     Callback = function(Value)
@@ -2117,10 +2118,10 @@ local PlaceTab = Window:Tab({
 --  PLACE TAB (Button Version)
 -- ==========================================
 
-PlaceTab:Section({ Title = "Inventory Manager" })
+local placeSection = PlaceTab:Section({ Title = "Inventory Manager" })
 
 -- Definisi Dropdown (Disimpan ke variabel agar bisa diakses fungsi)
-PlaceDropdown = PlaceTab:Dropdown({
+PlaceDropdown = placeSection:Dropdown({
     Title = "Select Pets to Place",
     Values = { "Click Refresh First..." },
     Value = {},
@@ -2138,7 +2139,7 @@ PlaceDropdown = PlaceTab:Dropdown({
     end
 })
 
-PlaceTab:Button({
+placeSection:Button({
     Title = "Refresh Inventory",
     Callback = function()
         -- 1. Ambil data baru
@@ -2155,10 +2156,10 @@ PlaceTab:Button({
     end
 })
 
-PlaceTab:Section({ Title = "Execution" })
+local executePlaceSection = PlaceTab:Section({ Title = "Execution" })
 
 -- Ubah dari Toggle menjadi Button
-PlaceTab:Button({
+executePlaceSection:Button({
     Title = "Place Selected Pets",
     Desc = "Places pets and auto-refreshes the list.",
     Callback = function()
@@ -2174,9 +2175,9 @@ PlaceTab:Button({
     end
 })
 -- SECTION: FRUITS (Tambahkan ini di bawah section Eggs)
-CollectTab:Section({ Title = "Fruit Config" })
+local fruitSection = CollectTab:Section({ Title = "Fruit Config" })
 
-CollectTab:Toggle({
+fruitSection:Toggle({
     Title = "Auto Collect Fruits",
     Desc = "Teleports and collects Volcanic & Cosmic fruits automatically.",
     Value = false,
