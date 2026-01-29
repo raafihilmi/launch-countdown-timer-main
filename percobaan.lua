@@ -181,7 +181,7 @@ local Window =
         {
             Title = "Catch and Tame: AUTO FARM",
             Icon = "door-open",
-            Author = "JumantaraHub v2.3",
+            Author = "JumantaraHub v2.4",
             Theme = "Plant",
             Folder = "CatchandTame_JumantaraHub",
             KeySystem = {
@@ -382,6 +382,21 @@ local function GetMyPen()
     end
 
     return nil
+end
+-- ==============================
+-- CONFIG HELPER FUNCTIONS
+-- ==============================
+local AutoLoadFile = "Jumantara_CatchAndTame_Config.txt" -- Nama file config auto-load
+
+local function GetAutoLoadName()
+    if isfile(AutoLoadFile) then
+        return readfile(AutoLoadFile)
+    end
+    return "None"
+end
+
+local function SetAutoLoadName(name)
+    writefile(AutoLoadFile, name)
 end
 local function EquipLasso()
     local backpack = LocalPlayer:FindFirstChild("Backpack")
@@ -1394,6 +1409,7 @@ Section:Dropdown({
     Values = rarityList, -- List sudah mencakup Secret & Exclusive
     Value = {},          -- Default kosong
     Multi = true,        -- Aktifkan Multi Select
+    Flag = "RarityDropdownMulti",
     Desc = "Select multiple rarities. Script prioritizes the highest tier automatically.",
     Callback = function(Options)
         getgenv().TargetCatchRarities = Options
@@ -1404,6 +1420,7 @@ Section:Toggle(
     {
         Title = "Mutation Only",
         Value = false,
+        Flag = "MutationOnlyToggle",
         Callback = function(Val)
             getgenv().MutationOnly = Val
         end
@@ -1414,6 +1431,7 @@ Section:Toggle(
     {
         Title = "Auto Catch (After Teleport)",
         Value = true,
+        Flag = "AutoCatchToggle",
         Callback = function(Val)
             getgenv().AutoCatchEnabled = Val
         end
@@ -1424,6 +1442,7 @@ Section:Dropdown({
     Values = fullPetNameList, -- List nama yang diambil dari config v1 tadi
     Value = {},
     Multi = true,
+    Flag = "IgnorePetsDropdownMulti",
     SearchBarEnabled = true,
     Desc = "Select pets you do NOT want to catch (Name based).",
     Callback = function(v)
@@ -1502,6 +1521,7 @@ SectionExecution:Button(
 SectionExecution:Toggle({
     Title = "Auto Farm Priority (Loop)",
     Value = false,
+    Flag = "AutoFarmRarityToggle",
     Desc = "Scans map and catches the BEST pet from your selection.",
     Callback = function(Value)
         getgenv().AutoFarmRarity = Value
@@ -1533,7 +1553,7 @@ SectionCollect:Toggle(
     {
         Title = "Auto Collect Cash (My Pen)",
         Value = false,
-        Desc = "AutoCollectToggle",
+        Flag = "AutoCollectToggle",
         Callback = function(Value)
             getgenv().AutoCollectCash = Value
 
@@ -1556,7 +1576,8 @@ petSellingSection:Dropdown({
     Title = "Select Pet Rarities",
     Values = rarityList, -- List dari Common s/d Secret
     Value = {},
-    Multi = true,        -- Multi Select Aktif
+    Flag = "PetRarityDropdownMulti",
+    Multi = true, -- Multi Select Aktif
     Desc = "Select which pet rarities to auto-sell.",
     Callback = function(Options)
         getgenv().SellConfig = Options
@@ -1566,6 +1587,7 @@ petSellingSection:Dropdown({
 petSellingSection:Toggle({
     Title = "Auto Sell Pets (Loop)",
     Value = false,
+    Flag = "AutoSellPetsToggle",
     Desc = "Automatically sells pets based on the selection above.",
     Callback = function(v)
         getgenv().AutoSell = v
@@ -1613,7 +1635,8 @@ eggSellingSection:Dropdown({
     Title = "Select Egg Rarities",
     Values = rarityList, -- Menggunakan list rarity yang sudah ada (Common s/d Secret)
     Value = {},
-    Multi = true,        -- Multi Select aktif
+    Flag = "EggRarityDropdownMulti",
+    Multi = true, -- Multi Select aktif
     Desc = "Select which egg rarities to auto-sell.",
     Callback = function(Options)
         getgenv().SellEggConfig = Options
@@ -1623,6 +1646,7 @@ eggSellingSection:Dropdown({
 eggSellingSection:Toggle({
     Title = "Auto Sell Eggs (Loop)",
     Value = false,
+    Flag = "AutoSellEggsToggle",
     Desc = "Automatically sells unwanted eggs based on the selection above.",
     Callback = function(v)
         getgenv().AutoSellEggs = v
@@ -1652,8 +1676,8 @@ SectionBuy:Dropdown(
         Title = "Select Food (Multi-select)",
         Values = foodList,
         Value = { "Apple" },
+        Flag = "FoodDropdownMulti",
         Multi = true,
-        Desc = "FoodDropdownMulti",
         Callback = function(Option)
             getgenv().SelectedFoodList = Option
         end
@@ -1669,7 +1693,7 @@ SectionBuy:Slider(
             Default = 5
         },
         Step = 1,
-        Desc = "BuyAmountSlider",
+        Flag = "BuyAmountSlider",
         Callback = function(Value)
             getgenv().BuyAmount = Value
         end
@@ -1682,7 +1706,7 @@ SectionExec:Toggle(
     {
         Title = "Auto Buy Food (Loop)",
         Value = false,
-        Desc = "AutoBuyToggle",
+        Flag = "AutoBuyFoodToggle",
         Callback = function(Value)
             getgenv().AutoBuyFood = Value
 
@@ -1705,7 +1729,7 @@ SectionConfig:Dropdown(
         Values = foodList,
         Value = "Steak",
         Multi = false,
-        Desc = "FeedFoodDrop",
+        Flag = "FeedFoodDrop",
         Callback = function(Option)
             local val = (type(Option) == "table" and Option[1]) or Option
 
@@ -1723,7 +1747,7 @@ local PetDropdown =
             Values = { "Click Refresh First..." },
             Value = "",
             Multi = false,
-            Desc = "TargetPetDrop",
+            Flag = "TargetPetDrop",
             Callback = function(Option)
                 local selectedName = (type(Option) == "table" and Option[1]) or Option
 
@@ -1757,7 +1781,7 @@ SectionExec:Toggle(
     {
         Title = "Auto Feed Selected Target (Loop)",
         Value = false,
-        Desc = "AutoFeedSpecific",
+        Flag = "AutoFeedSpecific",
         Callback = function(Value)
             getgenv().AutoFeed = Value
 
@@ -1784,6 +1808,7 @@ local Keybind =
         {
             Title = "Keybind",
             Desc = "Keybind to open ui",
+            Flag = "Keybind",
             Value = "K",
             Callback = function(v)
                 Window:SetToggleKey(Enum.KeyCode[v])
@@ -1796,6 +1821,7 @@ local ThemeDropdown =
         {
             Title = "Select Theme",
             Desc = "Choose your desired interface theme",
+            Flag = "ThemeDropdown",
             Values = {
                 "Material Nature Dark",
                 "Material Nature Light",
@@ -1832,6 +1858,7 @@ smartBreedingSection:Dropdown({
     Values = { "Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythical" },
     Value = {}, -- Default empty, user must select
     Multi = true,
+    Flag = "BreedRarityDropdownMulti",
     Desc = "Select rarities you want to auto breed.",
     Callback = function(Options)
         -- WindUI Multi-Dropdown returns a table of strings, e.g. {"Legendary", "Mythical"}
@@ -1843,6 +1870,7 @@ smartBreedingSection:Toggle({
     Title = "Enable Smart Auto Breed",
     Desc = "Pairs ready pets based on selected rarities.",
     Value = false,
+    Flag = "SmartAutoBreedToggle",
     Callback = function(Value)
         getgenv().AutoBreed = Value
 
@@ -1878,6 +1906,7 @@ local RecipeDropdown = breedRecipeSection:Dropdown({
     Values = recipeList, -- Mengambil dari fungsi GetFormattedRecipes tadi
     Value = "Select Recipe...",
     Multi = false,
+    Flag = "BreedRecipeDropdown",
     Desc = "Choose specific breeding combination provided by the game.",
     Callback = function(Option)
         -- Handle return value WindUI
@@ -1903,6 +1932,7 @@ breedRecipeSection:Toggle({
     Title = "Start Recipe Breeding",
     Desc = "Auto breed pets based on the selected recipe above.",
     Value = false,
+    Flag = "AutoBreedRecipeToggle",
     Callback = function(Value)
         getgenv().AutoBreedRecipe = Value
 
@@ -1924,6 +1954,7 @@ breedRecipeSection:Toggle({
     Title = "Auto Breed ALL Recipes",
     Desc = "Automatically detects and breeds ALL matching pairs found in your pen.",
     Value = false,
+    Flag = "AutoBreedAllRecipesToggle",
     Callback = function(Value)
         getgenv().AutoBreedAllRecipes = Value
 
@@ -1961,6 +1992,7 @@ eggBreadSection:Dropdown({
     Title = "Egg Action Mode",
     Values = { "Pickup", "Hatch" },
     Value = "Pickup",
+    Flag = "EggActionDropdown",
     Multi = false,
     Desc = "Choose to either Pickup eggs to inventory OR Hatch them directly.",
     Callback = function(Option)
@@ -1980,6 +2012,7 @@ eggBreadSection:Dropdown({
 eggBreadSection:Toggle({
     Title = "Enable Egg Manager",
     Value = false,
+    Flag = "EggManagerToggle",
     Callback = function(Value)
         getgenv().EnableEggManager = Value
 
@@ -2006,6 +2039,7 @@ petPickupSection:Dropdown({
     Title = "Filter Rarity (Multi)",
     Values = { "Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythical" },
     Value = {},
+    Flag = "PickupPetRarityDropdownMulti",
     Multi = true,
     Desc = "Select rarities to auto pickup.",
     Callback = function(Options)
@@ -2017,6 +2051,7 @@ petPickupSection:Toggle({
     Title = "Auto Pickup Pets",
     Desc = "Pick up pets matching the selected rarities.",
     Value = false,
+    Flag = "AutoPickupPetsToggle",
     Callback = function(Value)
         getgenv().AutoPickupPets = Value
         if Value then
@@ -2039,6 +2074,7 @@ eggPickupSection:Dropdown({
     Values = eggNamesList,
     Value = {},
     Multi = true,
+    Flag = "PickupEggNameDropdownMulti",
     Desc = "Select specific egg rarities to pickup.",
     Callback = function(Options)
         getgenv().PickupEggNames = Options
@@ -2048,6 +2084,7 @@ eggPickupSection:Dropdown({
 eggPickupSection:Toggle({
     Title = "Auto Pickup Eggs",
     Value = false,
+    Flag = "AutoPickupEggsToggle",
     Callback = function(Value)
         getgenv().AutoPickupEggs = Value
         if Value then
@@ -2075,6 +2112,7 @@ end)
 configurationSection:Toggle({
     Title = "Anti AFK",
     Value = true,
+    Flag = "AntiAfkToggle",
     Callback = function(Value)
         getgenv().AntiAfk = Value
 
@@ -2097,6 +2135,7 @@ SectionExec:Toggle({
     Title = "Auto Feed ALL Foods (To Target)",
     Desc = "Spam feeds ALL types of food to the selected target pet.",
     Value = false,
+    Flag = "AutoFeedAllFoodsToggle",
     Callback = function(Value)
         getgenv().AutoFeedAllFoods = Value
 
@@ -2130,6 +2169,7 @@ PlaceDropdown = placeSection:Dropdown({
     Title = "Select Pets to Place",
     Values = { "Click Refresh First..." },
     Value = {},
+    Flag = "PlacePetsDropdownMulti",
     Multi = true,
     Desc = "Select pets to put in your pen.",
     Callback = function(v)
@@ -2167,6 +2207,7 @@ local executePlaceSection = PlaceTab:Section({ Title = "Execution" })
 executePlaceSection:Button({
     Title = "Place Selected Pets",
     Desc = "Places pets and auto-refreshes the list.",
+    Flag = "ExecutePlacePetsButton",
     Callback = function()
         -- Cek apakah user sudah memilih pet
         if #getgenv().PetsToPlaceList == 0 then
@@ -2186,6 +2227,7 @@ fruitSection:Toggle({
     Title = "Auto Collect Fruits",
     Desc = "Teleports and collects Volcanic & Cosmic fruits automatically.",
     Value = false,
+    Flag = "AutoCollectFruitsToggle",
     Callback = function(Value)
         getgenv().AutoCollectFruits = Value
 
@@ -2203,6 +2245,7 @@ local movementSection = SettingTab:Section({ Title = "Movement" })
 movementSection:Slider({
     Title = "WalkSpeed Config",
     Desc = "Adjust your movement speed.",
+    Flag = "WalkSpeedSlider",
     Value = {
         Min = 16,
         Max = 200,
@@ -2217,6 +2260,7 @@ movementSection:Slider({
 movementSection:Toggle({
     Title = "Enable WalkSpeed",
     Value = false,
+    Flag = "EnableWalkSpeedToggle",
     Callback = function(Value)
         getgenv().EnableWalkSpeed = Value
 
@@ -2225,3 +2269,206 @@ movementSection:Toggle({
         end
     end
 })
+-- ==============================
+-- TAB CONFIGURATION
+-- ==============================
+local TabConfig = Window:Tab({ Title = "Config", Icon = "save" })
+local ConfigManager = Window.ConfigManager
+local configNameInput = ""
+local selectedConfigName = nil
+
+TabConfig:Section({ Title = "Create New" })
+
+TabConfig:Input({
+    Title = "Config Name",
+    Placeholder = "Enter config name...",
+    Callback = function(input)
+        configNameInput = input
+    end
+})
+
+TabConfig:Button({
+    Title = "Create Config",
+    Icon = "plus-circle",
+    Callback = function()
+        if configNameInput ~= "" then
+            ConfigManager:Config(configNameInput):Save()
+            WindUI:Notify({ Title = "Config", Content = "Created: " .. configNameInput, Duration = 2 })
+        else
+            WindUI:Notify({ Title = "Error", Content = "Enter a name first!", Duration = 2 })
+        end
+    end
+})
+
+TabConfig:Space()
+TabConfig:Section({ Title = "Manage Existing" })
+
+local AutoLoadStatus = TabConfig:Paragraph({
+    Title = "Current Auto Load:",
+    Desc = GetAutoLoadName()
+})
+
+local ConfigDropdown = TabConfig:Dropdown({
+    Title = "Select Config",
+    Values = ConfigManager:AllConfigs(),
+    Value = nil,
+    AllowNone = true,
+    Callback = function(option)
+        selectedConfigName = option
+        if option then
+            Window.CurrentConfig = ConfigManager:Config(option)
+        end
+    end
+})
+
+TabConfig:Button({
+    Title = "Set as Auto Load",
+    Icon = "zap",
+    Callback = function()
+        if selectedConfigName then
+            SetAutoLoadName(selectedConfigName)
+            AutoLoadStatus:SetDesc(selectedConfigName)
+            WindUI:Notify({ Title = "Success", Content = "Auto Load set to: " .. selectedConfigName, Duration = 2 })
+        else
+            WindUI:Notify({ Title = "Error", Content = "Select a config first!", Duration = 2 })
+        end
+    end
+})
+
+TabConfig:Button({
+    Title = "Load Selected",
+    Icon = "download",
+    Callback = function()
+        if Window.CurrentConfig then
+            Window.CurrentConfig:Load()
+            WindUI:Notify({ Title = "Config", Content = "Loaded successfully!", Duration = 2 })
+        end
+    end
+})
+
+TabConfig:Button({
+    Title = "Save Selected",
+    Icon = "save",
+    Callback = function()
+        if Window.CurrentConfig then
+            Window.CurrentConfig:Save()
+            WindUI:Notify({ Title = "Config", Content = "Saved successfully!", Duration = 2 })
+        end
+    end
+})
+
+TabConfig:Button({
+    Title = "Refresh List",
+    Icon = "refresh-cw",
+    Callback = function()
+        ConfigDropdown:Refresh(ConfigManager:AllConfigs())
+        WindUI:Notify({ Title = "System", Content = "List refreshed", Duration = 1 })
+    end
+})
+
+TabConfig:Button({
+    Title = "Reset Auto Load",
+    Icon = "x-circle",
+    Callback = function()
+        SetAutoLoadName("None")
+        AutoLoadStatus:SetDesc("None")
+        WindUI:Notify({ Title = "System", Content = "Auto Load disabled", Duration = 2 })
+    end
+})
+-- ==============================
+-- AUTO LOAD EXECUTION
+-- ==============================
+task.spawn(function()
+    task.wait(2) -- Tunggu UI loading sempurna
+
+    local targetName = GetAutoLoadName()
+
+    if targetName ~= "None" then
+        local allConfigs = ConfigManager:AllConfigs()
+        if table.find(allConfigs, targetName) then
+            Window.CurrentConfig = ConfigManager:Config(targetName)
+            Window.CurrentConfig:Load()
+
+            WindUI:Notify({
+                Title = "Auto Load",
+                Content = "Loaded Config: " .. targetName,
+                Duration = 4
+            })
+
+            if ConfigDropdown then
+                ConfigDropdown:Select(targetName)
+            end
+        else
+            WindUI:Notify({
+                Title = "Warning",
+                Content = "AutoLoad config '" .. targetName .. "' not found!",
+                Duration = 4
+            })
+        end
+    end
+end)
+print("✅ [JumantaraHub] Script Loaded successfully!")
+-- ============================================
+-- CLEANUP HANDLER (Window:OnDestroy)
+-- ============================================
+Window:OnDestroy(function()
+    print("⚠️ Window Closed. Stopping all features...")
+
+    -- 1. Matikan Semua Loop (Set Global Variables ke False)
+    -- Farming & Catching
+    getgenv().AutoFarmCandy = false
+    getgenv().AutoFarmRarity = false
+    getgenv().AutoCatchEnabled = false
+    getgenv().AutoCollectCash = false
+    getgenv().AutoCollectFruits = false
+
+    -- Selling & Buying
+    getgenv().AutoSell = false
+    getgenv().AutoSellEggs = false
+    getgenv().AutoBuyFood = false
+
+    -- Feeding
+    getgenv().AutoFeed = false
+    getgenv().AutoFeedAll = false
+    getgenv().AutoFeedAllFoods = false
+
+    -- Breeding & Eggs
+    getgenv().AutoBreed = false
+    getgenv().AutoBreedRecipe = false
+    getgenv().AutoBreedAllRecipes = false
+    getgenv().EnableEggManager = false
+
+    -- Pickup & Place
+    getgenv().AutoPickupPets = false
+    getgenv().AutoPickupEggs = false
+    getgenv().AutoPlace = false
+
+    -- Misc
+    getgenv().EnableWalkSpeed = false
+    getgenv().AntiAfk = false
+
+    -- 2. Reset Karakter (Speed, Jump, Rotasi)
+    local p = game.Players.LocalPlayer
+    if p and p.Character then
+        local hum = p.Character:FindFirstChild("Humanoid")
+        if hum then
+            hum.WalkSpeed = 16    -- Reset ke default Roblox
+            hum.JumpPower = 50    -- Reset ke default Roblox
+            hum.AutoRotate = true -- Penting: Nyalakan lagi rotasi jika dimatikan oleh AimLock
+        end
+
+        -- Reset Noclip / Collision (Jaga-jaga jika ada part yang tembus)
+        for _, part in pairs(p.Character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = true
+            end
+        end
+    end
+
+    -- 3. Reset Mouse/Kursor (Jaga-jaga jika terkunci)
+    local UIS = game:GetService("UserInputService")
+    UIS.MouseIconEnabled = true
+    UIS.MouseBehavior = Enum.MouseBehavior.Default
+
+    print("✅ [JumantaraHub] Script Unloaded & Cleaned up successfully!")
+end)
